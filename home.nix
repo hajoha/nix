@@ -24,6 +24,7 @@ in
     orca-slicer
     #cura
 
+    signal-desktop
     thefuck
     zsh
     inkscape
