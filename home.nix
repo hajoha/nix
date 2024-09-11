@@ -12,49 +12,25 @@ in
     };
   };
   imports = [ firefoxConfig ];
-  # TODO please change the username & home directory to your own
+
   home.username = "hajoha";
   home.homeDirectory = "/home/hajoha";
   
-  #home.pointerCursor.gtk.enable = true;
 
-  # link the configuration file in current directory to the specified location in home directory
-  # home.file.".config/i3/wallpaper.jpg".source = ./wallpaper.jpg;
-
-  # link all files in `./scripts` to `~/.config/i3/scripts`
-  # home.file.".config/i3/scripts" = {
-  #   source = ./scripts;
-  #   recursive = true;   # link recursively
-  #   executable = true;  # make all files executable
-  # };
-
-  # encode the file content in nix configuration file directly
-  # home.file.".xxx".text = ''
-  #     xxx
-  # '';
-
-  # set cursor size and dpi for 4k monitor
-  #xresources.properties = {
-  #  "Xcursor.size" = 16;
-  #  "Xft.dpi" = 172;
-  #};
-#  services.flatpak.enable = true;
-  # Packages that should be installed to the user profile.
   home.packages = with pkgs; [
-    # here is some command line tools I use frequently
-    # feel free to add your own or remove some of them
-    thefuck
-    zsh
-    inkscape
-    #3d-stuff
+
+    #3D-stuff
     freecad
     orca-slicer
     #cura
+
+    thefuck
+    zsh
+    inkscape
     ausweisapp
     spice-gtk
     solaar
     gcc
-    # archives
     zip
     nextcloud-client
     vlc
@@ -73,14 +49,11 @@ in
     udev
     libvirt
     kvmtool
-    #python312Packages.pip
-
-    # utils
-    ripgrep # recursively searches directories for a regex pattern
-    jq # A lightweight and flexible command-line JSON processor
-    yq-go # yaml processor https://github.com/mikefarah/yq
-    eza # A modern replacement for ‘ls’
-    fzf # A command-line fuzzy finder
+    ripgrep
+    jq
+    yq-go
+    eza
+    fzf
 
     # networking tools
    mtr # A network diagnostic tool
