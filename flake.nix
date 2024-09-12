@@ -8,11 +8,14 @@
       url = "github:nix-community/home-manager/release-24.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-   nur.url = "github:nix-community/nur";
+    nixpkgs-unstable = {
+        url = "github:NixOS/nixpkgs/nixos-unstable";
+    };
+    nur.url = "github:nix-community/nur";
   };
 
 
-  outputs = { self, nixpkgs, home-manager,... }@inputs: 
+  outputs = { self, nixpkgs, home-manager,... }@inputs:
     {	# Please replace my-nixos with your hostname
         nixosConfigurations = {
         nixmaschine = nixpkgs.lib.nixosSystem {
@@ -29,7 +32,9 @@
                 home-manager.users.hajoha = import ./home.nix;
 
                 # Optionally, use home-manager.extraSpecialArgs to pass arguments to home.nix
-                home-manager.extraSpecialArgs = { inherit inputs; };
+                home-manager.extraSpecialArgs = {
+                    inherit inputs;
+                };
 
               }
           ];

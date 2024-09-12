@@ -1,8 +1,10 @@
-{ lib, config, pkgs, inputs,  ... }:
-let
-  firefoxConfig  = import ./firefox.nix {inherit pkgs; inherit inputs; };
-in
+{ lib, config, system, pkgs, inputs, ... }:
+    let
+      firefoxConfig = import ./firefox.nix {inherit pkgs; inherit inputs; };
+      pkgs-unstable = import inputs.nixpkgs-unstable {system="x86_64-linux"; config.allowUnfree = true;};
+    in
 {
+
   nixpkgs = {
     overlays = [
       inputs.nur.overlay
@@ -11,11 +13,12 @@ in
       allowUnfree = true;
     };
   };
-  imports = [ firefoxConfig ];
+  imports = [
+    firefoxConfig
+    ];
 
   home.username = "hajoha";
   home.homeDirectory = "/home/hajoha";
-  
 
   home.packages = with pkgs; [
 
@@ -53,7 +56,6 @@ in
     yq-go
     eza
     fzf
-    android-studio
     signal-desktop
     mtr
     iperf3
@@ -66,7 +68,6 @@ in
 
     nix-output-monitor
     firefox
-
     hugo
     glow
 
@@ -83,7 +84,8 @@ in
     ethtool
     pciutils
     usbutils
-  ];
+  ] ++ [pkgs-unstable.android-studio];
+
   programs.firefox = {
    enable = true; 
   };

@@ -20,7 +20,7 @@
   users.users.hajoha = {
     isNormalUser = true;
     description = "hajoha";
-    extraGroups = [ "networkmanager" "wheel"];
+    extraGroups = [ "networkmanager" "wheel" "kvm" "adbusers"];
     shell = pkgs.zsh;
     packages = with pkgs; [
       home-manager
