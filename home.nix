@@ -24,7 +24,6 @@ in
     orca-slicer
     #cura
 
-    signal-desktop
     thefuck
     zsh
     inkscape
@@ -39,7 +38,6 @@ in
     unzip
     p7zip
     jetbrains.pycharm-professional
-    android-studio
     tor-browser
     anydesk
     chromium
@@ -55,43 +53,36 @@ in
     yq-go
     eza
     fzf
-
-    # networking tools
-   mtr # A network diagnostic tool
+    android-studio
+    signal-desktop
+    mtr
     iperf3
-    dnsutils  # `dig` + `nslookup`
-    ldns # replacement of `dig`, it provide the command `drill`
-    aria2 # A lightweight multi-protocol & multi-source command-line download utility
-    socat # replacement of openbsd-netcat
-    nmap # A utility for network discovery and security auditing
-    ipcalc  # it is a calculator for the IPv4/v6 addresses
+    dnsutils
+    ldns
+    aria2
+    socat
+    nmap
+    ipcalc
 
-      # nix related
-    #
-    # it provides the command `nom` works just like `nix`
-    # with more details log output
     nix-output-monitor
     firefox
 
-    # productivity
-    hugo # static site generator
-    glow # markdown previewer in terminal
+    hugo
+    glow
 
-    btop  # replacement of htop/nmon
-    iotop # io monitoring
-    iftop # network monitoring
+    btop
+    iotop
+    iftop
 
-    # system call monitoring
-    strace # system call monitoring
-    ltrace # library call monitoring
-    lsof # list open files
+    strace
+    ltrace
+    lsof
 
-    # system tools
     sysstat
-    lm_sensors # for `sensors` command
+    lm_sensors
     ethtool
-    pciutils # lspci
-    usbutils # lsusb
+    pciutils
+    usbutils
   ];
   programs.firefox = {
    enable = true; 
