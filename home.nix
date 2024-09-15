@@ -57,6 +57,7 @@
     eza
     fzf
     signal-desktop
+
     mtr
     iperf3
     dnsutils
@@ -84,6 +85,8 @@
     ethtool
     pciutils
     usbutils
+
+    android-tools
   ] ++ [pkgs-unstable.android-studio];
 
   programs.firefox = {
