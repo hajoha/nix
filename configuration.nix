@@ -39,6 +39,10 @@
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.kernelParams = ["acpi.ec_no_wakeup=1̈́"];
+
+
+
 
   networking.hostName = "nixmaschine"; # Define your hostname.
 
@@ -73,7 +77,6 @@
   services.printing.enable = true;
   hardware.pulseaudio.enable = false;
   hardware.logitech.wireless.enable = true;
- 
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
