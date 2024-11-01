@@ -9,7 +9,7 @@
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      ./vm.nix
+#      ./../../modules/editor/vm.nix
 #      <home-manager/nixos>
     ];
 

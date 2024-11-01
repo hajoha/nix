@@ -11,7 +11,9 @@
         url = "github:NixOS/nixpkgs/nixos-unstable";
     };
     nur.url = "github:nix-community/nur";
+
   };
+
 
 
   outputs = { self, nixpkgs, home-manager,... }@inputs:
@@ -25,7 +27,7 @@
               {
                 home-manager.useUserPackages = true;
 
-                home-manager.users.hajoha = import ./home.nix;
+                home-manager.users.hajoha = import ./hosts/nixmaschine/home.nix;
 
                 home-manager.extraSpecialArgs = {
                     inherit inputs;

@@ -1,7 +1,8 @@
 { lib, config, system, pkgs, inputs, ... }:
     let
-      firefoxConfig = import ./../../modules/browser/firefox.nix {inherit pkgs; inherit inputs; };
+      firefoxConfig = import ./../../modules/home-manager/browser/firefox.nix {inherit pkgs; inherit inputs; };
       pkgs-unstable = import inputs.nixpkgs-unstable {system="x86_64-linux"; config.allowUnfree = true;};
+      vim-config = import ./../../modules/home-manager/editor/vim.nix;
     in
 {
 
