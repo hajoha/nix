@@ -15,18 +15,19 @@
   };
   imports = [
     firefoxConfig
-    ];
+  ];
 
   home.username = "hajoha";
   home.homeDirectory = "/home/hajoha";
 
   home.packages = with pkgs; [
-
-    #3D-stuff
+    # 3D-stuff
     freecad
     orca-slicer
     #cura
-
+    ffmpeg
+    libqmi
+    tmux
     thefuck
     zsh
     inkscape
@@ -35,12 +36,14 @@
     solaar
     gcc
     zip
+    tio
     nextcloud-client
     vlc
     xz
     unzip
     p7zip
     jetbrains.pycharm-professional
+    jetbrains.clion
     tor-browser
     anydesk
     chromium
@@ -57,7 +60,6 @@
     eza
     fzf
     signal-desktop
-
     mtr
     iperf3
     dnsutils
@@ -66,33 +68,28 @@
     socat
     nmap
     ipcalc
-
     nix-output-monitor
     firefox
     hugo
     glow
-
     btop
     iotop
     iftop
-
     strace
     ltrace
     lsof
-
     sysstat
     lm_sensors
     ethtool
     pciutils
     usbutils
-
     android-tools
   ] ++ [pkgs-unstable.android-studio];
 
   programs.firefox = {
-   enable = true; 
+    enable = true;
   };
-  # basic configuration of git, please change to your own
+
   programs.git = {
     enable = true;
     userName = "hajoha";
@@ -100,43 +97,33 @@
   };
  
   programs.zsh = {
-  	enable = true;
-  	enableCompletion = true;
-  	
-	#autosuggestion = true;
-  	
-	#syntaxHighlighting.enable = true;
+    enable = true;
+    enableCompletion = true;
 
-  	shellAliases = {
-    		ll = "ls -l";
-    		update = "sudo nixos-rebuild switch";
-  	};
-  	
-	history = {
-    		size = 10000;
-    		path = "${config.xdg.dataHome}/zsh/history";
-  	};
+    shellAliases = {
+      ll = "ls -l";
+      update = "sudo nixos-rebuild switch";
+    };
 
-	oh-my-zsh = {
-    		enable = true;
-    		plugins = [ "git" "thefuck" ]; 
-    		theme = "rkj-repos";
-  	};
+    history = {
+      size = 10000;
+      path = "${config.xdg.dataHome}/zsh/history";
+    };
+
+    oh-my-zsh = {
+      enable = true;
+      plugins = [ "git" "thefuck" ];
+      theme = "rkj-repos";
+    };
   };
-
-
 
   dconf.settings = {
-  "org/virt-manager/virt-manager/connections" = {
-    autoconnect = ["qemu:///system"];
-    uris = ["qemu:///system"];
-   };
+    "org/virt-manager/virt-manager/connections" = {
+      autoconnect = ["qemu:///system"];
+      uris = ["qemu:///system"];
+    };
   };
-  
-  #programs.ausweisapp = {
-  # enable = true;
-  # openFirewall = true;
-  #};
+
   home.stateVersion = "23.11";
 
   # Let home Manager install and manage itself.
