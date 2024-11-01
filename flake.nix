@@ -15,20 +15,18 @@
 
 
   outputs = { self, nixpkgs, home-manager,... }@inputs:
-    {	# Please replace my-nixos with your hostname
+    {
         nixosConfigurations = {
         nixmaschine = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
-            ./configuration.nix
+            ./hosts/nixmaschine/configuration.nix
               home-manager.nixosModules.home-manager
               {
-    #            home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
 
                 home-manager.users.hajoha = import ./home.nix;
 
-                # Optionally, use home-manager.extraSpecialArgs to pass arguments to home.nix
                 home-manager.extraSpecialArgs = {
                     inherit inputs;
                 };
