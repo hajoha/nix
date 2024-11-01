@@ -1,8 +1,7 @@
 { lib, config, system, pkgs, inputs, ... }:
     let
-      firefoxConfig = import ./../../modules/home-manager/browser/firefox.nix {inherit pkgs; inherit inputs; };
+      firefox-config = import ./../../modules/home-manager/browser/firefox.nix {inherit pkgs; inherit inputs; };
       pkgs-unstable = import inputs.nixpkgs-unstable {system="x86_64-linux"; config.allowUnfree = true;};
-      vim-config = import ./../../modules/home-manager/editor/vim.nix;
     in
 {
 
@@ -15,11 +14,8 @@
     };
   };
   imports = [
-    firefoxConfig
+    firefox-config
   ];
-
-  home.username = "hajoha";
-  home.homeDirectory = "/home/hajoha";
 
   home.packages = with pkgs; [
     # 3D-stuff

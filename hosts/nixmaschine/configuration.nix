@@ -7,10 +7,9 @@
     };
   };
   imports =
-    [ # Include the results of the hardware scan.
+    [
       ./hardware-configuration.nix
-#      ./../../modules/editor/vm.nix
-#      <home-manager/nixos>
+      ./../../modules/home-manager/virt/vm.nix
     ];
 
 
@@ -20,7 +19,7 @@
   users.users.hajoha = {
     isNormalUser = true;
     description = "hajoha";
-    extraGroups = [ "networkmanager" "wheel" "kvm" "adbusers"];
+    extraGroups = [ "networkmanager" "wheel" "kvm" "adbusers" "libvirtd"];
     shell = pkgs.zsh;
     packages = with pkgs; [
       home-manager
@@ -44,7 +43,7 @@
 
 
 
-  networking.hostName = "nixmaschine"; # Define your hostname.
+  networking.hostName = "nixmaschine";
 
 
   networking.networkmanager.enable = true;
