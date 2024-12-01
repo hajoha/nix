@@ -1,6 +1,6 @@
 { lib, config, system, pkgs, inputs, ... }:
     let
-      firefox-config = import ./../../modules/home-manager/browser/firefox.nix {inherit pkgs; inherit inputs; };
+      firefox-config = import ./../../modules/browser/firefox.nix {inherit pkgs; inherit inputs; };
       pkgs-unstable = import inputs.nixpkgs-unstable {system="x86_64-linux"; config.allowUnfree = true;};
     in
 {
@@ -16,6 +16,7 @@
   imports = [
     firefox-config
   ];
+
 
   home.packages = with pkgs; [
     # 3D-stuff
@@ -81,7 +82,10 @@
     pciutils
     usbutils
     android-tools
-  ] ++ [pkgs-unstable.android-studio];
+  ] ++ [
+    pkgs-unstable.android-studio
+    pkgs-unstable.ollama
+  ];
 
   programs.firefox = {
     enable = true;
@@ -92,7 +96,7 @@
     userName = "hajoha";
     userEmail = "hajoha1@proton.me";
   };
- 
+
   programs.zsh = {
     enable = true;
     enableCompletion = true;

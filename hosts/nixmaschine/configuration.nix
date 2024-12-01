@@ -9,7 +9,8 @@
   imports =
     [
       ./hardware-configuration.nix
-      ./../../modules/home-manager/virt/vm.nix
+      ./../../modules/virt/vm.nix
+      ./../../services/ollama.nix
     ];
 
 
@@ -41,6 +42,12 @@
   boot.kernelParams = ["acpi.ec_no_wakeup=1̈́"];
 
 
+
+  system.activationScripts = {
+    script.text = ''
+      install -d -m 755 /home/hajoha/open-webui/data -o root -g root
+    '';
+   };
 
 
   networking.hostName = "nixmaschine";
