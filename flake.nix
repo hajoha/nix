@@ -2,13 +2,10 @@
   description = "A simple NixOS flake";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager = {
-      url = "github:nix-community/home-manager/release-24.05";
+      url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-    nixpkgs-unstable = {
-        url = "github:NixOS/nixpkgs/nixos-unstable";
     };
     nur.url = "github:nix-community/nur";
 
@@ -16,7 +13,7 @@
 
 
 
-  outputs = { self, nixpkgs, home-manager, nixpkgs-unstable, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, ... }@inputs:
     {
         nixosConfigurations = {
             nixmaschine = nixpkgs.lib.nixosSystem {
@@ -30,7 +27,6 @@
                     home-manager.users.hajoha = import ./hosts/nixmaschine/home.nix;
                     home-manager.extraSpecialArgs = {inherit inputs;};
                   }
-              (import ./overlays/ollama.nix)
               ];
 
         };

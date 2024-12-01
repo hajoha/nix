@@ -1,11 +1,17 @@
 {inputs, config, pkgs, ... }:
 
 {
-  nixpkgs.config.packageOverrides = pkgs: {
-    nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
-      inherit pkgs;
+  nixpkgs.config = {
+    packageOverrides = pkgs: {
+        nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
+          inherit pkgs;
+        };
     };
+                  permittedInsecurePackages = [
+                "dotnet-sdk_7"
+              ];
   };
+
   imports =
     [
       ./hardware-configuration.nix
@@ -25,6 +31,7 @@
     packages = with pkgs; [
       home-manager
       fwupd-efi
+      nixd
     ];
   };
 

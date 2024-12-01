@@ -1,7 +1,6 @@
 { lib, config, system, pkgs, inputs, ... }:
     let
       firefox-config = import ./../../modules/browser/firefox.nix {inherit pkgs; inherit inputs; };
-      pkgs-unstable = import inputs.nixpkgs-unstable {system="x86_64-linux"; config.allowUnfree = true;};
     in
 {
 
@@ -12,16 +11,18 @@
     config = {
       allowUnfree = true;
     };
+
   };
   imports = [
     firefox-config
   ];
 
 
+
   home.packages = with pkgs; [
     # 3D-stuff
     freecad
-    orca-slicer
+    #orca-slicer
     #cura
     ffmpeg
     libqmi
@@ -40,8 +41,6 @@
     xz
     unzip
     p7zip
-    jetbrains.pycharm-professional
-    jetbrains.clion
     tor-browser
     anydesk
     chromium
@@ -67,7 +66,6 @@
     nmap
     ipcalc
     nix-output-monitor
-    firefox
     hugo
     glow
     btop
@@ -82,9 +80,14 @@
     pciutils
     usbutils
     android-tools
-  ] ++ [
-    pkgs-unstable.android-studio
-    pkgs-unstable.ollama
+
+    #jetbrains.pycharm-professional
+    #jetbrains.clion
+    (jetbrains.plugins.addPlugins pkgs.jetbrains.clion ["github-copilot"])
+    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm-professional ["github-copilot" "nixidea"])
+    android-studio
+    nixfmt-rfc-style
+    ollama
   ];
 
   programs.firefox = {
