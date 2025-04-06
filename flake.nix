@@ -29,7 +29,21 @@
                   }
               ];
 
-        };
+            };
+            nixserver = nixpkgs.lib.nixosSystem {
+              system = "x86_64-linux";
+              modules = [
+                #./modules/home-manager/open-webui/open-webui.nix
+                ./hosts/nixserver/configuration.nix
+                home-manager.nixosModules.home-manager
+                  {
+                    home-manager.useUserPackages = true;
+                    home-manager.users.mng = import ./hosts/nixmaschine/home.nix;
+                    home-manager.extraSpecialArgs = {inherit inputs;};
+                  }
+              ];
+
+            };
     };
   };
 }
