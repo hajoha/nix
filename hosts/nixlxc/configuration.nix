@@ -14,7 +14,6 @@
 
   imports =
     [
-      ./hardware-configuration.nix
         ./../../services/ssh.nix
     ];
 
@@ -32,7 +31,7 @@
 
 
 
-  networking.hostName = "nixmaschine";
+  networking.hostName = "nixlxc";
 
 
   networking.networkmanager.enable = true;

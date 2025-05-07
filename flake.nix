@@ -38,7 +38,21 @@
                 home-manager.nixosModules.home-manager
                   {
                     home-manager.useUserPackages = true;
-                    home-manager.users.mng = import ./hosts/nixmaschine/home.nix;
+                    home-manager.users.mng = import ./hosts/nixserver/home.nix;
+                    home-manager.extraSpecialArgs = {inherit inputs;};
+                  }
+              ];
+
+            };
+            nixlxc = nixpkgs.lib.nixosSystem {
+              system = "x86_64-linux";
+              modules = [
+                #./modules/home-manager/open-webui/open-webui.nix
+                ./hosts/nixnetbox/configuration.nix
+                home-manager.nixosModules.home-manager
+                  {
+                    home-manager.useUserPackages = true;
+                    home-manager.users.mng = import ./hosts/nixlxc/home.nix;
                     home-manager.extraSpecialArgs = {inherit inputs;};
                   }
               ];
