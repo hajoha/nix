@@ -1,6 +1,7 @@
 {inputs, config, pkgs, ... }:
 
 {
+
   nixpkgs.config = {
     packageOverrides = pkgs: {
         nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
@@ -15,33 +16,12 @@
   imports =
     [
         ./../../services/ssh.nix
+      ./hardware-configuration.nix
     ];
-
-    networking = {
-      interfaces.eth0@if42 = {
-        ipv6.addresses = [{
-          address = "2a01:4f8:1c1b:16d0::1";
-          prefixLength = 64;
-        }];
-        ipv4.addresses = [{
-          address = "192.168.178.138";
-          prefixLength = 24;
-        }];
-      };
-      defaultGateway = {
-        address = "192.168.178.1";
-        interface = "eth0@if42";
-      };
-      defaultGateway6 = {
-        address = "fe80::1";
-        interface = "ens3";
-      };
-    };
 
 
   users.users = import ./../../user/root.nix { inherit pkgs; };
 
-  services.fwupd.enable = true;
 
 	
   nix.settings.experimental-features = ["nix-command" "flakes"];

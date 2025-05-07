@@ -13,6 +13,9 @@
   home.packages = with pkgs; [
     # 3D-stuff
     tmux
+    zip
+    iperf3
+
     ];
 
 
