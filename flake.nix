@@ -52,7 +52,7 @@
                 home-manager.nixosModules.home-manager
                   {
                     home-manager.useUserPackages = true;
-                    home-manager.users.mng = import ./hosts/nixlxc/home.nix;
+                    home-manager.users.root = import ./hosts/nixlxc/home.nix;
                     home-manager.extraSpecialArgs = {inherit inputs;};
                   }
               ];
@@ -61,14 +61,21 @@
             nixnetbox = nixpkgs.lib.nixosSystem {
               system = "x86_64-linux";
               modules = [
-                #./modules/home-manager/open-webui/open-webui.nix
                 ./hosts/nixnetbox/configuration.nix
-                home-manager.nixosModules.home-manager
-                  {
-                    home-manager.useUserPackages = true;
-                    home-manager.users.root = import ./hosts/nixnetbox/home.nix;
-                    home-manager.extraSpecialArgs = {inherit inputs;};
-                  }
+              ];
+
+            };
+            nixnginx = nixpkgs.lib.nixosSystem {
+              system = "x86_64-linux";
+              modules = [
+                ./hosts/nixnginx/configuration.nix
+              ];
+
+            };
+            nixcloud = nixpkgs.lib.nixosSystem {
+              system = "x86_64-linux";
+              modules = [
+                ./hosts/nixcloud/configuration.nix
               ];
 
             };

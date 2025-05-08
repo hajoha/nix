@@ -14,46 +14,30 @@
 
   imports =
     [
-        ./../../services/ssh.nix
     ];
 
-    networking = {
-      interfaces.eth0@if42 = {
-        ipv6.addresses = [{
-          address = "2a01:4f8:1c1b:16d0::1";
-          prefixLength = 64;
-        }];
-        ipv4.addresses = [{
-          address = "192.168.178.138";
-          prefixLength = 24;
-        }];
-      };
-      defaultGateway = {
-        address = "192.168.178.1";
-        interface = "eth0@if42";
-      };
-      defaultGateway6 = {
-        address = "fe80::1";
-        interface = "ens3";
+
+    services.openssh = {
+      enable = true;
+      ports = [ 22 ];
+      settings = {
+        PasswordAuthentication = true;
+        AllowUsers = null; # Allows all users by default. Can be [ "user1" "user2" ]
+        UseDns = true;
+        X11Forwarding = true;
+        PermitRootLogin = "yes"; # "yes", "without-password", "prohibit-password", "forced-commands-only", "no"
       };
     };
 
 
   users.users = import ./../../user/root.nix { inherit pkgs; };
 
-  services.fwupd.enable = true;
 
-	
   nix.settings.experimental-features = ["nix-command" "flakes"];
 
   boot.loader.systemd-boot.enable = true;
 
-
-
-
-
   networking.hostName = "nixlxc";
-
 
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Berlin";
