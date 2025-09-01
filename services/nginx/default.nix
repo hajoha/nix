@@ -1,31 +1,28 @@
-{ config, ... }: {
-  system.stateVersion = "25.05";
+{ config, pkgs, ... }:
 
+{
   services.nginx = {
     enable = true;
-    virtualHosts."nixnetbox" = {
-      serverName = "nixnetbox";
-      listen = [
-        { addr = "0.0.0.0"; port = 80; }
-      ];
-      forceSSL = false;
-      enableACME = false;
+
+    virtualHosts = {
+      "bar0.foo" = {
+        forceSSL = true;
+        enableACME = true;
         locations = {
           "/" = {
-            proxyPass = "http://192.168.178.101:8001";
-            extraConfig = ''
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $scheme;
-            '';
+            root = "/var/www";
           };
         };
+      };
     };
   };
 
   security.acme = {
     acceptTerms = true;
-    defaults.email = "foo@bar.com";
+    certs = {
+        "bar0.foo".email = "joh.hackler@gmail.com";
+    };
   };
+
+  networking.firewall.allowedTCPPorts = [ 80 443 ];
 }
