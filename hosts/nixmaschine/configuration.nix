@@ -37,10 +37,25 @@
 
   services.fwupd.enable = true;
   services.flatpak.enable = true;
-  services.xserver.desktopManager.xterm.enable = false;
+  xdg.portal = {
+    xdgOpenUsePortal = true;
+    enable = true;
+    extraPortals = [
+     pkgs.xdg-desktop-portal-hyprland
+    ];
+    config = {
+      common = {
+        default = [
+          "hyprland"
+        ];
+      };
+    };
+  };
+
   programs.virt-manager.enable = true;
   programs.zsh.enable = true;
-
+  programs._1password.enable = true;
+  programs._1password-gui.enable = true;
 	
   nix.settings.experimental-features = ["nix-command" "flakes"];
 
@@ -63,6 +78,19 @@
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Berlin";
   i18n.defaultLocale = "en_US.UTF-8";
+    fonts.fontconfig.enable = true;
+fonts.packages = with pkgs; [
+  dejavu_fonts             # fallback sans-serif
+  liberation_ttf           # fallback sans-serif / monospace
+  noto-fonts               # wide Unicode coverage
+  noto-fonts-cjk-sans           # CJK characters
+  noto-fonts-emoji         # emoji
+  twemoji-color-font       # optional color emoji
+  nerd-fonts.symbols-only  # Nerd icons
+  nerd-fonts.fira-code     # patched Fira Code
+  fira-code                # monospaced font
+];
+security.pam.services.swaylock = {};
 
   i18n.extraLocaleSettings = {
     LC_ADDRESS = "de_DE.UTF-8";
@@ -76,10 +104,6 @@
     LC_TIME = "de_DE.UTF-8";
   };
 
-  services.xserver.enable = true;
-
-  services.xserver.displayManager.gdm.enable = true;
-  services.xserver.desktopManager.gnome.enable = true;
 
   services.xserver.xkb = {
     layout = "us";
@@ -88,9 +112,12 @@
 
   console.keyMap = "us-acentos";
   services.printing.enable = true;
-  hardware.pulseaudio.enable = false;
+
+  services.pulseaudio.enable = false;
   hardware.logitech.wireless.enable = true;
   security.rtkit.enable = true;
+  security.polkit.enable = true;
+
   services.pipewire = {
     enable = true;
     alsa.enable = true;
@@ -98,6 +125,15 @@
     pulse.enable = true;
   };
 
+    services.greetd = {
+      enable = true;
+      settings = {
+        default_session = {
+          command = "tuigreet --time --cmd sway";
+          user = "hajoha";
+        };
+      };
+    };
 
   nixpkgs.config.allowUnfree = true;
   nixpkgs.config.allowUnfreePredicate = pkg: true;
