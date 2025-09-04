@@ -46,6 +46,8 @@ extraConfig = ''
           timeout 630 'swaymsg "output * dpms off"' \
           resume 'swaymsg "output * dpms on"' \
           before-sleep 'swaylock -f -c 000000'
+        exec cliphist wipe
+        exec wl-paste --watch cliphist store
 
 
       '';
@@ -65,6 +67,11 @@ extraConfig = ''
         "${config.wayland.windowManager.sway.config.modifier}+k" = "focus up";
         "${config.wayland.windowManager.sway.config.modifier}+l" = "focus right";
         "${config.wayland.windowManager.sway.config.modifier}+f" = "fullscreen toggle";
+
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+v" = ''
+          exec cliphist list | sed -E "s/^([0-9]+)\t/\1 /" | wofi --dmenu | sed -E "s/^([0-9]+) /\1\t/" | cliphist decode | wl-copy
+        '';
+
 
         "${config.wayland.windowManager.sway.config.modifier}+1" = "workspace 1";
         "${config.wayland.windowManager.sway.config.modifier}+2" = "workspace 2";
@@ -174,6 +181,7 @@ programs.swaylock.enable = true;
     spice-gtk
     solaar
     gcc
+    inetutils
     zip
     tio
     nextcloud-client
@@ -265,6 +273,7 @@ programs.swaylock.enable = true;
     anydesk
     wtype
     chromium
+    cliphist
   ];
 
   programs.firefox = {
@@ -347,7 +356,7 @@ programs.swaylock.enable = true;
         ];
         modules-center = [ "sway/window" ];
         modules-right = [
-          "tray"
+#          "tray"
           "network"
           "custom/divider"
           "backlight"
@@ -359,6 +368,7 @@ programs.swaylock.enable = true;
           "clock"
           "custom/divider"
            "custom/notification"
+          "custom/divider"
         ];
         "sway/window" = { format = "{}"; };
         "wlr/workspaces" = {
@@ -367,7 +377,23 @@ programs.swaylock.enable = true;
           all-outputs = true;
           on-click = "activate";
         };
-        battery = { format = "󰁹 {}%"; };
+      battery = {
+        # Show an icon that varies with capacity + percentage
+        format = "{icon} {capacity}%";
+        # When charging or plugged in, swap to a bolt/plug icon
+        format-charging = "󰂄 {capacity}%";  # lightning bolt
+        format-plugged  = "󰚥 {capacity}%";  # same as charging (or use 󰂄 for a plug)
+        format-full     = "󰁹 {capacity}%";  # full battery icon if you like
+
+        format-icons = [
+          "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹"
+        ];
+        interval = 2;
+        states = {
+          warning = 30;
+          critical = 15;
+        };
+        };
         cpu = {
           interval = 10;
           format = "󰻠 {}%";
@@ -437,14 +463,14 @@ programs.swaylock.enable = true;
               tooltip = false;
               format = "{icon}";
               "format-icons" = {
-                notification = "<span foreground='red'><sup></sup></span>";
+                notification = " <span foreground='red'><sup></sup></span> ";
                 none = "";
-                "dnd-notification" = "<span foreground='red'><sup></sup></span>";
-                "dnd-none" = "";
-                "inhibited-notification" = "<span foreground='red'><sup></sup></span>";
+                "dnd-notification" = " <span foreground='red'><sup></sup></span> ";
+                "dnd-none" = "  ";
+                "inhibited-notification" = " <span foreground='red'><sup></sup></span> ";
                 "inhibited-none" = "";
-                "dnd-inhibited-notification" = "<span foreground='red'><sup></sup></span>";
-                "dnd-inhibited-none" = "";
+                "dnd-inhibited-notification" = " <span foreground='red'><sup></sup></span> ";
+                "dnd-inhibited-none" = "  ";
               };
               "return-type" = "json";
               "exec-if" = "which swaync-client";

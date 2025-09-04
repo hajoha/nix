@@ -21,3 +21,14 @@ nixos-rebuild \
   --use-remote-sudo \
   switch
 ```
+
+
+### garbage collect old generations
+```nix
+sudo nix-collect-garbage --delete-older-than 2d
+```
+
+### delete unused packages
+```nix
+nix-store --gc
+```
