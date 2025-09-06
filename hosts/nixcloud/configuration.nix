@@ -3,7 +3,7 @@
 {
   networking.hostName = "nix-cloud";
   imports = [
-     (modulesPath + "/virtualisation/proxmox-lxc.nix")
+    (modulesPath + "/virtualisation/proxmox-lxc.nix")
     ./../../services/opencloud/default.nix
     ./../../services/ssh/root.nix
   ];

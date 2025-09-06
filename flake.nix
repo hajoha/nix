@@ -15,39 +15,42 @@
 
   outputs = { self, nixpkgs, home-manager, ... }@inputs:
     {
-        nixosConfigurations = {
-            nixmaschine = nixpkgs.lib.nixosSystem {
-              system = "x86_64-linux";
-              modules = [
-                #./modules/home-manager/open-webui/open-webui.nix
-                ./hosts/nixmaschine/configuration.nix
-                home-manager.nixosModules.home-manager
-                  {
-                    home-manager.useUserPackages = true;
-                    home-manager.users.hajoha = import ./hosts/nixmaschine/home.nix;
-                    home-manager.extraSpecialArgs = {inherit inputs;};
-                  }
-              ];
+      formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixpkgs-fmt;
+      nixosConfigurations = {
+        nixmaschine = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
 
-            };
-            nixcloud = nixpkgs.lib.nixosSystem {
-                system = "x86_64-linux";
-                modules = [
-                ./hosts/nixcloud/configuration.nix
-                ];
-            };
-            nixadguard = nixpkgs.lib.nixosSystem {
-                system = "x86_64-linux";
-                modules = [
-                ./hosts/nixadguard/configuration.nix
-                ];
-            };
-            nixnginx = nixpkgs.lib.nixosSystem {
-                system = "x86_64-linux";
-                modules = [
-                ./hosts/nixnginx/configuration.nix
-                ];
-            };
+          modules = [
+            #./modules/home-manager/open-webui/open-webui.nix
+            ./hosts/nixmaschine/configuration.nix
+            home-manager.nixosModules.home-manager
+            {
+              home-manager.useUserPackages = true;
+              home-manager.users.hajoha = import ./hosts/nixmaschine/home.nix;
+              home-manager.extraSpecialArgs = { inherit inputs; };
+            }
+
+          ];
+
+        };
+        nixcloud = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixcloud/configuration.nix
+          ];
+        };
+        nixadguard = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixadguard/configuration.nix
+          ];
+        };
+        nixnginx = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixnginx/configuration.nix
+          ];
+        };
+      };
     };
-};
 }

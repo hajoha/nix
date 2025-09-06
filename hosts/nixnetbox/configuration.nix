@@ -1,6 +1,6 @@
 { modulesPath, config, pkgs, ... }:
 let
-    IP = "192.168.178.101";
+  IP = "192.168.178.101";
 in
 {
   imports =
@@ -27,8 +27,8 @@ in
     prefixLength = 24;
   }];
   networking.defaultGateway = "192.168.178.1";
-  networking.nameservers = [ "9.9.9.9"];
-  services.netbox.listenAddress = IP ;
+  networking.nameservers = [ "9.9.9.9" ];
+  services.netbox.listenAddress = IP;
 
   # A few packages I like to have around
   environment.systemPackages = with pkgs; [

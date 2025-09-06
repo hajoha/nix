@@ -3,7 +3,7 @@
 {
   networking.hostName = "nix-nginx";
   imports = [
-     (modulesPath + "/virtualisation/proxmox-lxc.nix")
+    (modulesPath + "/virtualisation/proxmox-lxc.nix")
     ./../../services/nginx/default.nix
     ./../../services/ssh/root.nix
   ];

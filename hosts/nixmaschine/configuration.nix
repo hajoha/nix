@@ -1,15 +1,15 @@
-{inputs, config, pkgs, ... }:
+{ inputs, config, pkgs, ... }:
 
 {
   nixpkgs.config = {
     packageOverrides = pkgs: {
-        nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
-          inherit pkgs;
-        };
+      nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
+        inherit pkgs;
+      };
     };
-                  permittedInsecurePackages = [
-                "dotnet-sdk_7"
-              ];
+    permittedInsecurePackages = [
+      "dotnet-sdk_7"
+    ];
   };
 
   imports =
@@ -26,7 +26,7 @@
   users.users.hajoha = {
     isNormalUser = true;
     description = "hajoha";
-    extraGroups = [ "networkmanager" "wheel" "kvm" "adbusers" "libvirtd"];
+    extraGroups = [ "networkmanager" "wheel" "kvm" "adbusers" "libvirtd" ];
     shell = pkgs.zsh;
     packages = with pkgs; [
       home-manager
@@ -41,7 +41,7 @@
     xdgOpenUsePortal = true;
     enable = true;
     extraPortals = [
-     pkgs.xdg-desktop-portal-hyprland
+      pkgs.xdg-desktop-portal-hyprland
     ];
     config = {
       common = {
@@ -56,12 +56,12 @@
   programs.zsh.enable = true;
   programs._1password.enable = true;
   programs._1password-gui.enable = true;
-	
-  nix.settings.experimental-features = ["nix-command" "flakes"];
+
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelParams = ["acpi.ec_no_wakeup=1̈́"];
+  boot.kernelParams = [ "acpi.ec_no_wakeup=1̈́" ];
 
 
 
@@ -69,7 +69,7 @@
     script.text = ''
       install -d -m 755 /home/hajoha/open-webui/data -o root -g root
     '';
-   };
+  };
 
 
   networking.hostName = "nixmaschine";
@@ -78,19 +78,19 @@
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Berlin";
   i18n.defaultLocale = "en_US.UTF-8";
-    fonts.fontconfig.enable = true;
-fonts.packages = with pkgs; [
-  dejavu_fonts             # fallback sans-serif
-  liberation_ttf           # fallback sans-serif / monospace
-  noto-fonts               # wide Unicode coverage
-  noto-fonts-cjk-sans           # CJK characters
-  noto-fonts-emoji         # emoji
-  twemoji-color-font       # optional color emoji
-  nerd-fonts.symbols-only  # Nerd icons
-  nerd-fonts.fira-code     # patched Fira Code
-  fira-code                # monospaced font
-];
-security.pam.services.swaylock = {};
+  fonts.fontconfig.enable = true;
+  fonts.packages = with pkgs; [
+    dejavu_fonts # fallback sans-serif
+    liberation_ttf # fallback sans-serif / monospace
+    noto-fonts # wide Unicode coverage
+    noto-fonts-cjk-sans # CJK characters
+    noto-fonts-emoji # emoji
+    twemoji-color-font # optional color emoji
+    nerd-fonts.symbols-only # Nerd icons
+    nerd-fonts.fira-code # patched Fira Code
+    fira-code # monospaced font
+  ];
+  security.pam.services.swaylock = { };
 
   i18n.extraLocaleSettings = {
     LC_ADDRESS = "de_DE.UTF-8";
@@ -125,15 +125,15 @@ security.pam.services.swaylock = {};
     pulse.enable = true;
   };
 
-    services.greetd = {
-      enable = true;
-      settings = {
-        default_session = {
-          command = "tuigreet --time --cmd sway";
-          user = "hajoha";
-        };
+  services.greetd = {
+    enable = true;
+    settings = {
+      default_session = {
+        command = "tuigreet --time --cmd sway";
+        user = "hajoha";
       };
     };
+  };
 
   nixpkgs.config.allowUnfree = true;
   nixpkgs.config.allowUnfreePredicate = pkg: true;

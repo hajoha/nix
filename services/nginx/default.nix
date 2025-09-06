@@ -20,7 +20,7 @@
   security.acme = {
     acceptTerms = true;
     certs = {
-        "bar0.foo".email = "joh.hackler@gmail.com";
+      "bar0.foo".email = "joh.hackler@gmail.com";
     };
   };
 

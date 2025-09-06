@@ -5,9 +5,9 @@
     url = "https://10.60.0.14:9200";
     address = "10.60.0.14";
     settings = {
-     OC_DOMAIN = "cloud.pwn";
+      OC_DOMAIN = "cloud.pwn";
     };
   };
 
-  networking.firewall.allowedTCPPorts = [ 9200];
+  networking.firewall.allowedTCPPorts = [ 9200 ];
 }

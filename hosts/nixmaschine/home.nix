@@ -1,7 +1,7 @@
 { lib, config, system, pkgs, inputs, ... }:
-    let
-      firefox-config = import ./../../modules/browser/firefox.nix {inherit pkgs; inherit inputs; };
-    in
+let
+  firefox-config = import ./../../modules/browser/firefox.nix { inherit pkgs; inherit inputs; };
+in
 {
 
   nixpkgs = {
@@ -19,7 +19,7 @@
 
   wayland.windowManager.sway = {
     enable = true;
-extraConfig = ''
+    extraConfig = ''
 
         set $left h
         set $down j
@@ -120,10 +120,10 @@ extraConfig = ''
 
         "${config.wayland.windowManager.sway.config.modifier}+Shift+space" = "floating toggle";
 
-          "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Right" = "move workspace to output right";
-          "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Left" = "move workspace to output left";
-          "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Down" = "move workspace to output down";
-          "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Up" = "move workspace to output up";
+        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Right" = "move workspace to output right";
+        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Left" = "move workspace to output left";
+        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Down" = "move workspace to output down";
+        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Up" = "move workspace to output up";
 
 
       };
@@ -134,13 +134,13 @@ extraConfig = ''
           xkb_layout = "us";
           xkb_options = "compose:ralt";
         };
-        "type:touchpad"= {
-           natural_scroll = "enabled";
-           accel_profile = "adaptive";
-           tap = "enabled";
-           scroll_method = "two_finger";
-           dwt = "disabled";
-           click_method = "button_areas";
+        "type:touchpad" = {
+          natural_scroll = "enabled";
+          accel_profile = "adaptive";
+          tap = "enabled";
+          scroll_method = "two_finger";
+          dwt = "disabled";
+          click_method = "button_areas";
         };
       };
       fonts = {
@@ -153,16 +153,16 @@ extraConfig = ''
         inner = 0;
         outer = 0;
       };
-        bars = [ ];
-        startup =  [
-            { command = "pgrep waybar > /dev/null || waybar &"; always = true; }
-        ];
+      bars = [ ];
+      startup = [
+        { command = "pgrep waybar > /dev/null || waybar &"; always = true; }
+      ];
 
     };
   };
 
 
-programs.swaylock.enable = true;
+  programs.swaylock.enable = true;
 
 
   home.packages = with pkgs; [
@@ -245,8 +245,8 @@ programs.swaylock.enable = true;
     killall
     #jetbrains.pycharm-professional
     #jetbrains.clion
-    (jetbrains.plugins.addPlugins pkgs.jetbrains.clion ["github-copilot"])
-    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm-professional ["github-copilot" "nixidea"])
+    (jetbrains.plugins.addPlugins pkgs.jetbrains.clion [ "github-copilot" ])
+    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm-professional [ "github-copilot" "nixidea" ])
     android-studio
     nixfmt-rfc-style
     ollama
@@ -264,9 +264,9 @@ programs.swaylock.enable = true;
     wl-clipboard
     swaynotificationcenter
     waybar # status bar
-    noto-fonts-emoji      # Best overall support
-    twemoji-color-font    # Twitter-style emojis (optional)
-    fontconfig            # Ensures font configuration
+    noto-fonts-emoji # Best overall support
+    twemoji-color-font # Twitter-style emojis (optional)
+    fontconfig # Ensures font configuration
     nerd-fonts.symbols-only
     nerdfix
     brightnessctl
@@ -310,177 +310,186 @@ programs.swaylock.enable = true;
 
   dconf.settings = {
     "org/virt-manager/virt-manager/connections" = {
-    autoconnect = ["qemu:///system"];
-    uris = ["qemu:///system"];
+      autoconnect = [ "qemu:///system" ];
+      uris = [ "qemu:///system" ];
 
     };
     "org/gnome/desktop/interface".color-scheme = "prefer-dark";
   };
 
 
-      gtk = {
-        enable = true;
-        theme = {
-          name = "Adwaita-dark"; # or "Catppuccin-Mocha", "Gruvbox-Dark", etc.
-          package = pkgs.gnome-themes-extra;
-        };
-        iconTheme = {
-          name = "Papirus-Dark";
-          package = pkgs.papirus-icon-theme;
-        };
-      };
+  gtk = {
+    enable = true;
+    theme = {
+      name = "Adwaita-dark"; # or "Catppuccin-Mocha", "Gruvbox-Dark", etc.
+      package = pkgs.gnome-themes-extra;
+    };
+    iconTheme = {
+      name = "Papirus-Dark";
+      package = pkgs.papirus-icon-theme;
+    };
+  };
 
-      home.sessionVariables = {
-        GTK_THEME = "Adwaita:dark";
-        QT_QPA_PLATFORMTHEME = "qt5ct";
-        QT_STYLE_OVERRIDE = "kvantum";
-      };
+  home.sessionVariables = {
+    GTK_THEME = "Adwaita:dark";
+    QT_QPA_PLATFORMTHEME = "qt5ct";
+    QT_STYLE_OVERRIDE = "kvantum";
+  };
 
-    programs.waybar = {
-      enable = true;
-      style = builtins.readFile ./style.css;
-      settings = [{
-        layer = "top";
-        position = "top";
-        mod = "dock";
-        exclusive = true;
-        passtrough = false;
-#        gtk-layer-shell = true;
-        height = 10;
-        modules-left = [
-          "sway/workspaces"
-          "custom/divider"
-          "cpu"
-          "custom/divider"
-          "memory"
-        ];
-        modules-center = [ "sway/window" ];
-        modules-right = [
-#          "tray"
-          "network"
-          "custom/divider"
-          "backlight"
-          "custom/divider"
-          "pulseaudio"
-          "custom/divider"
-          "battery"
-          "custom/divider"
-          "clock"
-          "custom/divider"
-           "custom/notification"
-          "custom/divider"
-        ];
-        "sway/window" = { format = "{}"; };
-        "wlr/workspaces" = {
-          on-scroll-up = "hyprctl dispatch workspace e+1";
-          on-scroll-down = "hyprctl dispatch workspace e-1";
-          all-outputs = true;
-          on-click = "activate";
-        };
+  programs.waybar = {
+    enable = true;
+    style = builtins.readFile ./style.css;
+    settings = [{
+      layer = "top";
+      position = "top";
+      mod = "dock";
+      exclusive = true;
+      passtrough = false;
+      #        gtk-layer-shell = true;
+      height = 10;
+      modules-left = [
+        "sway/workspaces"
+        "custom/divider"
+        "cpu"
+        "custom/divider"
+        "memory"
+      ];
+      modules-center = [ "sway/window" ];
+      modules-right = [
+        #          "tray"
+        "network"
+        "custom/divider"
+        "backlight"
+        "custom/divider"
+        "pulseaudio"
+        "custom/divider"
+        "battery"
+        "custom/divider"
+        "clock"
+        "custom/divider"
+        "custom/notification"
+        "custom/divider"
+      ];
+      "sway/window" = { format = "{}"; };
+      "wlr/workspaces" = {
+        on-scroll-up = "hyprctl dispatch workspace e+1";
+        on-scroll-down = "hyprctl dispatch workspace e-1";
+        all-outputs = true;
+        on-click = "activate";
+      };
       battery = {
         # Show an icon that varies with capacity + percentage
         format = "{icon} {capacity}%";
         # When charging or plugged in, swap to a bolt/plug icon
-        format-charging = "󰂄 {capacity}%";  # lightning bolt
-        format-plugged  = "󰚥 {capacity}%";  # same as charging (or use 󰂄 for a plug)
-        format-full     = "󰁹 {capacity}%";  # full battery icon if you like
+        format-charging = "󰂄 {capacity}%"; # lightning bolt
+        format-plugged = "󰚥 {capacity}%"; # same as charging (or use 󰂄 for a plug)
+        format-full = "󰁹 {capacity}%"; # full battery icon if you like
 
         format-icons = [
-          "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹"
+          "󰁺"
+          "󰁻"
+          "󰁼"
+          "󰁽"
+          "󰁾"
+          "󰁿"
+          "󰂀"
+          "󰂁"
+          "󰂂"
+          "󰁹"
         ];
         interval = 2;
         states = {
           warning = 30;
           critical = 15;
         };
+      };
+      cpu = {
+        interval = 10;
+        format = "󰻠 {}%";
+        max-length = 10;
+        on-click = "swaymsg exec 'alacritty --title btop-floating -e btop'";
+      };
+      memory = {
+        interval = 30;
+        format = "  {}%";
+        format-alt = " {used:0.1f}G";
+        max-length = 10;
+      };
+      backlight = {
+        format = "󰖨 {}";
+        device = "acpi_video0";
+      };
+      tray = {
+        icon-size = 13;
+        tooltip = false;
+        spacing = 3;
+      };
+      network = {
+        format = "{ifname}";
+        format-disconnected = "󰖪 disconnected";
+        interval = 10;
+        format-wifi = "󰖩 {essid} {signaldBm} [dbm]";
+        format-ethernet = "󰖠 {ipaddr}/{cidr}";
+        tooltip-format-wifi = "{ifname} | {ipaddr}/{cidr}\n{signaldBm} [dBm] | {frequency} [GHz] \n↑{bandwidthUpBits} | ↓{bandwidthDownBits}\n{essid} - {bssid}";
+        tooltip-format-ethernet = "{ifname}\n{ipaddr}/{cidr}\n↑{bandwidthUpBits} | ↓{bandwidthDownBits}\n";
+        on-click = "swaymsg exec 'alacritty --title nmtui-floating -e nmtui'";
+      };
+      clock = {
+        format = "{:%H:%M - %d/%m/%y}";
+        tooltip-format = ''
+          <big>{:%Y %B}</big>
+          <tt><small>{calendar}</small></tt>'';
+      };
+      pulseaudio = {
+        format = "{icon} {volume}%";
+        tooltip = false;
+        format-muted = "🔇 Muted";
+        on-click = "pavucontrol";
+        on-scroll-up = "pamixer -i 5";
+        on-scroll-down = "pamixer -d 5";
+        scroll-step = 5;
+        format-icons = {
+          headphone = "";
+          hands-free = "";
+          headset = "";
+          phone = "";
+          portable = "";
+          car = "";
+          default = [ "" "" "" ];
         };
-        cpu = {
-          interval = 10;
-          format = "󰻠 {}%";
-          max-length = 10;
-          on-click = "swaymsg exec 'alacritty --title btop-floating -e btop'";
+      };
+      "custom/divider" = {
+        format = " | ";
+        interval = "once";
+        tooltip = false;
+      };
+      "custom/endright" = {
+        format = "_";
+        interval = "once";
+        tooltip = false;
+      };
+      "custom/notification" = {
+        tooltip = false;
+        format = "{icon}";
+        "format-icons" = {
+          notification = " <span foreground='red'><sup></sup></span> ";
+          none = "";
+          "dnd-notification" = " <span foreground='red'><sup></sup></span> ";
+          "dnd-none" = "  ";
+          "inhibited-notification" = " <span foreground='red'><sup></sup></span> ";
+          "inhibited-none" = "";
+          "dnd-inhibited-notification" = " <span foreground='red'><sup></sup></span> ";
+          "dnd-inhibited-none" = "  ";
         };
-        memory = {
-          interval = 30;
-          format = "  {}%";
-          format-alt = " {used:0.1f}G";
-          max-length = 10;
-        };
-        backlight = {
-          format = "󰖨 {}";
-          device = "acpi_video0";
-        };
-        tray = {
-          icon-size = 13;
-          tooltip = false;
-          spacing = 3;
-        };
-        network = {
-          format = "{ifname}";
-          format-disconnected = "󰖪 disconnected";
-          interval = 10;
-          format-wifi = "󰖩 {essid} {signaldBm} [dbm]";
-          format-ethernet = "󰖠 {ipaddr}/{cidr}";
-          tooltip-format-wifi = "{ifname} | {ipaddr}/{cidr}\n{signaldBm} [dBm] | {frequency} [GHz] \n↑{bandwidthUpBits} | ↓{bandwidthDownBits}\n{essid} - {bssid}";
-          tooltip-format-ethernet = "{ifname}\n{ipaddr}/{cidr}\n↑{bandwidthUpBits} | ↓{bandwidthDownBits}\n";
-          on-click = "swaymsg exec 'alacritty --title nmtui-floating -e nmtui'";
-        };
-        clock = {
-          format = "{:%H:%M - %d/%m/%y}";
-          tooltip-format = ''
-            <big>{:%Y %B}</big>
-            <tt><small>{calendar}</small></tt>'';
-        };
-        pulseaudio = {
-          format = "{icon} {volume}%";
-          tooltip = false;
-          format-muted = "🔇 Muted";
-          on-click = "pavucontrol";
-          on-scroll-up = "pamixer -i 5";
-          on-scroll-down = "pamixer -d 5";
-          scroll-step = 5;
-          format-icons = {
-            headphone = "";
-            hands-free = "";
-            headset = "";
-            phone = "";
-            portable = "";
-            car = "";
-            default = [ "" "" "" ];
-          };
-        };
-        "custom/divider" = {
-          format = " | ";
-          interval = "once";
-          tooltip = false;
-        };
-        "custom/endright" = {
-          format = "_";
-          interval = "once";
-          tooltip = false;
-        };
-        "custom/notification" = {
-              tooltip = false;
-              format = "{icon}";
-              "format-icons" = {
-                notification = " <span foreground='red'><sup></sup></span> ";
-                none = "";
-                "dnd-notification" = " <span foreground='red'><sup></sup></span> ";
-                "dnd-none" = "  ";
-                "inhibited-notification" = " <span foreground='red'><sup></sup></span> ";
-                "inhibited-none" = "";
-                "dnd-inhibited-notification" = " <span foreground='red'><sup></sup></span> ";
-                "dnd-inhibited-none" = "  ";
-              };
-              "return-type" = "json";
-              "exec-if" = "which swaync-client";
-              exec = "swaync-client -swb";
-              "on-click" = "swaync-client -t -sw";
-              "on-click-right" = "swaync-client -d -sw";
-              escape = true;
-            };
-      }];
-    };
+        "return-type" = "json";
+        "exec-if" = "which swaync-client";
+        exec = "swaync-client -swb";
+        "on-click" = "swaync-client -t -sw";
+        "on-click-right" = "swaync-client -d -sw";
+        escape = true;
+      };
+    }];
+  };
 
 
   home.stateVersion = "23.11";

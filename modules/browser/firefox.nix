@@ -1,10 +1,10 @@
-{ pkgs, inputs, ... }: 
+{ pkgs, inputs, ... }:
 {
   nixpkgs.config.allowUnfreePredicate = pkg:
     builtins.elem (pkgs.lib.getName pkg) [
       "onepassword-password-manager"
     ];
-    programs.firefox = {
+  programs.firefox = {
     enable = true;
     profiles.hajoha = {
 
@@ -33,7 +33,7 @@
 
       userChrome = ''                         
         /* some css */                        
-      '';                                      
+      '';
 
       extensions.packages = with pkgs.nur.repos.rycee.firefox-addons; [
         ublock-origin

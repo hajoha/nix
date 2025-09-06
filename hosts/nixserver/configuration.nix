@@ -1,21 +1,21 @@
-{inputs, config, pkgs, ... }:
+{ inputs, config, pkgs, ... }:
 
 {
   nixpkgs.config = {
     packageOverrides = pkgs: {
-        nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
-          inherit pkgs;
-        };
+      nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
+        inherit pkgs;
+      };
     };
-                  permittedInsecurePackages = [
-                "dotnet-sdk_7"
-              ];
+    permittedInsecurePackages = [
+      "dotnet-sdk_7"
+    ];
   };
 
   imports =
     [
       ./hardware-configuration.nix
-        ./../../services/ssh.nix
+      ./../../services/ssh.nix
     ];
 
 
@@ -23,8 +23,8 @@
 
   services.fwupd.enable = true;
 
-	
-  nix.settings.experimental-features = ["nix-command" "flakes"];
+
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   boot.loader.systemd-boot.enable = true;
 

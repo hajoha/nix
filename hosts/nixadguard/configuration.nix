@@ -3,7 +3,7 @@
 {
   networking.hostName = "nix-adguard";
   imports = [
-     (modulesPath + "/virtualisation/proxmox-lxc.nix")
+    (modulesPath + "/virtualisation/proxmox-lxc.nix")
     ./../../services/adguardhome/default.nix
     ./../../services/ssh/root.nix
   ];

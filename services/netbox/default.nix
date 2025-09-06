@@ -8,7 +8,7 @@
     secretKeyFile = "/var/lib/netbox/secret-key-file";
   };
 
-    services.nginx = {
+  services.nginx = {
     enable = true;
     user = "netbox";
     recommendedTlsSettings = true;

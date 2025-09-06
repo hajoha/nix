@@ -16,7 +16,7 @@
     zip
     iperf3
 
-    ];
+  ];
 
 
   programs.git = {
