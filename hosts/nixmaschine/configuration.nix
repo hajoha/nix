@@ -37,20 +37,29 @@
 
   services.fwupd.enable = true;
   services.flatpak.enable = true;
-  xdg.portal = {
-    xdgOpenUsePortal = true;
-    enable = true;
-    extraPortals = [
-      pkgs.xdg-desktop-portal-hyprland
-    ];
-    config = {
-      common = {
-        default = [
-          "hyprland"
-        ];
+  xdg = {
+    autostart.enable = true;
+    portal = {
+      enable = true;
+      xdgOpenUsePortal = false;
+      wlr.enable = true;
+      extraPortals = with pkgs; [
+        xdg-desktop-portal
+        xdg-desktop-portal-gtk
+        xdg-desktop-portal-wlr
+      ];
+      config = {
+        sway = {
+          default = [ "gtk" ];
+          "org.freedesktop.impl.portal.OpenURI" = "gtk";
+          "org.freedesktop.impl.portal.Screencast" = "wlr";
+          "org.freedesktop.impl.portal.Screenshot" = "wlr";
+          "org.freedesktop.impl.portal.GlobalShortcuts" = "gtk";
+        };
       };
     };
   };
+
 
   programs.virt-manager.enable = true;
   programs.zsh.enable = true;
@@ -129,7 +138,9 @@
     enable = true;
     settings = {
       default_session = {
-        command = "tuigreet --time --cmd sway";
+        command = ''
+          tuigreet --time --cmd sway
+        '';
         user = "hajoha";
       };
     };
@@ -139,6 +150,8 @@
   nixpkgs.config.allowUnfreePredicate = pkg: true;
   environment.systemPackages = with pkgs; [
     vim
+    glib
+    xdg-utils
   ];
 
   system.stateVersion = "24.05"; # Did you read the comment?

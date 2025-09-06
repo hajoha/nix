@@ -19,6 +19,7 @@ in
 
   wayland.windowManager.sway = {
     enable = true;
+    wrapperFeatures.gtk = true;
     extraConfig = ''
 
         set $left h
@@ -55,7 +56,6 @@ in
       modifier = "Mod4"; # Super/Windows key
       terminal = "alacritty";
       menu = "wofi --show drun"; # You can replace this with bemenu, fuzzel, etc.
-
       keybindings = {
         "${config.wayland.windowManager.sway.config.modifier}+Return" = "exec ${config.wayland.windowManager.sway.config.terminal}";
         "${config.wayland.windowManager.sway.config.modifier}+d" = "exec ${config.wayland.windowManager.sway.config.menu}";
@@ -128,7 +128,6 @@ in
 
       };
 
-
       input = {
         "type:keyboard" = {
           xkb_layout = "us";
@@ -156,6 +155,9 @@ in
       bars = [ ];
       startup = [
         { command = "pgrep waybar > /dev/null || waybar &"; always = true; }
+        { command = "exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway"; }
+        { command = "exec systemctl --user restart pipewire-media-session xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk"; }
+
       ];
 
     };
@@ -179,7 +181,9 @@ in
     inkscape
     ausweisapp
     spice-gtk
+    poppler-utils
     solaar
+    pdfpc
     gcc
     inetutils
     zip
@@ -204,6 +208,7 @@ in
     yq-go
     eza
     fzf
+    slurp
     signal-desktop
     dejavu_fonts
     liberation_ttf
@@ -221,6 +226,8 @@ in
     ldns
     aria2
     socat
+    ueberzugpp
+    papers
     nmap
     ipcalc
     nix-output-monitor
@@ -252,10 +259,14 @@ in
     ollama
     wdisplays
     alacritty
-    xdg-desktop-portal-hyprland
-    xdg-desktop-portal
+    #    xdg-desktop-portal
+    #    xdg-desktop-portal-wlr
+    #    xdg-desktop-portal-gtk
+    #    xdg-desktop-portal-hyprland
+
+    socat
+
     pavucontrol
-    xdg-desktop-portal-wlr
     pipewire
     wireplumber
     wofi
@@ -275,6 +286,7 @@ in
     chromium
     cliphist
   ];
+
 
   programs.firefox = {
     enable = true;
@@ -315,6 +327,60 @@ in
 
     };
     "org/gnome/desktop/interface".color-scheme = "prefer-dark";
+  };
+
+  programs.yazi = {
+    enable = true;
+    enableZshIntegration = true;
+    settings = {
+      manager = {
+        ratio = [
+          1
+          4
+          3
+        ];
+        sort_by = "natural";
+        sort_sensitive = true;
+        sort_reverse = false;
+        sort_dir_first = true;
+        linemode = "none";
+        show_hidden = true;
+        show_symlink = true;
+      };
+
+      preview = {
+        image_filter = "lanczos3";
+        image_quality = 90;
+        tab_size = 1;
+        max_width = 600;
+        max_height = 900;
+        cache_dir = "";
+        ueberzug_scale = 1;
+        ueberzug_offset = [
+          0
+          0
+          0
+          0
+        ];
+      };
+      plugins = {
+        "bypass.yazi" = pkgs.yaziPlugins.bypass;
+        "chmod.yazi" = pkgs.yaziPlugins.chmod;
+        "full-border.yazi" = pkgs.yaziPlugins.full-border;
+        "lazygit.yazi" = pkgs.yaziPlugins.lazygit;
+        "mediainfo.yazi" = pkgs.yaziPlugins.mediainfo;
+        "no-status.yazi" = pkgs.yaziPlugins.no-status;
+        "ouch.yazi" = pkgs.yaziPlugins.ouch;
+        "restore.yazi" = pkgs.yaziPlugins.restore;
+        "smart-enter.yazi" = pkgs.yaziPlugins.smart-enter;
+        "toggle-pane.yazi" = pkgs.yaziPlugins.toggle-pane;
+      };
+      tasks = {
+        micro_workers = 5;
+        macro_workers = 10;
+        bizarre_retry = 5;
+      };
+    };
   };
 
 
@@ -495,5 +561,8 @@ in
   home.stateVersion = "23.11";
 
   # Let home Manager install and manage itself.
-  programs.home-manager.enable = true;
+  programs.home-manager = {
+    enable = true;
+  };
+
 }
