@@ -27,9 +27,6 @@ in
         set $up k
         set $right l
 
-        workspace 1 layout tabbed
-
-
         for_window [title="nmtui-floating"] floating enable, move position center, focus
         for_window [title="btop-floating"] floating enable, move position center, focus
 
@@ -156,7 +153,8 @@ in
       startup = [
         { command = "pgrep waybar > /dev/null || waybar &"; always = true; }
         { command = "exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway"; }
-        { command = "exec systemctl --user restart pipewire-media-session xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk"; }
+        { command = "exec systemctl --user restart pipewire-media-session xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk swaync"; }
+        { command = "sh -c 'swaymsg workspace 1; swaymsg layout tabbed'"; }
 
       ];
 
@@ -165,6 +163,14 @@ in
 
 
   programs.swaylock.enable = true;
+  programs.neovim = {
+    enable = true;
+    defaultEditor = true;
+    viAlias = true;
+    vimAlias = true;
+  };
+
+
 
 
   home.packages = with pkgs; [
@@ -242,6 +248,7 @@ in
     lsof
     sysstat
     lm_sensors
+    openssl
     ethtool
     pciutils
     pamixer
@@ -288,6 +295,7 @@ in
   ];
 
 
+
   programs.firefox = {
     enable = true;
   };
@@ -328,6 +336,9 @@ in
     };
     "org/gnome/desktop/interface".color-scheme = "prefer-dark";
   };
+
+
+
 
   programs.yazi = {
     enable = true;

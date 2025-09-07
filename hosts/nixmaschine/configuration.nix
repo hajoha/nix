@@ -63,15 +63,43 @@
 
   programs.virt-manager.enable = true;
   programs.zsh.enable = true;
-  programs._1password.enable = true;
-  programs._1password-gui.enable = true;
 
+  programs._1password = { enable = true; };
+
+  # Enables the 1Password desktop app
+  programs._1password-gui = {
+    enable = true;
+    polkitPolicyOwners = [ "hajoha" ];
+  };
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelParams = [ "acpi.ec_no_wakeup=1̈́" ];
-
+  networking.networkmanager.ensureProfiles.profiles = {
+    eduroam = {
+      connection = {
+        id = "eduroam";
+        type = "wifi";
+        autoconnect = true;
+      };
+      wifi = {
+        ssid = "eduroam";
+        mode = "infrastructure";
+      };
+      wifi-security = {
+        key-mgmt = "wpa-eap";
+      };
+      "802-1x" = {
+        eap = "peap";
+        identity = "joh.hackler@tu-berlin.de";
+        anonymous-identity = "wlan@tu-berlin.de";
+        phase2-auth = "mschapv2";
+        ca-cert = "/home/hajoha/.config/cat_installer/ca.pem";
+        password-flags = 0; # let NM handle the password securely
+      };
+    };
+  };
 
 
   system.activationScripts = {
