@@ -12,12 +12,12 @@
       url = "github:NotAShelf/nvf";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
+    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
   };
 
 
 
-  outputs = { self, nixpkgs, home-manager, nvf, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, nvf, nixos-hardware, ... }@inputs:
     {
       formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixpkgs-fmt;
       nixosConfigurations = {
@@ -27,6 +27,7 @@
           modules = [
             #./modules/home-manager/open-webui/open-webui.nix
             ./hosts/nixmaschine/configuration.nix
+            nixos-hardware.nixosModules.lenovo-thinkpad-t14-amd-gen5
             home-manager.nixosModules.home-manager
             {
               home-manager.useUserPackages = true;

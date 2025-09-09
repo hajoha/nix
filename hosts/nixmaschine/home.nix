@@ -385,6 +385,9 @@ in
     ollama
     wdisplays
     alacritty
+    libreoffice-qt
+    lxqt.pcmanfm-qt
+    wget
     #    xdg-desktop-portal
     #    xdg-desktop-portal-wlr
     #    xdg-desktop-portal-gtk
@@ -411,10 +414,8 @@ in
     wtype
     chromium
     cliphist
+
   ];
-
-
-
   programs.firefox = {
     enable = true;
   };
@@ -559,6 +560,8 @@ in
         "custom/divider"
         "pulseaudio"
         "custom/divider"
+        "bluetooth"
+        "custom/divider"
         "battery"
         "custom/divider"
         "clock"
@@ -664,6 +667,18 @@ in
         interval = "once";
         tooltip = false;
       };
+      "bluetooth" = {
+        format = " {status}";
+        on-click = "blueman-manager";
+        interval = 10;
+        format-disconnected = " off";
+        format-connected = " {device_alias}";
+        format-connected-battery = " {device_alias} {device_battery_percentage}%";
+        tooltip-format = "{controller_alias}\t{controller_address}\n\n{num_connections} connected";
+        tooltip-format-connected = "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}";
+        tooltip-format-enumerate-connected = "{device_alias}\t{device_address}";
+        tooltip-format-enumerate-connected-battery = "{device_alias}\t{device_address}\t{device_battery_percentage}%";
+      };
       "custom/notification" = {
         tooltip = false;
         format = "{icon}";
@@ -684,6 +699,9 @@ in
         "on-click-right" = "swaync-client -d -sw";
         escape = true;
       };
+
+
+
     }];
   };
 

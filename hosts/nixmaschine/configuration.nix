@@ -60,7 +60,14 @@
     };
   };
 
+  programs.ausweisapp = {
+    enable = true;
+    openFirewall = true;
 
+  };
+  hardware.bluetooth.enable = true;
+
+  services.blueman.enable = true;
   programs.virt-manager.enable = true;
   programs.zsh.enable = true;
 
