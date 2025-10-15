@@ -6,10 +6,10 @@
 }:
 
 {
-  networking.hostName = "nix-nginx";
+  networking.hostName = "nix-zitadel";
   imports = [
     (modulesPath + "/virtualisation/proxmox-lxc.nix")
-    ./../../services/nginx/default.nix
+    ./../../services/zitadel/default.nix
     ./../../services/ssh/root.nix
   ];
   users.users = import ./../../user/root.nix { inherit pkgs; };
@@ -18,17 +18,9 @@
   fileSystems."/".device = "/dev/root";
   boot.loader.grub.enable = false;
   systemd.services."sys-kernel-debug.mount".enable = false;
-  environment.systemPackages = [
-    pkgs.tshark
-    pkgs.unixtools.netstat
-    pkgs.nginx
-    pkgs.openssl
-
-  ];
-
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-  sops.defaultSopsFile = ./secrets/inwx-creds.enc.yaml;
-  sops.secrets."INWX_USERNAME" = { };
-  sops.secrets."INWX_PASSWORD" = { };
+  sops.defaultSopsFile = ./secrets/example.enc.yaml;
+  sops.secrets."api-key" = { };
+
   system.stateVersion = "24.05";
 }

@@ -1,4 +1,11 @@
-{ lib, config, system, pkgs, inputs, ... }:
+{
+  lib,
+  config,
+  system,
+  pkgs,
+  inputs,
+  ...
+}:
 {
 
   nixpkgs = {
@@ -8,23 +15,19 @@
 
   };
 
-
-
   home.packages = with pkgs; [
     # 3D-stuff
     tmux
     zip
     iperf3
 
-    ];
-
+  ];
 
   programs.git = {
     enable = true;
     userName = "hajoha";
     userEmail = "hajoha1@proton.me";
   };
-
 
   home.stateVersion = "24.11";
 

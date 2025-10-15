@@ -1,8 +1,10 @@
-{ pkgs ? import <nixpkgs> {} }:
+{
+  pkgs ? import <nixpkgs> { },
+}:
 
 pkgs.mkShell {
   name = "amd_s2idle-shell";
-  
+
   buildInputs = [
     pkgs.python312
     pkgs.python312Packages.requests
@@ -13,9 +15,8 @@ pkgs.mkShell {
     pkgs.python312Packages.setuptools
     pkgs.python312Packages.packaging
     pkgs.ethtool
-    pkgs.acpica-tools      
+    pkgs.acpica-tools
   ];
-
 
   shellHook = ''
     echo "Activating Nix shell for amd_s2idle.py"

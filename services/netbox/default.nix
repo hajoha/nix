@@ -1,14 +1,18 @@
-{ config, ... }: {
+{ config, ... }:
+{
   system.stateVersion = "25.05";
 
-  networking.firewall.allowedTCPPorts = [ 80 443 ];
+  networking.firewall.allowedTCPPorts = [
+    80
+    443
+  ];
 
   services.netbox = {
     enable = true;
     secretKeyFile = "/var/lib/netbox/secret-key-file";
   };
 
-    services.nginx = {
+  services.nginx = {
     enable = true;
     user = "netbox";
     recommendedTlsSettings = true;
@@ -20,7 +24,9 @@
           proxyPass = "http://[::1]:8001";
           # proxyPass = "http://${config.services.netbox.listenAddress}:${config.services.netbox.port}";
         };
-        "/static/" = { alias = "${config.services.netbox.dataDir}/static/"; };
+        "/static/" = {
+          alias = "${config.services.netbox.dataDir}/static/";
+        };
       };
       forceSSL = false;
       enableACME = false;

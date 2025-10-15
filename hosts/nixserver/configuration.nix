@@ -1,39 +1,39 @@
-{inputs, config, pkgs, ... }:
+{
+  inputs,
+  config,
+  pkgs,
+  ...
+}:
 
 {
   nixpkgs.config = {
     packageOverrides = pkgs: {
-        nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
-          inherit pkgs;
-        };
+      nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
+        inherit pkgs;
+      };
     };
-                  permittedInsecurePackages = [
-                "dotnet-sdk_7"
-              ];
+    permittedInsecurePackages = [
+      "dotnet-sdk_7"
+    ];
   };
 
-  imports =
-    [
-      ./hardware-configuration.nix
-        ./../../services/ssh.nix
-    ];
-
+  imports = [
+    ./hardware-configuration.nix
+    ./../../services/ssh.nix
+  ];
 
   users.users = import ./../../user/mng.nix { inherit pkgs; };
 
   services.fwupd.enable = true;
 
-	
-  nix.settings.experimental-features = ["nix-command" "flakes"];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   boot.loader.systemd-boot.enable = true;
 
-
-
-
-
   networking.hostName = "nixmaschine";
-
 
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Berlin";
@@ -53,7 +53,6 @@
 
   services.xserver.enable = true;
 
-
   services.xserver.xkb = {
     layout = "us";
     variant = "intl";
@@ -62,7 +61,6 @@
   console.keyMap = "us-acentos";
   services.printing.enable = true;
   security.rtkit.enable = true;
-
 
   nixpkgs.config.allowUnfreePredicate = pkg: true;
   environment.systemPackages = with pkgs; [

@@ -1,7 +1,17 @@
-{ lib, config, system, pkgs, inputs, ... }:
-    let
-      firefox-config = import ./../../modules/browser/firefox.nix {inherit pkgs; inherit inputs; };
-    in
+{
+  lib,
+  config,
+  system,
+  pkgs,
+  inputs,
+  ...
+}:
+let
+  firefox-config = import ./../../modules/browser/firefox.nix {
+    inherit pkgs;
+    inherit inputs;
+  };
+in
 {
 
   nixpkgs = {
@@ -16,8 +26,6 @@
   imports = [
     firefox-config
   ];
-
-
 
   home.packages = with pkgs; [
     # 3D-stuff
@@ -83,8 +91,11 @@
 
     #jetbrains.pycharm-professional
     #jetbrains.clion
-    (jetbrains.plugins.addPlugins pkgs.jetbrains.clion ["github-copilot"])
-    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm-professional ["github-copilot" "nixidea"])
+    (jetbrains.plugins.addPlugins pkgs.jetbrains.clion [ "github-copilot" ])
+    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm-professional [
+      "github-copilot"
+      "nixidea"
+    ])
     android-studio
     nixfmt-rfc-style
     ollama
@@ -116,15 +127,18 @@
 
     oh-my-zsh = {
       enable = true;
-      plugins = [ "git" "thefuck" ];
+      plugins = [
+        "git"
+        "thefuck"
+      ];
       theme = "rkj-repos";
     };
   };
 
   dconf.settings = {
     "org/virt-manager/virt-manager/connections" = {
-      autoconnect = ["qemu:///system"];
-      uris = ["qemu:///system"];
+      autoconnect = [ "qemu:///system" ];
+      uris = [ "qemu:///system" ];
     };
   };
 

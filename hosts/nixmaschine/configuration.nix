@@ -1,24 +1,27 @@
-{inputs, config, pkgs, ... }:
+{
+  inputs,
+  config,
+  pkgs,
+  ...
+}:
 
 {
   nixpkgs.config = {
     packageOverrides = pkgs: {
-        nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
-          inherit pkgs;
-        };
+      nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
+        inherit pkgs;
+      };
     };
-                  permittedInsecurePackages = [
-                "dotnet-sdk_7"
-              ];
+    permittedInsecurePackages = [
+      "dotnet-sdk_7"
+    ];
   };
 
-  imports =
-    [
-      ./hardware-configuration.nix
-      ./../../modules/virt/vm.nix
-      ./../../services/ollama.nix
-    ];
-
+  imports = [
+    ./hardware-configuration.nix
+    ./../../modules/virt/vm.nix
+    ./../../services/ollama.nix
+  ];
 
   users.defaultUserShell = pkgs.zsh;
   environment.shells = with pkgs; [ zsh ];
@@ -26,7 +29,13 @@
   users.users.hajoha = {
     isNormalUser = true;
     description = "hajoha";
-    extraGroups = [ "networkmanager" "wheel" "kvm" "adbusers" "libvirtd"];
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+      "kvm"
+      "adbusers"
+      "libvirtd"
+    ];
     shell = pkgs.zsh;
     packages = with pkgs; [
       home-manager
@@ -41,24 +50,22 @@
   programs.virt-manager.enable = true;
   programs.zsh.enable = true;
 
-	
-  nix.settings.experimental-features = ["nix-command" "flakes"];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelParams = ["acpi.ec_no_wakeup=1̈́"];
-
-
+  boot.kernelParams = [ "acpi.ec_no_wakeup=1̈́" ];
 
   system.activationScripts = {
     script.text = ''
       install -d -m 755 /home/hajoha/open-webui/data -o root -g root
     '';
-   };
-
+  };
 
   networking.hostName = "nixmaschine";
-
 
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Berlin";
@@ -97,7 +104,6 @@
     alsa.support32Bit = true;
     pulse.enable = true;
   };
-
 
   nixpkgs.config.allowUnfree = true;
   nixpkgs.config.allowUnfreePredicate = pkg: true;

@@ -1,9 +1,14 @@
-{ config, pkgs, modulesPath, ... }:
+{
+  config,
+  pkgs,
+  modulesPath,
+  ...
+}:
 
 {
   networking.hostName = "nix-adguard";
   imports = [
-     (modulesPath + "/virtualisation/proxmox-lxc.nix")
+    (modulesPath + "/virtualisation/proxmox-lxc.nix")
     ./../../services/adguardhome/default.nix
     ./../../services/ssh/root.nix
   ];
@@ -13,6 +18,9 @@
   fileSystems."/".device = "/dev/root";
   boot.loader.grub.enable = false;
   systemd.services."sys-kernel-debug.mount".enable = false;
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  sops.defaultSopsFile = ./secrets/example.enc.yaml;
+  sops.secrets."api-key" = { };
 
   system.stateVersion = "24.05";
 }

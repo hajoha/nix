@@ -1,41 +1,45 @@
-{inputs, config, pkgs, ... }:
+{
+  inputs,
+  config,
+  pkgs,
+  ...
+}:
 
 {
   nixpkgs.config = {
     packageOverrides = pkgs: {
-        nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
-          inherit pkgs;
-        };
-    };
-                  permittedInsecurePackages = [
-                "dotnet-sdk_7"
-              ];
-  };
-
-  imports =
-    [
-    ];
-
-
-    services.openssh = {
-      enable = true;
-      ports = [ 22 ];
-      settings = {
-        PasswordAuthentication = false;
-        AllowUsers = null; # Allows all users by default. Can be [ "user1" "user2" ]
-        UseDns = true;
-        X11Forwarding = true;
-        PermitRootLogin = "yes"; # "yes", "without-password", "prohibit-password", "forced-commands-only", "no"
+      nur = import (builtins.fetchTarball "https://github.com/nix-community/NUR/archive/master.tar.gz") {
+        inherit pkgs;
       };
     };
+    permittedInsecurePackages = [
+      "dotnet-sdk_7"
+    ];
+  };
 
+  imports = [
+  ];
+
+  services.openssh = {
+    enable = true;
+    ports = [ 22 ];
+    settings = {
+      PasswordAuthentication = false;
+      AllowUsers = null; # Allows all users by default. Can be [ "user1" "user2" ]
+      UseDns = true;
+      X11Forwarding = true;
+      PermitRootLogin = "yes"; # "yes", "without-password", "prohibit-password", "forced-commands-only", "no"
+    };
+  };
 
   users.users = import ./../../user/root.nix { inherit pkgs; };
 
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
-  nix.settings.experimental-features = ["nix-command" "flakes"];
-
-#  boot.loader.systemd-boot.enable = true;
+  #  boot.loader.systemd-boot.enable = true;
 
   networking.hostName = "nixlxc";
 
@@ -57,7 +61,6 @@
 
   services.xserver.enable = true;
 
-
   services.xserver.xkb = {
     layout = "us";
     variant = "intl";
@@ -66,7 +69,6 @@
   console.keyMap = "us-acentos";
   services.printing.enable = true;
   security.rtkit.enable = true;
-
 
   nixpkgs.config.allowUnfreePredicate = pkg: true;
   environment.systemPackages = with pkgs; [

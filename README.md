@@ -21,3 +21,13 @@ nixos-rebuild \
   --use-remote-sudo \
   switch
 ```
+
+
+## encrypt
+```bash
+nix run nixpkgs#sops encrypt hosts/nixadguard/secrets/example.yaml > hosts/nixadguard/secrets/example.enc.yaml
+```
+## decrypt
+```bash
+nix run nixpkgs#sops hosts/nixadguard/secrets/example.enc.yaml
+```
