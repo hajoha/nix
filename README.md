@@ -23,6 +23,17 @@ nixos-rebuild \
 ```
 
 
+### garbage collect old generations
+```nix
+sudo nix-collect-garbage --delete-older-than 2d
+```
+
+### delete unused packages
+```nix
+nix-store --gc
+```
+
+
 ## encrypt
 ```bash
 nix run nixpkgs#sops encrypt hosts/nixadguard/secrets/example.yaml > hosts/nixadguard/secrets/example.enc.yaml
