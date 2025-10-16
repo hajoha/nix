@@ -1,6 +1,16 @@
-{ lib, config, system, pkgs, inputs, ... }:
+{
+  lib,
+  config,
+  system,
+  pkgs,
+  inputs,
+  ...
+}:
 let
-  firefox-config = import ./../../modules/browser/firefox.nix { inherit pkgs; inherit inputs; };
+  firefox-config = import ./../../modules/browser/firefox.nix {
+    inherit pkgs;
+    inherit inputs;
+  };
 in
 {
 
@@ -102,7 +112,6 @@ in
         };
       };
 
-
       vim.startPlugins = [
         "nvim-treesitter"
         "telescope"
@@ -147,40 +156,42 @@ in
     wrapperFeatures.gtk = true;
     extraConfig = ''
 
-        set $left h
-        set $down j
-        set $up k
-        set $right l
+      set $left h
+      set $down j
+      set $up k
+      set $right l
 
-        for_window [title="nmtui-floating"] floating enable, move position center, focus
-        for_window [title="btop-floating"] floating enable, move position center, focus
+      for_window [title="nmtui-floating"] floating enable, move position center, focus
+      for_window [title="btop-floating"] floating enable, move position center, focus
 
-        assign [class="Signal"] workspace 1
-        assign [app_id="thunderbird"] workspace 1
-        assign [app_id="firefox"] workspace 2
-
-
-        exec firefox
-        exec thunderbird
-        exec signal-desktop
-
-        exec swayidle -w \
-          timeout 600 'swaylock -f -c 000000' \
-          timeout 630 'swaymsg "output * dpms off"' \
-          resume 'swaymsg "output * dpms on"' \
-          before-sleep 'swaylock -f -c 000000'
-        exec cliphist wipe
-        exec wl-paste --watch cliphist store
+      assign [class="Signal"] workspace 1
+      assign [app_id="thunderbird"] workspace 1
+      assign [app_id="firefox"] workspace 2
 
 
-      '';
+      exec firefox
+      exec thunderbird
+      exec signal-desktop
+
+      exec swayidle -w \
+        timeout 600 'swaylock -f -c 000000' \
+        timeout 630 'swaymsg "output * dpms off"' \
+        resume 'swaymsg "output * dpms on"' \
+        before-sleep 'swaylock -f -c 000000'
+      exec cliphist wipe
+      exec wl-paste --watch cliphist store
+
+
+    '';
     config = {
       modifier = "Mod4"; # Super/Windows key
       terminal = "alacritty";
       menu = "wofi --show drun"; # You can replace this with bemenu, fuzzel, etc.
       keybindings = {
-        "${config.wayland.windowManager.sway.config.modifier}+Return" = "exec ${config.wayland.windowManager.sway.config.terminal}";
-        "${config.wayland.windowManager.sway.config.modifier}+d" = "exec ${config.wayland.windowManager.sway.config.menu}";
+        "${config.wayland.windowManager.sway.config.modifier}+Return" =
+          "exec ${config.wayland.windowManager.sway.config.terminal}";
+        "${config.wayland.windowManager.sway.config.modifier}+d" =
+          "exec ${config.wayland.windowManager.sway.config.menu}";
         "${config.wayland.windowManager.sway.config.modifier}+Shift+q" = "kill";
         "${config.wayland.windowManager.sway.config.modifier}+Shift+c" = "reload";
         "${config.wayland.windowManager.sway.config.modifier}+Shift+r" = "restart";
@@ -194,7 +205,6 @@ in
           exec cliphist list | sed -E "s/^([0-9]+)\t/\1 /" | wofi --dmenu | sed -E "s/^([0-9]+) /\1\t/" | cliphist decode | wl-copy
         '';
 
-
         "${config.wayland.windowManager.sway.config.modifier}+1" = "workspace 1";
         "${config.wayland.windowManager.sway.config.modifier}+2" = "workspace 2";
         "${config.wayland.windowManager.sway.config.modifier}+3" = "workspace 3";
@@ -206,18 +216,29 @@ in
         "${config.wayland.windowManager.sway.config.modifier}+9" = "workspace 9";
         "${config.wayland.windowManager.sway.config.modifier}+0" = "workspace 10";
 
-        "${config.wayland.windowManager.sway.config.modifier}+Shift+1" = "move container to workspace number 1";
-        "${config.wayland.windowManager.sway.config.modifier}+Shift+2" = "move container to workspace number 2";
-        "${config.wayland.windowManager.sway.config.modifier}+Shift+3" = "move container to workspace number 3";
-        "${config.wayland.windowManager.sway.config.modifier}+Shift+4" = "move container to workspace number 4";
-        "${config.wayland.windowManager.sway.config.modifier}+Shift+5" = "move container to workspace number 5";
-        "${config.wayland.windowManager.sway.config.modifier}+Shift+6" = "move container to workspace number 6";
-        "${config.wayland.windowManager.sway.config.modifier}+Shift+7" = "move container to workspace number 7";
-        "${config.wayland.windowManager.sway.config.modifier}+Shift+8" = "move container to workspace number 8";
-        "${config.wayland.windowManager.sway.config.modifier}+Shift+9" = "move container to workspace number 9";
-        "${config.wayland.windowManager.sway.config.modifier}+Shift+0" = "move container to workspace number 10";
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+1" =
+          "move container to workspace number 1";
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+2" =
+          "move container to workspace number 2";
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+3" =
+          "move container to workspace number 3";
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+4" =
+          "move container to workspace number 4";
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+5" =
+          "move container to workspace number 5";
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+6" =
+          "move container to workspace number 6";
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+7" =
+          "move container to workspace number 7";
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+8" =
+          "move container to workspace number 8";
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+9" =
+          "move container to workspace number 9";
+        "${config.wayland.windowManager.sway.config.modifier}+Shift+0" =
+          "move container to workspace number 10";
         "${config.wayland.windowManager.sway.config.modifier}+Control+f" = "exec ferrishot";
-        "${config.wayland.windowManager.sway.config.modifier}+Control+l" = "exec swaylock -f -c 000000 --indicator-radius 100 --indicator-thickness 8 --text-color ffffff";
+        "${config.wayland.windowManager.sway.config.modifier}+Control+l" =
+          "exec swaylock -f -c 000000 --indicator-radius 100 --indicator-thickness 8 --text-color ffffff";
 
         "${config.wayland.windowManager.sway.config.modifier}+Shift+e" = "layout toggle split";
 
@@ -230,7 +251,6 @@ in
 
         "${config.wayland.windowManager.sway.config.modifier}+a" = "focus parent";
 
-
         "XF86AudioRaiseVolume" = "exec pactl set-sink-volume @DEFAULT_SINK@ +5%";
         "XF86AudioLowerVolume" = "exec pactl set-sink-volume @DEFAULT_SINK@ -5%";
         "XF86AudioMute" = "exec pactl set-sink-mute @DEFAULT_SINK@ toggle";
@@ -242,11 +262,14 @@ in
 
         "${config.wayland.windowManager.sway.config.modifier}+Shift+space" = "floating toggle";
 
-        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Right" = "move workspace to output right";
-        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Left" = "move workspace to output left";
-        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Down" = "move workspace to output down";
-        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Up" = "move workspace to output up";
-
+        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Right" =
+          "move workspace to output right";
+        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Left" =
+          "move workspace to output left";
+        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Down" =
+          "move workspace to output down";
+        "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Up" =
+          "move workspace to output up";
 
       };
 
@@ -276,9 +299,16 @@ in
       };
       bars = [ ];
       startup = [
-        { command = "pgrep waybar > /dev/null || waybar &"; always = true; }
-        { command = "exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway"; }
-        { command = "exec systemctl --user restart pipewire-media-session xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk swaync"; }
+        {
+          command = "pgrep waybar > /dev/null || waybar &";
+          always = true;
+        }
+        {
+          command = "exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway";
+        }
+        {
+          command = "exec systemctl --user restart pipewire-media-session xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk swaync";
+        }
         { command = "sh -c 'swaymsg workspace 1; swaymsg layout tabbed'"; }
 
       ];
@@ -286,11 +316,7 @@ in
     };
   };
 
-
   programs.swaylock.enable = true;
-
-
-
 
   home.packages = with pkgs; [
     # 3D-stuff
@@ -379,7 +405,10 @@ in
     #jetbrains.pycharm-professional
     #jetbrains.clion
     (jetbrains.plugins.addPlugins pkgs.jetbrains.clion [ "github-copilot" ])
-    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm-professional [ "github-copilot" "nixidea" ])
+    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm-professional [
+      "github-copilot"
+      "nixidea"
+    ])
     android-studio
     nixfmt-rfc-style
     ollama
@@ -412,8 +441,6 @@ in
     chromium
     cliphist
   ];
-
-
 
   programs.firefox = {
     enable = true;
@@ -455,9 +482,6 @@ in
     };
     "org/gnome/desktop/interface".color-scheme = "prefer-dark";
   };
-
-
-
 
   programs.yazi = {
     enable = true;
@@ -513,7 +537,6 @@ in
     };
   };
 
-
   gtk = {
     enable = true;
     theme = {
@@ -535,158 +558,165 @@ in
   programs.waybar = {
     enable = true;
     style = builtins.readFile ./style.css;
-    settings = [{
-      layer = "top";
-      position = "top";
-      mod = "dock";
-      exclusive = true;
-      passtrough = false;
-      #        gtk-layer-shell = true;
-      height = 10;
-      modules-left = [
-        "sway/workspaces"
-        "custom/divider"
-        "cpu"
-        "custom/divider"
-        "memory"
-      ];
-      modules-center = [ "sway/window" ];
-      modules-right = [
-        #          "tray"
-        "network"
-        "custom/divider"
-        "backlight"
-        "custom/divider"
-        "pulseaudio"
-        "custom/divider"
-        "battery"
-        "custom/divider"
-        "clock"
-        "custom/divider"
-        "custom/notification"
-        "custom/divider"
-      ];
-      "sway/window" = { format = "{}"; };
-      "wlr/workspaces" = {
-        on-scroll-up = "hyprctl dispatch workspace e+1";
-        on-scroll-down = "hyprctl dispatch workspace e-1";
-        all-outputs = true;
-        on-click = "activate";
-      };
-      battery = {
-        # Show an icon that varies with capacity + percentage
-        format = "{icon} {capacity}%";
-        # When charging or plugged in, swap to a bolt/plug icon
-        format-charging = "󰂄 {capacity}%"; # lightning bolt
-        format-plugged = "󰚥 {capacity}%"; # same as charging (or use 󰂄 for a plug)
-        format-full = "󰁹 {capacity}%"; # full battery icon if you like
-
-        format-icons = [
-          "󰁺"
-          "󰁻"
-          "󰁼"
-          "󰁽"
-          "󰁾"
-          "󰁿"
-          "󰂀"
-          "󰂁"
-          "󰂂"
-          "󰁹"
+    settings = [
+      {
+        layer = "top";
+        position = "top";
+        mod = "dock";
+        exclusive = true;
+        passtrough = false;
+        #        gtk-layer-shell = true;
+        height = 10;
+        modules-left = [
+          "sway/workspaces"
+          "custom/divider"
+          "cpu"
+          "custom/divider"
+          "memory"
         ];
-        interval = 2;
-        states = {
-          warning = 30;
-          critical = 15;
+        modules-center = [ "sway/window" ];
+        modules-right = [
+          #          "tray"
+          "network"
+          "custom/divider"
+          "backlight"
+          "custom/divider"
+          "pulseaudio"
+          "custom/divider"
+          "battery"
+          "custom/divider"
+          "clock"
+          "custom/divider"
+          "custom/notification"
+          "custom/divider"
+        ];
+        "sway/window" = {
+          format = "{}";
         };
-      };
-      cpu = {
-        interval = 10;
-        format = "󰻠 {}%";
-        max-length = 10;
-        on-click = "swaymsg exec 'alacritty --title btop-floating -e btop'";
-      };
-      memory = {
-        interval = 30;
-        format = "  {}%";
-        format-alt = " {used:0.1f}G";
-        max-length = 10;
-      };
-      backlight = {
-        format = "󰖨 {}";
-        device = "acpi_video0";
-      };
-      tray = {
-        icon-size = 13;
-        tooltip = false;
-        spacing = 3;
-      };
-      network = {
-        format = "{ifname}";
-        format-disconnected = "󰖪 disconnected";
-        interval = 10;
-        format-wifi = "󰖩 {essid} {signaldBm} [dbm]";
-        format-ethernet = "󰖠 {ipaddr}/{cidr}";
-        tooltip-format-wifi = "{ifname} | {ipaddr}/{cidr}\n{signaldBm} [dBm] | {frequency} [GHz] \n↑{bandwidthUpBits} | ↓{bandwidthDownBits}\n{essid} - {bssid}";
-        tooltip-format-ethernet = "{ifname}\n{ipaddr}/{cidr}\n↑{bandwidthUpBits} | ↓{bandwidthDownBits}\n";
-        on-click = "swaymsg exec 'alacritty --title nmtui-floating -e nmtui'";
-      };
-      clock = {
-        format = "{:%H:%M - %d/%m/%y}";
-        tooltip-format = ''
-          <big>{:%Y %B}</big>
-          <tt><small>{calendar}</small></tt>'';
-      };
-      pulseaudio = {
-        format = "{icon} {volume}%";
-        tooltip = false;
-        format-muted = "🔇 Muted";
-        on-click = "pavucontrol";
-        on-scroll-up = "pamixer -i 5";
-        on-scroll-down = "pamixer -d 5";
-        scroll-step = 5;
-        format-icons = {
-          headphone = "";
-          hands-free = "";
-          headset = "";
-          phone = "";
-          portable = "";
-          car = "";
-          default = [ "" "" "" ];
+        "wlr/workspaces" = {
+          on-scroll-up = "hyprctl dispatch workspace e+1";
+          on-scroll-down = "hyprctl dispatch workspace e-1";
+          all-outputs = true;
+          on-click = "activate";
         };
-      };
-      "custom/divider" = {
-        format = " | ";
-        interval = "once";
-        tooltip = false;
-      };
-      "custom/endright" = {
-        format = "_";
-        interval = "once";
-        tooltip = false;
-      };
-      "custom/notification" = {
-        tooltip = false;
-        format = "{icon}";
-        "format-icons" = {
-          notification = " <span foreground='red'><sup></sup></span> ";
-          none = "";
-          "dnd-notification" = " <span foreground='red'><sup></sup></span> ";
-          "dnd-none" = "  ";
-          "inhibited-notification" = " <span foreground='red'><sup></sup></span> ";
-          "inhibited-none" = "";
-          "dnd-inhibited-notification" = " <span foreground='red'><sup></sup></span> ";
-          "dnd-inhibited-none" = "  ";
-        };
-        "return-type" = "json";
-        "exec-if" = "which swaync-client";
-        exec = "swaync-client -swb";
-        "on-click" = "swaync-client -t -sw";
-        "on-click-right" = "swaync-client -d -sw";
-        escape = true;
-      };
-    }];
-  };
+        battery = {
+          # Show an icon that varies with capacity + percentage
+          format = "{icon} {capacity}%";
+          # When charging or plugged in, swap to a bolt/plug icon
+          format-charging = "󰂄 {capacity}%"; # lightning bolt
+          format-plugged = "󰚥 {capacity}%"; # same as charging (or use 󰂄 for a plug)
+          format-full = "󰁹 {capacity}%"; # full battery icon if you like
 
+          format-icons = [
+            "󰁺"
+            "󰁻"
+            "󰁼"
+            "󰁽"
+            "󰁾"
+            "󰁿"
+            "󰂀"
+            "󰂁"
+            "󰂂"
+            "󰁹"
+          ];
+          interval = 2;
+          states = {
+            warning = 30;
+            critical = 15;
+          };
+        };
+        cpu = {
+          interval = 10;
+          format = "󰻠 {}%";
+          max-length = 10;
+          on-click = "swaymsg exec 'alacritty --title btop-floating -e btop'";
+        };
+        memory = {
+          interval = 30;
+          format = "  {}%";
+          format-alt = " {used:0.1f}G";
+          max-length = 10;
+        };
+        backlight = {
+          format = "󰖨 {}";
+          device = "acpi_video0";
+        };
+        tray = {
+          icon-size = 13;
+          tooltip = false;
+          spacing = 3;
+        };
+        network = {
+          format = "{ifname}";
+          format-disconnected = "󰖪 disconnected";
+          interval = 10;
+          format-wifi = "󰖩 {essid} {signaldBm} [dbm]";
+          format-ethernet = "󰖠 {ipaddr}/{cidr}";
+          tooltip-format-wifi = "{ifname} | {ipaddr}/{cidr}\n{signaldBm} [dBm] | {frequency} [GHz] \n↑{bandwidthUpBits} | ↓{bandwidthDownBits}\n{essid} - {bssid}";
+          tooltip-format-ethernet = "{ifname}\n{ipaddr}/{cidr}\n↑{bandwidthUpBits} | ↓{bandwidthDownBits}\n";
+          on-click = "swaymsg exec 'alacritty --title nmtui-floating -e nmtui'";
+        };
+        clock = {
+          format = "{:%H:%M - %d/%m/%y}";
+          tooltip-format = ''
+            <big>{:%Y %B}</big>
+            <tt><small>{calendar}</small></tt>'';
+        };
+        pulseaudio = {
+          format = "{icon} {volume}%";
+          tooltip = false;
+          format-muted = "🔇 Muted";
+          on-click = "pavucontrol";
+          on-scroll-up = "pamixer -i 5";
+          on-scroll-down = "pamixer -d 5";
+          scroll-step = 5;
+          format-icons = {
+            headphone = "";
+            hands-free = "";
+            headset = "";
+            phone = "";
+            portable = "";
+            car = "";
+            default = [
+              ""
+              ""
+              ""
+            ];
+          };
+        };
+        "custom/divider" = {
+          format = " | ";
+          interval = "once";
+          tooltip = false;
+        };
+        "custom/endright" = {
+          format = "_";
+          interval = "once";
+          tooltip = false;
+        };
+        "custom/notification" = {
+          tooltip = false;
+          format = "{icon}";
+          "format-icons" = {
+            notification = " <span foreground='red'><sup></sup></span> ";
+            none = "";
+            "dnd-notification" = " <span foreground='red'><sup></sup></span> ";
+            "dnd-none" = "  ";
+            "inhibited-notification" = " <span foreground='red'><sup></sup></span> ";
+            "inhibited-none" = "";
+            "dnd-inhibited-notification" = " <span foreground='red'><sup></sup></span> ";
+            "dnd-inhibited-none" = "  ";
+          };
+          "return-type" = "json";
+          "exec-if" = "which swaync-client";
+          exec = "swaync-client -swb";
+          "on-click" = "swaync-client -t -sw";
+          "on-click-right" = "swaync-client -d -sw";
+          escape = true;
+        };
+      }
+    ];
+  };
 
   home.stateVersion = "23.11";
 

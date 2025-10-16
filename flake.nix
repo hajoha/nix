@@ -78,6 +78,27 @@
             sops-nix.nixosModules.sops
           ];
         };
+        nixpostgres = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixpostgres/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
+        nixzitadel = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixzitadel/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
+        nixnetbird = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixnetbird/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
       };
 
       formatter.${system} = pkgs.nixfmt-tree;

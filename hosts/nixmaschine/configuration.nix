@@ -1,4 +1,9 @@
-{ inputs, config, pkgs, ... }:
+{
+  inputs,
+  config,
+  pkgs,
+  ...
+}:
 
 {
   nixpkgs.config = {
@@ -12,13 +17,11 @@
     ];
   };
 
-  imports =
-    [
-      ./hardware-configuration.nix
-      ./../../modules/virt/vm.nix
-      ./../../services/ollama.nix
-    ];
-
+  imports = [
+    ./hardware-configuration.nix
+    ./../../modules/virt/vm.nix
+    ./../../services/ollama.nix
+  ];
 
   users.defaultUserShell = pkgs.zsh;
   environment.shells = with pkgs; [ zsh ];
@@ -26,7 +29,13 @@
   users.users.hajoha = {
     isNormalUser = true;
     description = "hajoha";
-    extraGroups = [ "networkmanager" "wheel" "kvm" "adbusers" "libvirtd" ];
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+      "kvm"
+      "adbusers"
+      "libvirtd"
+    ];
     shell = pkgs.zsh;
     packages = with pkgs; [
       home-manager
@@ -60,18 +69,22 @@
     };
   };
 
-
   programs.virt-manager.enable = true;
   programs.zsh.enable = true;
 
-  programs._1password = { enable = true; };
+  programs._1password = {
+    enable = true;
+  };
 
   # Enables the 1Password desktop app
   programs._1password-gui = {
     enable = true;
     polkitPolicyOwners = [ "hajoha" ];
   };
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -101,16 +114,13 @@
     };
   };
 
-
   system.activationScripts = {
     script.text = ''
       install -d -m 755 /home/hajoha/open-webui/data -o root -g root
     '';
   };
 
-
   networking.hostName = "nixmaschine";
-
 
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Berlin";
@@ -140,7 +150,6 @@
     LC_TELEPHONE = "de_DE.UTF-8";
     LC_TIME = "de_DE.UTF-8";
   };
-
 
   services.xserver.xkb = {
     layout = "us";

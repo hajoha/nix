@@ -4,6 +4,9 @@ keys:
   - &nixcloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
   - &nixnginx age19a786mf6j8dd4p8knqz55j7hszaa8xx0u5sd738g2ws59ththu2qtnce6m
   - &nixbuild age1wnyjcxf6jjc60tdgaf4eaf3hcmpkvx25mjtc6tmhy8j9689tp9lq7nw262
+  - &nixpostgres age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru
+  - &nixzitadel age1l2v88kf7xew0ud8z06hr23r36kzxm833l338u8ku44xrn7due96q27vgqy
+  - &nixnetbird age1ugx6cx7e6veragujafkr3jwuaws8v47jehud80g37x05qse55atspgtvn0
 creation_rules:
   - path_regex: hosts/nixadguard/secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
@@ -24,4 +27,20 @@ creation_rules:
     key_groups:
       - age:
           - *nixbuild
+          - *fokus
+  - path_regex: hosts/nixpostgres/secrets/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - age:
+          - *nixpostgres
+          - *nixzitadel
+          - *fokus
+  - path_regex: hosts/nixzitadel/secrets/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - age:
+          - *nixzitadel
+          - *fokus
+  - path_regex: hosts/nixnetbird/secrets/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - age:
+          - *nixnetbird
           - *fokus

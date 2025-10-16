@@ -39,6 +39,27 @@
           deny all;
         '';
       };
+      "zitadel.johann-hackler.com" = {
+        enableACME = true;
+        forceSSL = true;
+        acmeRoot = null;
+        locations."/" = {
+          proxyPass = "http://10.60.0.21:8081"; # Proxmox HTTPS backend
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Port 443;
+          '';
+        };
+        # Only allow LAN access
+        extraConfig = ''
+          allow 10.60.0.0/16;
+          deny all;
+        '';
+      };
     };
   };
 

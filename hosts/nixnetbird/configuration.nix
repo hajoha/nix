@@ -4,12 +4,13 @@
   modulesPath,
   ...
 }:
-
+let
+in
 {
   networking.hostName = "nix-zitadel";
   imports = [
     (modulesPath + "/virtualisation/proxmox-lxc.nix")
-    ./../../services/zitadel/default.nix
+    ./../../services/netbird/default.nix
     ./../../services/ssh/root.nix
   ];
   users.users = import ./../../user/root.nix { inherit pkgs; };
@@ -19,18 +20,14 @@
   boot.loader.grub.enable = false;
   systemd.services."sys-kernel-debug.mount".enable = false;
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-  sops.defaultSopsFile = ./secrets/zitadel-creds.enc.yaml;
-  sops.secrets."zitadel-creds/env" = {
-    owner = "zitadel";
-    restartUnits = [ "zitadel.service" ];
-  };
-  sops.secrets."zitadel-creds/ZITADEL_MASTERKEY" = {
-    owner = "zitadel";
-  };
+  sops.defaultSopsFile = ./secrets/creds.enc.yaml;
 
-  systemd.services.zitadel.serviceConfig.EnvironmentFile = [
-    config.sops.secrets."zitadel-creds/env".path
-  ];
+  sops.secrets."PASSWORD_COTURN" = {};
+  sops.secrets."TURN_SECRET" = {};
+  sops.secrets."NETBIRD_ZITADEL_PASSWORD" = {};
+  sops.secrets."NETBIRD_IDP_MGMT_CLIENT_SECRET" = {};
+  sops.secrets."NETBIRD_ENCRYPTION_KEY" = {};
+  sops.secrets."COTURN" = {owner = "turnserver";};
 
   system.stateVersion = "24.05";
 }
