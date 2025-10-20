@@ -45,14 +45,16 @@
         enableACME = true;
         forceSSL = true;
         acmeRoot = null;
+        http2 = true;
         locations."/" = {
           proxyPass = "http://10.60.0.21:8081"; # Proxmox HTTPS backend
           proxyWebsockets = true;
           extraConfig = ''
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto https;
-            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-Port 443;
           '';
         };
@@ -67,22 +69,28 @@
         enableACME = true;
         forceSSL = true;
         acmeRoot = null;
-
+        http2 = true;
         locations = {
-
           # Management REST (HTTP)
           "/api" = {
-            proxyPass = "http://10.60.0.22:80";
+            proxyPass = "http://10.60.0.22:9090";
             proxyWebsockets = true;
-            extraConfig = '''';
+            extraConfig = ''
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto https;
+            '';
           };
 
           # Management gRPC
           "/management.ManagementService/" = {
             extraConfig = ''
               client_body_timeout 1d;
+              grpc_set_header Host $host;
               grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              grpc_pass grpc://10.60.0.22:80;
+              grpc_set_header X-Forwarded-Proto https;
+              grpc_pass grpc://10.60.0.22:8011;
               grpc_read_timeout 1d;
               grpc_send_timeout 1d;
               grpc_socket_keepalive on;
@@ -91,51 +99,62 @@
 
           # Management WS proxy (if used)
           "/ws-proxy/management" = {
-            proxyPass = "http://10.60.0.22:80";
+            proxyPass = "http://10.60.0.22:9090";
             proxyWebsockets = true;
             extraConfig = ''
               proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto https;
             '';
           };
 
           # Signal gRPC
           "/signalexchange.SignalExchange/" = {
             extraConfig = ''
-              grpc_pass grpc://10.60.0.22:80;
+              grpc_pass grpc://10.60.0.22:8012;
               grpc_set_header Host $host;
               grpc_set_header X-Forwarded-Proto https;
+              grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             '';
           };
 
-          # Signal WebSocket for clients (match Signal.URI above)
+          # Signal WebSocket
           "/ws-proxy/signal" = {
             proxyPass = "http://10.60.0.22:9091";
             proxyWebsockets = true;
             extraConfig = ''
               proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto https;
             '';
           };
 
-          # Relay WS
+          # Relay WS (remove if relay is not running)
           "/relay" = {
             proxyPass = "http://10.60.0.22:33080";
             proxyWebsockets = true;
             extraConfig = ''
               proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto https;
             '';
           };
+
+          # Dashboard
           "/" = {
             proxyPass = "http://10.60.0.22:8011";
             proxyWebsockets = true;
             extraConfig = ''
-                proxy_set_header Host $host;
-                proxy_set_header X-Forwarded-Proto $scheme;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto https;
             '';
           };
-
         };
-
         #       Remove this block if clients connect from outside your LAN
         extraConfig = ''
           if ($remote_addr !~ ^10\.60\.) { return 444; }

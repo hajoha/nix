@@ -2,8 +2,7 @@
 let
   domain = "johann-hackler.com";
   NETBIRD_DOMAIN = "netbird.${domain}";
-  client_id = "342609533283139605";
-  #  client_id = "netbird";
+  client_id = "netbird";
 in
 {
   services.netbird.server = {
@@ -16,6 +15,7 @@ in
       domain = NETBIRD_DOMAIN;
       dnsDomain = domain;
       oidcConfigEndpoint = "https://zitadel.${domain}/.well-known/openid-configuration";
+
       settings = {
         TURNConfig = {
           Turns = [
@@ -24,11 +24,9 @@ in
               URI = "turn:${NETBIRD_DOMAIN}:3478";
             }
           ];
-          # Must match coturn.passwordFile
           Secret._secret = "/run/secrets/COTURN";
         };
 
-        # Public WS endpoint exposed by your external Nginx
         Signal.URI = "wss://${NETBIRD_DOMAIN}/ws-proxy/signal";
 
         IdpManagerConfig = {
@@ -40,36 +38,34 @@ in
             ClientSecret._secret = "/run/secrets/NETBIRD_IDP_MGMT_CLIENT_SECRET";
             GrantType = "client_credentials";
           };
-
           ExtraConfig = {
             Username = "netbird";
             Password._secret = "/run/secrets/NETBIRD_IDP_MGMT_CLIENT_SECRET";
             ManagementEndpoint = "https://zitadel.${domain}/management/v1";
           };
           Auth0ClientCredentials = null;
-
         };
 
         DeviceAuthorizationFlow = {
           Provider = "zitadel";
           ProviderConfig = {
-            Audience = "netbird";
-            Domain = domain;
-            ClientID = "netbird";
+            Audience = client_id;
+            Domain = "zitadel.${domain}";
+            ClientID = client_id;
             TokenEndpoint = "https://zitadel.${domain}/oauth/v2/token";
             DeviceAuthEndpoint = "https://zitadel.${domain}/oauth/v2/device_authorization";
             Scope = "openid";
             UseIDToken = false;
           };
         };
+
         ReverseProxy = {
-          TrustedHTTPProxies = [];
+          TrustedHTTPProxies = [ "10.60.0.17/32" ];
           TrustedHTTPProxiesCount = 0;
           TrustedPeers = [ "0.0.0.0/0" ];
         };
 
         HttpConfig = {
-#          Address = "127.0.0.1:${builtins.toString cfg.port}";
           IdpSignKeyRefreshEnabled = true;
           OIDCConfigEndpoint = "https://zitadel.${domain}/.well-known/openid-configuration";
         };
@@ -82,9 +78,8 @@ in
           DeviceAuthEndpoint = "https://zitadel.${domain}/oauth/v2/device_authorization";
           RedirectURLs = [
             "http://localhost:53000/"
-            "https://netbird.johann-hackler.com/auth"
-            "https://netbird.johann-hackler.com/silent-auth"
-
+            "https://${NETBIRD_DOMAIN}/auth"
+            "https://${NETBIRD_DOMAIN}/silent-auth"
           ];
           UseIDToken = false;
         };
@@ -96,7 +91,6 @@ in
     coturn = {
       enable = true;
       domain = NETBIRD_DOMAIN;
-      # Must match TURNConfig.Secret above
       passwordFile = "/run/secrets/COTURN";
     };
 
@@ -111,26 +105,10 @@ in
       enableNginx = false;
       domain = NETBIRD_DOMAIN;
 
-      managementServer = "https://${NETBIRD_DOMAIN}";
+      managementServer = "http://localhost:33071";
       settings = {
-        AUTH_AUTHORITY = "https://zitadel.${domain}";
-        AUTH_SUPPORTED_SCOPES = "openid profile email offline_access api";
-        AUTH_REDIRECT_URI = "/auth";
-        AUTH_SILENT_REDIRECT_URI = "/silent-auth";
-        DISABLE_LETSENCRYPT = "true";
-
-        AUTH_OIDC_CONFIGURATION_ENDPOINT = "https://zitadel.johann-hackler.com/.well-known/openid-configuration";
-        USE_AUTH0 = false;
-        AUTH_AUDIENCE = "netbird";
-        AUTH_CLIENT_ID = "netbird";
-
-        AUTH_DEVICE_AUTH_PROVIDER = "hosted";
-        AUTH_DEVICE_AUTH_CLIENT_ID = client_id;
-        AUTH_DEVICE_AUTH_AUDIENCE = client_id;
-
-        MGMT_IDP = "zitadel";
-        IDP_MGMT_EXTRA_MANAGEMENT_ENDPOINT = "https://zitadel.johann-hackler.com/management/v1";
-        MGMT_IDP_SIGNKEY_REFRESH = true;
+        AUTH_AUTHORITY = "https://zitadel.${domain}/oauth/v2/authorize";
+        NETBIRD_TOKEN_SOURCE = "accessToken";
 
       };
     };
