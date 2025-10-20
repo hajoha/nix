@@ -22,12 +22,25 @@ in
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.defaultSopsFile = ./secrets/creds.enc.yaml;
 
-  sops.secrets."PASSWORD_COTURN" = {};
-  sops.secrets."TURN_SECRET" = {};
-  sops.secrets."NETBIRD_ZITADEL_PASSWORD" = {};
-  sops.secrets."NETBIRD_IDP_MGMT_CLIENT_SECRET" = {};
-  sops.secrets."NETBIRD_ENCRYPTION_KEY" = {};
-  sops.secrets."COTURN" = {owner = "turnserver";};
+  sops.secrets."PASSWORD_COTURN" = { };
+  sops.secrets."TURN_SECRET" = { };
+  sops.secrets."NETBIRD_ZITADEL_PASSWORD" = { };
+  sops.secrets."NETBIRD_IDP_MGMT_CLIENT_SECRET" = { };
+  sops.secrets."NETBIRD_ENCRYPTION_KEY" = { };
+  sops.secrets."COTURN" = {
+    owner = "turnserver";
+  };
+
+  networking.firewall.allowedTCPPorts = [
+ 9090
+ 6060
+ 8011
+ 8012
+ 10000
+ 33073
+ 9091
+
+  ];
 
   system.stateVersion = "24.05";
 }
