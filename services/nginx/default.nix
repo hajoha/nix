@@ -29,11 +29,19 @@
         acmeRoot = null;
         locations."/" = {
           proxyPass = "https://10.60.0.14:9200";
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+          '';
+
         };
         extraConfig = ''
           if ($remote_addr !~ ^10\.60\.) {
             return 444;
           }
+
         '';
       };
       "adguard.johann-hackler.com" = {

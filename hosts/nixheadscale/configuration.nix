@@ -24,7 +24,6 @@
     pkgs.tailscale
   ];
 
-
   # enable the tailscale service
   services.tailscale.enable = true;
   services.tailscale.useRoutingFeatures = "server";
@@ -45,7 +44,7 @@
 
   services.headplane = {
     enable = true;
-    debug = true;
+    debug = false;
     settings = {
       server = {
         host = "0.0.0.0";
@@ -56,9 +55,9 @@
         cookie_secret_path = config.sops.secrets."headplane/serverCookieSecret".path;
       };
       headscale = {
-         url = "https://headscale.johann-hackler.com";
-#        url = "localhost:8080";
-#        url = http://10.60.0.22:8080;
+        url = "https://headscale.johann-hackler.com";
+        #        url = "localhost:8080";
+        #        url = http://10.60.0.22:8080;
         #        config_path = "${headscaleConfig}";
       };
       integration.agent = {
