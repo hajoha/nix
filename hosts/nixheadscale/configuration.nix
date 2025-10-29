@@ -21,9 +21,13 @@
   nix.settings.trusted-users = [ "root" ];
   environment.systemPackages = [
     pkgs.unixtools.netstat
-
+    pkgs.tailscale
   ];
 
+
+  # enable the tailscale service
+  services.tailscale.enable = true;
+  services.tailscale.useRoutingFeatures = "server";
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.defaultSopsFile = ./secrets/creds.enc.yaml;
   sops.secrets."headplane/OIDC_CLIENT_SECRET" = {
@@ -58,7 +62,7 @@
         #        config_path = "${headscaleConfig}";
       };
       integration.agent = {
-        enabled = false;
+        enabled = true;
         # Using `sops-nix` as an example, can be a path to any file with a secret.
         pre_authkey_path = config.sops.secrets."headplane/integrationAgentPreAuthkeyPath".path;
       };

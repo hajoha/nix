@@ -37,6 +37,7 @@ in
         base_domain = "dns.headscale.johann-hackler.com";
         nameservers = {
           global = [
+            "10.60.99.16"
             "1.1.1.1"
             "9.9.9.9"
           ];
