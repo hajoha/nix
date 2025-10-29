@@ -16,6 +16,10 @@
       url = "github:NotAShelf/nvf";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    headplane = {
+      url = "github:tale/headplane";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
   };
 
@@ -26,6 +30,7 @@
       home-manager,
       sops-nix,
       nvf,
+      headplane,
       ...
     }@inputs:
     let
@@ -92,11 +97,28 @@
             sops-nix.nixosModules.sops
           ];
         };
-        nixnetbird = nixpkgs.lib.nixosSystem {
+        nixbuild = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
-            ./hosts/nixnetbird/configuration.nix
+            ./hosts/nixbuild/configuration.nix
+          ];
+        };
+        nixheadscale = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixheadscale/configuration.nix
             sops-nix.nixosModules.sops
+            headplane.nixosModules.headplane
+            {
+              # provides `pkgs.headplane`
+              nixpkgs.overlays = [ headplane.overlays.default ];
+            }
+          ];
+        };
+        nixmininet = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixmininet/configuration.nix
           ];
         };
       };

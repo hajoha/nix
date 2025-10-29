@@ -3,13 +3,38 @@
 {
   services.nginx = {
     enable = true;
-
+    logError = "stderr debug";
+    #        extraConfig = ''
+    #          map \$http_upgrade \$connection_upgrade {
+    #            default      upgrade;
+    #            ""           close;
+    #          }
+    #        '';
     virtualHosts = {
-      # Public AdGuard
       "johann-hackler.com" = {
         enableACME = true;
         forceSSL = true;
         acmeRoot = null;
+        locations."/.well-known/webfinger" = {
+          extraConfig = ''
+            add_header Content-Type application/jrd+json;
+            return 200 '{"subject":"acct:info@johann-hackler.com","links":[{"rel":"http://openid.net/specs/connect/1.0/issuer","href":"https://zitadel.johann-hackler.com"}]}';
+          '';
+        };
+
+      };
+      "opencloud.johann-hackler.com" = {
+        enableACME = true;
+        forceSSL = true;
+        acmeRoot = null;
+        locations."/" = {
+          proxyPass = "https://10.60.0.14:9200";
+        };
+        extraConfig = ''
+          if ($remote_addr !~ ^10\.60\.) {
+            return 444;
+          }
+        '';
       };
       "adguard.johann-hackler.com" = {
         enableACME = true;
@@ -47,7 +72,7 @@
         acmeRoot = null;
         http2 = true;
         locations."/" = {
-          proxyPass = "http://10.60.0.21:8081"; # Proxmox HTTPS backend
+          proxyPass = "http://10.60.0.21:8081";
           proxyWebsockets = true;
           extraConfig = ''
             proxy_set_header Host $host;
@@ -59,106 +84,56 @@
           '';
         };
         # Only allow LAN access
-        extraConfig = ''
-          if ($remote_addr !~ ^10\.60\.) {
-            return 444;
-          }
-        '';
+        #        extraConfig = ''
+        #          if ($remote_addr !~ ^10\.60\.) {
+        #            return 444;
+        #          }
+        #        '';
       };
-      "netbird.johann-hackler.com" = {
+      "headscale.johann-hackler.com" = {
         enableACME = true;
         forceSSL = true;
         acmeRoot = null;
-        http2 = true;
-        locations = {
-          # Management REST (HTTP)
-          "/api" = {
-            proxyPass = "http://10.60.0.22:9090";
-            proxyWebsockets = true;
-            extraConfig = ''
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto https;
-            '';
-          };
 
-          # Management gRPC
-          "/management.ManagementService/" = {
-            extraConfig = ''
-              client_body_timeout 1d;
-              grpc_set_header Host $host;
-              grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              grpc_set_header X-Forwarded-Proto https;
-              grpc_pass grpc://10.60.0.22:8011;
-              grpc_read_timeout 1d;
-              grpc_send_timeout 1d;
-              grpc_socket_keepalive on;
-            '';
-          };
+        locations."/" = {
+          proxyPass = "http://10.60.0.22:8080";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_set_header Host $server_name;
+            proxy_redirect http:// https://;
+            proxy_buffering off;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
 
-          # Management WS proxy (if used)
-          "/ws-proxy/management" = {
-            proxyPass = "http://10.60.0.22:9090";
-            proxyWebsockets = true;
-            extraConfig = ''
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto https;
-            '';
-          };
+          '';
 
-          # Signal gRPC
-          "/signalexchange.SignalExchange/" = {
-            extraConfig = ''
-              grpc_pass grpc://10.60.0.22:8012;
-              grpc_set_header Host $host;
-              grpc_set_header X-Forwarded-Proto https;
-              grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            '';
-          };
-
-          # Signal WebSocket
-          "/ws-proxy/signal" = {
-            proxyPass = "http://10.60.0.22:9091";
-            proxyWebsockets = true;
-            extraConfig = ''
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto https;
-            '';
-          };
-
-          # Relay WS (remove if relay is not running)
-          "/relay" = {
-            proxyPass = "http://10.60.0.22:33080";
-            proxyWebsockets = true;
-            extraConfig = ''
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto https;
-            '';
-          };
-
-          # Dashboard
-          "/" = {
-            proxyPass = "http://10.60.0.22:8011";
-            proxyWebsockets = true;
-            extraConfig = ''
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto https;
-            '';
-          };
         };
-        #       Remove this block if clients connect from outside your LAN
-        extraConfig = ''
-          if ($remote_addr !~ ^10\.60\.) { return 444; }
-        '';
+
+        locations."/admin/" = {
+          proxyPass = "http://10.60.0.22:3000/admin/";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_set_header Host $host;
+            proxy_redirect http:// https://;
+            proxy_buffering off;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+          '';
+        };
+
+        locations."/admin" = {
+          extraConfig = ''
+            return 301 /admin/;
+          '';
+        };
+
       };
 
     };
