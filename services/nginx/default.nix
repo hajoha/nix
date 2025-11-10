@@ -98,6 +98,19 @@
         #          }
         #        '';
       };
+      "hedgedoc.johann-hackler.com" = {
+        enableACME = true;
+        forceSSL = true;
+        acmeRoot = null;
+        locations."/".proxyPass = "http://10.60.0.23:8001";
+        locations."/socket.io/" = {
+          proxyPass = "http://10.60.0.23:8001";
+          proxyWebsockets = true;
+          extraConfig =
+            "proxy_ssl_server_name on;"
+            ;
+        };
+        };
       "headscale.johann-hackler.com" = {
         enableACME = true;
         forceSSL = true;
