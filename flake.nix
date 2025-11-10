@@ -121,6 +121,13 @@
             ./hosts/nixmininet/configuration.nix
           ];
         };
+        nixhedgedoc = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixhedgedoc/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
       };
 
       formatter.${system} = pkgs.nixfmt-tree;

@@ -9,8 +9,8 @@
     };
     environment = {
       PROXY_CSP_CONFIG_FILE_LOCATION = "/etc/opencloud/csp.yaml";
-      OC_OIDC_ISSUER = "https://zitadel.johann-hackler.com";
-      EXTERNAL_OIDC_DOMAIN = "zitadel.johann-hackler.com";
+      OC_OIDC_ISSUER = "https://auth.johann-hackler.com/";
+      EXTERNAL_OIDC_DOMAIN = "auth.johann-hackler.com";
       PROXY_OIDC_REWRITE_WELLKNOWN = "true";
       OC_INSECURE = "true";
       WEB_OIDC_CLIENT_ID = "344354127221948437";
@@ -42,7 +42,7 @@
           - 'blob:'
           - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
           - 'https://update.opencloud.eu/'
-          - 'https://zitadel.johann-hackler.com/'
+          - 'https://auth.johann-hackler.com/'
         default-src:
           - '''none'''
         font-src:
@@ -54,16 +54,16 @@
           - 'blob:'
           - 'https://embed.diagrams.net/'
           - 'https://docs.opencloud.eu'
-          - 'https://zitadel.johann-hackler.com/'
+          - 'https://auth.johann-hackler.com/'
         img-src:
           - '''self'''
           - 'data:'
           - 'blob:'
           - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
-          - 'https://zitadel.johann-hackler.com/'
+          - 'https://auth.johann-hackler.com/'
         manifest-src:
           - '''self'''
-        media-src:
+        media-src:2
           - '''self'''
         object-src:
           - '''self'''
@@ -71,7 +71,7 @@
         script-src:
           - '''self'''
           - '''unsafe-inline'''
-          - 'https://zitadel.johann-hackler.com/'
+          - 'https://auth.johann-hackler.com/'
         style-src:
           - '''self'''
           - '''unsafe-inline'''

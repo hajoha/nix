@@ -7,6 +7,7 @@ keys:
   - &nixpostgres age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru
   - &nixzitadel age1l2v88kf7xew0ud8z06hr23r36kzxm833l338u8ku44xrn7due96q27vgqy
   - &nixheadscale age1r8yfrag9k269xzvyjp8z2p9kl97v55xaruzhl5ylql7g5z0f0cssk2yn23
+  - &nixhedgedoc age1s6mwpas3nql8ve3pvrna0ecpd5gve2cem7c0yvzg4fe8r4dnc9jqm7ug7f
 creation_rules:
   - path_regex: hosts/nixadguard/secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
@@ -43,4 +44,9 @@ creation_rules:
     key_groups:
       - age:
           - *nixheadscale
+          - *fokus
+  - path_regex: hosts/nixhedgedoc/secrets/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - age:
+          - *nixhedgedoc
           - *fokus

@@ -11,6 +11,7 @@
     (modulesPath + "/virtualisation/proxmox-lxc.nix")
     ./../../services/nginx/default.nix
     ./../../services/ssh/root.nix
+    ./../../services/zitadel-proxy/default.nix
   ];
   users.users = import ./../../user/root.nix { inherit pkgs; };
   virtualisation.lxc.enable = true;
