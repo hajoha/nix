@@ -4,6 +4,11 @@
   services.nginx = {
     enable = true;
     logError = "stderr debug";
+    recommendedGzipSettings = true;
+    recommendedOptimisation = true;
+#    recommendedProxySettings = true;
+    recommendedTlsSettings = true;
+    sslCiphers = "AES256+EECDH:AES256+EDH:!aNULL";
     #        extraConfig = ''
     #          map \$http_upgrade \$connection_upgrade {
     #            default      upgrade;
@@ -102,15 +107,22 @@
         enableACME = true;
         forceSSL = true;
         acmeRoot = null;
-        locations."/".proxyPass = "http://10.60.0.23:8001";
+        locations."/" = {
+            proxyPass = "http://10.60.0.23:8001";
+            extraConfig = ''
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto https;
+'';
+
+        };
         locations."/socket.io/" = {
           proxyPass = "http://10.60.0.23:8001";
           proxyWebsockets = true;
-          extraConfig =
-            "proxy_ssl_server_name on;"
-            ;
+          extraConfig = "proxy_ssl_server_name on;";
         };
-        };
+      };
       "headscale.johann-hackler.com" = {
         enableACME = true;
         forceSSL = true;
