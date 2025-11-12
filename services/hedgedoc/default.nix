@@ -13,6 +13,12 @@
       useSSL = false;
       allowEmailRegister = false;
       allowGravatar = false;
+      allowAnonymous = true;
+      allowAnonymousEdits = true;
+      allowFreeURL = true;
+      disableNoteCreation = false;
+      defaultPermission = "freely";
+
       allowOrigin = [
         "localhost"
         "hedgedoc.johann-hackler.com"
