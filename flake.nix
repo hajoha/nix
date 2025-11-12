@@ -128,6 +128,13 @@
             sops-nix.nixosModules.sops
           ];
         };
+        nixlms = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixlms/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
       };
 
       formatter.${system} = pkgs.nixfmt-tree;
