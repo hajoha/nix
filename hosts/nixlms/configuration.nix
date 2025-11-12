@@ -18,7 +18,7 @@
   fileSystems."/".device = "/dev/root";
   boot.loader.grub.enable = false;
   systemd.services."sys-kernel-debug.mount".enable = false;
-    environment.systemPackages = [
+  environment.systemPackages = [
     pkgs.socat
   ];
   programs.nix-ld = {
@@ -34,24 +34,24 @@
       alsa-lib
     ];
   };
-networking.firewall.enable = false;
+  networking.firewall.enable = false;
 
-#  networking.firewall.allowedTCPPorts = [
-#    9000
-#    9090
-#    3483
-#    49152
-#    58251
-#    57881
-#  ];
-#  networking.firewall.allowedUDPPorts = [
-#    3483
-#    49837
-#    50119
-#    50119
-#    59110
-#    1900
-#    5353
-#  ];
+  #  networking.firewall.allowedTCPPorts = [
+  #    9000
+  #    9090
+  #    3483
+  #    49152
+  #    58251
+  #    57881
+  #  ];
+  #  networking.firewall.allowedUDPPorts = [
+  #    3483
+  #    49837
+  #    50119
+  #    50119
+  #    59110
+  #    1900
+  #    5353
+  #  ];
   system.stateVersion = "24.05";
 }
