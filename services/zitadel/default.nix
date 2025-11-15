@@ -28,7 +28,7 @@
       Database = {
         # Postgres is the default database of ZITADEL
         postgres = {
-          Host = "10.60.0.20"; # ZITADEL_DATABASE_POSTGRES_HOST
+          Host = "10.60.1.20"; # ZITADEL_DATABASE_POSTGRES_HOST
           Port = "5432"; # ZITADEL_DATABASE_POSTGRES_PORT
           Database = "zitadel"; # ZITADEL_DATABASE_POSTGRES_DATABASE
           MaxOpenConns = "25";

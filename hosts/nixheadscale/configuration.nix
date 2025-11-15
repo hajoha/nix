@@ -22,6 +22,7 @@
   environment.systemPackages = [
     pkgs.unixtools.netstat
     pkgs.tailscale
+    pkgs.tshark
   ];
 
   # enable the tailscale service
@@ -83,5 +84,6 @@
     3000
     8080
   ];
+  networking.nameservers = [ "10.60.1.16" ];
   system.stateVersion = "24.05";
 }

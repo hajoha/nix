@@ -8,6 +8,8 @@ keys:
   - &nixzitadel age1l2v88kf7xew0ud8z06hr23r36kzxm833l338u8ku44xrn7due96q27vgqy
   - &nixheadscale age1r8yfrag9k269xzvyjp8z2p9kl97v55xaruzhl5ylql7g5z0f0cssk2yn23
   - &nixhedgedoc age1s6mwpas3nql8ve3pvrna0ecpd5gve2cem7c0yvzg4fe8r4dnc9jqm7ug7f
+  - &nixgrafana age1sj998jequkhv0qqrx8futqvemy75080guz7zna0v6kz5hvtfxv6qtacary
+  - &nixinflux age12pdk27hcxvk8fgc7r0rtt8l4tzjaghppgj3suyuz4vuqzlnft43sa6cjsy
 creation_rules:
   - path_regex: hosts/nixadguard/secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
@@ -49,4 +51,14 @@ creation_rules:
     key_groups:
       - age:
           - *nixhedgedoc
+          - *fokus
+  - path_regex: hosts/nixgrafana/secrets/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - age:
+          - *nixgrafana
+          - *fokus
+  - path_regex: hosts/nixinflux/secrets/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - age:
+          - *nixinflux
           - *fokus

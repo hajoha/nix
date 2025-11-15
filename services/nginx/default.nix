@@ -8,7 +8,7 @@
     recommendedOptimisation = true;
     #    recommendedProxySettings = true;
     recommendedTlsSettings = true;
-    sslCiphers = "AES256+EECDH:AES256+EDH:!aNULL";
+#    sslCiphers = "AES256+EECDH:AES256+EDH:!aNULL";
     #        extraConfig = ''
     #          map \$http_upgrade \$connection_upgrade {
     #            default      upgrade;
@@ -33,7 +33,7 @@
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
-          proxyPass = "https://10.60.0.14:9200";
+          proxyPass = "https://10.60.1.14:9200";
           extraConfig = ''
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -54,7 +54,7 @@
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
-          proxyPass = "http://10.60.0.16:3000";
+          proxyPass = "http://10.60.1.16:3000";
         };
         extraConfig = ''
           if ($remote_addr !~ ^10\.60\.) {
@@ -69,7 +69,7 @@
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
-          proxyPass = "https://10.60.0.3:8006/"; # Proxmox HTTPS backend
+          proxyPass = "https://10.60.1.3:8006/"; # Proxmox HTTPS backend
         };
 
         # Only allow LAN access
@@ -79,13 +79,43 @@
           }
         '';
       };
+      "grafana.johann-hackler.com" = {
+        enableACME = true;
+        forceSSL = true;
+        acmeRoot = null;
+        locations."/" = {
+          proxyPass = "http://10.60.1.25:3000";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+          '';
+        };
+      };
+      "influxv2.johann-hackler.com" = {
+        enableACME = true;
+        forceSSL = true;
+        acmeRoot = null;
+        locations."/" = {
+          proxyPass = "http://10.60.1.26:8086";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+          '';
+        };
+      };
       "zitadel.johann-hackler.com" = {
         enableACME = true;
         forceSSL = true;
         acmeRoot = null;
         http2 = true;
         locations."/" = {
-          proxyPass = "http://10.60.0.21:8081";
+          proxyPass = "http://10.60.1.21:8081";
           proxyWebsockets = true;
           extraConfig = ''
             proxy_set_header Host $host;
@@ -108,7 +138,7 @@
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
-          proxyPass = "http://10.60.0.23:8001";
+          proxyPass = "http://10.60.1.23:8001";
           extraConfig = ''
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -118,7 +148,7 @@
 
         };
         locations."/socket.io/" = {
-          proxyPass = "http://10.60.0.23:8001";
+          proxyPass = "http://10.60.1.23:8001";
           proxyWebsockets = true;
           extraConfig = "proxy_ssl_server_name on;";
         };
@@ -129,7 +159,7 @@
         acmeRoot = null;
 
         locations."/" = {
-          proxyPass = "http://10.60.0.22:8080";
+          proxyPass = "http://10.60.1.22:8080";
           proxyWebsockets = true;
           extraConfig = ''
             proxy_set_header Upgrade $http_upgrade;
@@ -147,7 +177,7 @@
         };
 
         locations."/admin/" = {
-          proxyPass = "http://10.60.0.22:3000/admin/";
+          proxyPass = "http://10.60.1.22:3000/admin/";
           proxyWebsockets = true;
           extraConfig = ''
             proxy_set_header Upgrade $http_upgrade;

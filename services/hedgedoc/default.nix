@@ -27,7 +27,7 @@
       db = {
         database = "hedgedoc";
         dialect = "postgresql";
-        host = "10.60.0.20";
+        host = "10.60.1.20";
         port = 5432;
         username = "hedgedoc";
       };
@@ -35,7 +35,7 @@
       debug = true;
       domain = "hedgedoc.johann-hackler.com";
       email = false;
-      host = "10.60.0.23";
+      host = "10.60.1.23";
 
       oauth2 = {
         authorizationURL = "https://zitadel.johann-hackler.com/oauth/v2/authorize";

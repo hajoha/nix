@@ -6,7 +6,7 @@
     settings = {
       schema_version = 29;
       http = {
-        address = "10.60.0.16:3000";
+        address = "10.60.1.16:3000";
       };
       users = [
         {
@@ -20,14 +20,18 @@
         upstream_dns = [ "9.9.9.9" ];
         bootstrap_dns = [ "9.9.9.9" ];
       };
-      filtering = {
-        rewrites = [
-          {
-            domain = "*.bar0.foo";
-            answer = "10.60.0.17";
-          }
-        ];
-      };
+      #      filtering = {
+      #        rewrites = [
+      #          {
+      #            domain = "*.johann-hackler.com";
+      #            answer = "10.60.1.17";
+      #          }
+      #          {
+      #            domain = "johann-hackler.com";
+      #            answer = "10.60.1.17";
+      #          }
+      #        ];
+      #      };
       tls = {
         #        enabled = true;
         #force_https = true;

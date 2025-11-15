@@ -135,6 +135,20 @@
             sops-nix.nixosModules.sops
           ];
         };
+        nixinflux = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixinflux/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
+        nixgrafana = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixgrafana/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
       };
 
       formatter.${system} = pkgs.nixfmt-tree;
