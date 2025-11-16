@@ -19,8 +19,10 @@
   boot.loader.grub.enable = false;
   systemd.services."sys-kernel-debug.mount".enable = false;
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-  sops.defaultSopsFile = ./secrets/example.enc.yaml;
-  sops.secrets."api-key" = { };
+  sops.defaultSopsFile = ./secrets/adguard-creds.enc.yaml;
+  sops.secrets."ADGUARD_PASSWORD" = {
+#    owner = "adguardhome";
+   };
   environment.systemPackages = [
     pkgs.dnslookup
     pkgs.dig

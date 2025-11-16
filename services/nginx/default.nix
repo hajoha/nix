@@ -8,7 +8,7 @@
     recommendedOptimisation = true;
     #    recommendedProxySettings = true;
     recommendedTlsSettings = true;
-#    sslCiphers = "AES256+EECDH:AES256+EDH:!aNULL";
+    #    sslCiphers = "AES256+EECDH:AES256+EDH:!aNULL";
     #        extraConfig = ''
     #          map \$http_upgrade \$connection_upgrade {
     #            default      upgrade;
@@ -62,14 +62,28 @@
           }
         '';
       };
+      "openwrt.johann-hackler.com" = {
+        enableACME = true;
+        forceSSL = true;
+        acmeRoot = null;
+        locations."/" = {
+          proxyPass = "http://10.60.1.1"; # Proxmox HTTPS backend
+        };
 
+        # Only allow LAN access
+        extraConfig = ''
+          if ($remote_addr !~ ^10\.60\.) {
+            return 444;
+          }
+        '';
+      };
       # Internal-only Proxmox
       "pve1.johann-hackler.com" = {
         enableACME = true;
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
-          proxyPass = "https://10.60.1.3:8006/"; # Proxmox HTTPS backend
+          proxyPass = "https://10.60.0.3:8006/"; # Proxmox HTTPS backend
         };
 
         # Only allow LAN access

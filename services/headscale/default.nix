@@ -13,7 +13,9 @@ in
     port = 8080;
 
     settings = {
+      log.level = "false";
       server_url = "https://${domain}";
+      metrics_listen_addr = "0.0.0.0:9090";
       tls_cert_path = null;
       tls_key_path = null;
       # OIDC (Zitadel)
@@ -37,7 +39,7 @@ in
         base_domain = "dns.headscale.johann-hackler.com";
         nameservers = {
           global = [
-            "10.60.99.16"
+            "10.60.1.16"
             "1.1.1.1"
             "9.9.9.9"
           ];
