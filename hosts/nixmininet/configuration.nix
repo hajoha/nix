@@ -44,6 +44,7 @@
       p: with p; [
         distutils
         mininet-python
+        pip
       ]
     ))
   ];
