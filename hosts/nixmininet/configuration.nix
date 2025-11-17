@@ -39,6 +39,7 @@
     iperf3
     iperf2
     btop
+    uv
     (pkgs.python3.withPackages (
       p: with p; [
         distutils
