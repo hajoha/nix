@@ -1,10 +1,10 @@
-{ pkgs, ... }:
+{ pkgs, hashedPassword ? "$y$j9T$KoJZYdUoVmcHtV2WqGGDC.$w.j2Nsk3il2ynwxdYprCAU5TlN0yn70fC5qp6Rsn1H/", ... }:
 
 {
   root = {
     home = "/root";
     extraGroups = [ "wheel" ];
-    hashedPassword = "$y$j9T$KoJZYdUoVmcHtV2WqGGDC.$w.j2Nsk3il2ynwxdYprCAU5TlN0yn70fC5qp6Rsn1H/";
+    hashedPassword = hashedPassword;
     packages = with pkgs; [
       tree
       vim

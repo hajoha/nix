@@ -20,6 +20,12 @@
       url = "github:tale/headplane";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    old-nixpkgs = {
+      type = "github";
+      owner = "NixOS";
+      repo = "nixpkgs";
+      rev = "f294325aed382b66c7a188482101b0f336d1d7db";
+    };
 
   };
 
@@ -31,6 +37,7 @@
       sops-nix,
       nvf,
       headplane,
+      old-nixpkgs,
       ...
     }@inputs:
     let
@@ -47,6 +54,17 @@
           nixos-rebuild
           nixos-option
         ];
+      };
+      ryu = pkgs.callPackage ./pkgs/ryu/default.nix {
+        inherit (pkgs.python3Packages)
+          buildPythonPackage
+          setuptools
+          wheel
+          lxml
+          ncclient
+          paramiko
+          sqlalchemy
+          ;
       };
       nixosConfigurations = {
         nixmaschine = nixpkgs.lib.nixosSystem {
@@ -117,6 +135,9 @@
         };
         nixmininet = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
+          specialArgs = {
+            old-nixpkgs = old-nixpkgs.legacyPackages.${system};
+          };
           modules = [
             ./hosts/nixmininet/configuration.nix
           ];
