@@ -8,13 +8,20 @@
 let
   python39 = old-nixpkgs.python39;
 
-  myPython = python39.withPackages (ps: with ps; [
-    pip
-    setuptools
-    (import ./../../pkgs/ryu/pypi.nix {
-      inherit pkgs python39 lib fetchPypi;
-    })
-  ]);
+  myPython = python39.withPackages (
+    ps: with ps; [
+      pip
+      setuptools
+      (import ./../../pkgs/ryu/pypi.nix {
+        inherit
+          pkgs
+          python39
+          lib
+          fetchPypi
+          ;
+      })
+    ]
+  );
 in
 {
 
@@ -25,7 +32,10 @@ in
     ./../../services/ssh/root.nix
   ];
 
-  users.users = import ./../../user/root.nix { inherit pkgs; hashedPassword = "$6$FhHHCctDLMQVH7If$o5iW.2rN9Ncmoyt/hOmuTwH4/ykQnzZh3QHFyXFEPP40lcWSO0uNdeVyWpG4pnDR7hkHfWM8grglXlksZ8aTs0"; };
+  users.users = import ./../../user/root.nix {
+    inherit pkgs;
+    hashedPassword = "$6$FhHHCctDLMQVH7If$o5iW.2rN9Ncmoyt/hOmuTwH4/ykQnzZh3QHFyXFEPP40lcWSO0uNdeVyWpG4pnDR7hkHfWM8grglXlksZ8aTs0";
+  };
 
   virtualisation.lxc.enable = true;
   boot.isContainer = true;
@@ -48,16 +58,19 @@ in
 
   virtualisation.vswitch.enable = true;
 
-  environment.systemPackages = with pkgs; [
-    mininet
-    xterm
-    inetutils
-    iperf3
-    iperf2
-    btop
-    uv
-    wget
-  ] ++ [ myPython ];
+  environment.systemPackages =
+    with pkgs;
+    [
+      mininet
+      xterm
+      inetutils
+      iperf3
+      iperf2
+      btop
+      uv
+      wget
+    ]
+    ++ [ myPython ];
 
   system.stateVersion = "24.05";
 }

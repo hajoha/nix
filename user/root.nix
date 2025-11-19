@@ -1,4 +1,8 @@
-{ pkgs, hashedPassword ? "$y$j9T$KoJZYdUoVmcHtV2WqGGDC.$w.j2Nsk3il2ynwxdYprCAU5TlN0yn70fC5qp6Rsn1H/", ... }:
+{
+  pkgs,
+  hashedPassword ? "$y$j9T$KoJZYdUoVmcHtV2WqGGDC.$w.j2Nsk3il2ynwxdYprCAU5TlN0yn70fC5qp6Rsn1H/",
+  ...
+}:
 
 {
   root = {
