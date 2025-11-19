@@ -8,13 +8,14 @@
     recommendedOptimisation = true;
     #    recommendedProxySettings = true;
     recommendedTlsSettings = true;
-    #    sslCiphers = "AES256+EECDH:AES256+EDH:!aNULL";
-    #        extraConfig = ''
-    #          map \$http_upgrade \$connection_upgrade {
-    #            default      upgrade;
-    #            ""           close;
-    #          }
-    #        '';
+        sslCiphers = "AES256+EECDH:AES256+EDH:!aNULL";
+
+    appendHttpConfig = ''
+        map $http_upgrade $connection_upgrade {
+                default upgrade;
+                /'/'      close;
+        }
+    '';
     virtualHosts = {
       "johann-hackler.com" = {
         useACMEHost = "johann-hackler.com";
@@ -148,23 +149,34 @@
         #        '';
       };
       "hedgedoc.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
+#        useACMEHost = "johann-hackler.com";
+        enableACME = true;
         forceSSL = true;
         acmeRoot = null;
-        locations."/" = {
-          proxyPass = "http://10.60.1.23:8001";
-          extraConfig = ''
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto https;
-          '';
-
-        };
+        http2 = true;
         locations."/socket.io/" = {
           proxyPass = "http://10.60.1.23:8001";
           proxyWebsockets = true;
-          extraConfig = "proxy_ssl_server_name on;";
+          extraConfig = ''
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-Host $host;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection $connection_upgrade;
+            '';
+        };
+        locations."/" = {
+          proxyPass = "http://10.60.1.23:8001";
+          extraConfig = ''
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-Host $host;
+          '';
+
         };
       };
       "headscale.johann-hackler.com" = {

@@ -11,6 +11,7 @@
       port = 8001;
       protocolUseSSL = true;
       useSSL = false;
+      urlAddPort = false;
       allowEmailRegister = false;
       allowGravatar = false;
       allowAnonymous = true;
