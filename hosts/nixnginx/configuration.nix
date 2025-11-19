@@ -12,7 +12,11 @@
     ./../../services/nginx/default.nix
     ./../../services/ssh/root.nix
   ];
-  users.users = import ./../../user/root.nix { inherit pkgs; };
+  users.users = import ./../../user/root.nix { inherit pkgs; } // {
+    nginx = {
+      extraGroups = [ "acme" ];
+    };
+  };
   virtualisation.lxc.enable = true;
   boot.isContainer = true;
   fileSystems."/".device = "/dev/root";

@@ -17,7 +17,7 @@
     #        '';
     virtualHosts = {
       "johann-hackler.com" = {
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
         locations."/.well-known/webfinger" = {
@@ -29,7 +29,7 @@
 
       };
       "opencloud.johann-hackler.com" = {
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
@@ -50,7 +50,7 @@
         '';
       };
       "adguard.johann-hackler.com" = {
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
@@ -63,7 +63,7 @@
         '';
       };
       "openwrt.johann-hackler.com" = {
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
@@ -79,7 +79,7 @@
       };
       # Internal-only Proxmox
       "pve1.johann-hackler.com" = {
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
@@ -94,7 +94,7 @@
         '';
       };
       "grafana.johann-hackler.com" = {
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
@@ -109,7 +109,7 @@
         };
       };
       "influxv2.johann-hackler.com" = {
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
@@ -124,7 +124,7 @@
         };
       };
       "zitadel.johann-hackler.com" = {
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
         http2 = true;
@@ -148,7 +148,7 @@
         #        '';
       };
       "hedgedoc.johann-hackler.com" = {
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
         locations."/" = {
@@ -168,7 +168,7 @@
         };
       };
       "headscale.johann-hackler.com" = {
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
 
@@ -218,18 +218,19 @@
 
   security.acme = {
     acceptTerms = true;
-    defaults = {
+
+    certs."johann-hackler.com" = {
+      extraDomainNames = [ "*.johann-hackler.com" ];
       dnsProvider = "inwx";
       email = "joh.hackler@gmail.com";
       credentialFiles = {
-        "INWX_USERNAME_FILE" = "/run/secrets/INWX_USERNAME";
-        "INWX_PASSWORD_FILE" = "/run/secrets/INWX_PASSWORD";
+        "INWX_USERNAME_FILE" = config.sops.secrets."INWX_USERNAME".path;
+        "INWX_PASSWORD_FILE" = config.sops.secrets."INWX_PASSWORD".path;
       };
-      # We don't need to wait for propagation since this is a local DNS server
       dnsPropagationCheck = false;
     };
-
   };
+
 
   networking.firewall.allowedTCPPorts = [
     80
