@@ -51,9 +51,8 @@ jobs:
 
       - name: Rename output with commit hash + arch
         run: |
-          mkdir artifacts
-          cp result/*.tar.xz \
-            \"artifacts/nixmininet-lxc-${{ steps.meta.outputs.arch }}-${{ steps.meta.outputs.sha }}.tar.xz\"
+          mkdir -p artifacts
+          cp result/tarball/*.tar.xz "artifacts/nixmininet-lxc-${{ steps.meta.outputs.arch }}-${{ steps.meta.outputs.sha }}.tar.xz"
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')

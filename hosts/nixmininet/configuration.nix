@@ -30,8 +30,9 @@ in
   imports = [
     (modulesPath + "/virtualisation/proxmox-lxc.nix")
     ./../../services/ssh/root.nix
-  ];
 
+  ];
+  services.openssh.settings.PermitRootLogin = pkgs.lib.mkForce "yes";
   users.users = import ./../../user/root.nix {
     inherit pkgs;
     hashedPassword = "$6$FhHHCctDLMQVH7If$o5iW.2rN9Ncmoyt/hOmuTwH4/ykQnzZh3QHFyXFEPP40lcWSO0uNdeVyWpG4pnDR7hkHfWM8grglXlksZ8aTs0";
