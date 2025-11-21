@@ -37,6 +37,8 @@
         http_port = 3000;
         enforce_domain = false;
         enable_gzip = true;
+        domain = "grafana.johann-hackler.com";
+        root_url = "https://grafana.johann-hackler.com";
 
       };
       security.admin_password = "$__file{${config.sops.secrets."GRAFANA_ADMIN_PASSWORD".path}}";
