@@ -12,6 +12,7 @@ let
     ps: with ps; [
       pip
       setuptools
+      mininet-python
       (import ./../../pkgs/ryu/pypi.nix {
         inherit
           pkgs
