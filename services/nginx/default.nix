@@ -8,13 +8,13 @@
     recommendedOptimisation = true;
     #    recommendedProxySettings = true;
     recommendedTlsSettings = true;
-        sslCiphers = "AES256+EECDH:AES256+EDH:!aNULL";
+    sslCiphers = "AES256+EECDH:AES256+EDH:!aNULL";
 
     appendHttpConfig = ''
-        map $http_upgrade $connection_upgrade {
-                default upgrade;
-                /'/'      close;
-        }
+      map $http_upgrade $connection_upgrade {
+              default upgrade;
+              /'/'      close;
+      }
     '';
     virtualHosts = {
       "johann-hackler.com" = {
@@ -33,6 +33,7 @@
         useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
+        http2 = true;
         locations."/" = {
           proxyPass = "https://10.60.1.14:9200";
           extraConfig = ''
@@ -44,9 +45,28 @@
 
         };
         extraConfig = ''
-          if ($remote_addr !~ ^10\.60\.) {
-            return 444;
-          }
+                if ($remote_addr !~ ^10\.60\.) {
+                  return 444;
+                }
+
+
+
+          # Increase max upload size (required for Tus — without this, uploads over 1 MB fail)
+          client_max_body_size 10M;
+
+          # Disable buffering - essential for SSE
+          proxy_buffering off;
+          proxy_request_buffering off;
+
+          # Extend timeouts for long connections
+          proxy_read_timeout 3600s;
+          proxy_send_timeout 3600s;
+          keepalive_requests 100000;
+          keepalive_timeout 5m;
+          http2_max_concurrent_streams 512;
+
+          # Prevent nginx from trying other upstreams
+          proxy_next_upstream off;
 
         '';
       };
@@ -149,8 +169,7 @@
         #        '';
       };
       "hedgedoc.johann-hackler.com" = {
-#        useACMEHost = "johann-hackler.com";
-        enableACME = true;
+        useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
         http2 = true;
@@ -158,23 +177,23 @@
           proxyPass = "http://10.60.1.23:8001";
           proxyWebsockets = true;
           extraConfig = ''
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
-                proxy_set_header X-Forwarded-Host $host;
-                proxy_set_header Upgrade $http_upgrade;
-                proxy_set_header Connection $connection_upgrade;
-            '';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+          '';
         };
         locations."/" = {
           proxyPass = "http://10.60.1.23:8001";
           extraConfig = ''
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
-                proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $host;
           '';
 
         };

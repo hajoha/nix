@@ -35,46 +35,50 @@
     mode = "0644";
     text = ''
       directives:
-        child-src:
-          - '''self'''
-        connect-src:
-          - '''self'''
-          - 'blob:'
-          - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
-          - 'https://update.opencloud.eu/'
-          - 'https://zitadel.johann-hackler.com/'
         default-src:
-          - '''none'''
+          - "'none'"
+        child-src:
+          - "'self'"
+        connect-src:
+          - "'self'"
+          - "'blob:'"
+          - "https://raw.githubusercontent.com/opencloud-eu/awesome-apps/"
+          - "https://update.opencloud.eu/"
+          - "https://zitadel.johann-hackler.com"
         font-src:
-          - '''self'''
+          - "'self'"
         frame-ancestors:
-          - '''self'''
+          - "'self'"
         frame-src:
-          - '''self'''
-          - 'blob:'
-          - 'https://embed.diagrams.net/'
-          - 'https://docs.opencloud.eu'
-          - 'https://zitadel.johann-hackler.com/'
+          - "'self'"
+          - "'blob:'"
+          - "https://embed.diagrams.net/"
+          - "https://docs.opencloud.eu"
+          - "https://zitadel.johann-hackler.com"
         img-src:
-          - '''self'''
-          - 'data:'
-          - 'blob:'
-          - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
-          - 'https://zitadel.johann-hackler.com/'
+          - "'self'"
+          - "'data:'"
+          - "'blob:'"
+          - "https://tile.openstreetmap.org/"
+          - "https://raw.githubusercontent.com/opencloud-eu/awesome-apps/"
+          - "https://zitadel.johann-hackler.com"
         manifest-src:
-          - '''self'''
-        media-src:2
-          - '''self'''
+          - "'self'"
+        media-src:
+          - "'self'"
         object-src:
-          - '''self'''
-          - 'blob:'
+          - "'self'"
+          - "'blob:'"
         script-src:
-          - '''self'''
-          - '''unsafe-inline'''
-          - 'https://zitadel.johann-hackler.com/'
+          - "'self'"
+          - "'unsafe-inline'"
+          - "'unsafe-hashes'"
+          - "'unsafe-eval'"
+          - "https://zitadel.johann-hackler.com"
         style-src:
-          - '''self'''
-          - '''unsafe-inline'''
+          - "'self'"
+          - "'unsafe-inline'"
+          - "'unsafe-hashes'"
     '';
   };
 

@@ -53,6 +53,19 @@ in
     }
   ];
 
+  services.resolved = {
+    enable = false;
+    domains = [
+      "~."
+      "10.100.0.9"
+    ];
+    fallbackDns = [
+      "1.1.1.1#one.one.one.one"
+      "1.0.0.1#one.one.one.one"
+    ];
+    dnsovertls = "true";
+  };
+  networking.nameservers = [ "10.100.0.9" ];
   networking.defaultGateway = {
     address = "10.0.3.1";
     interface = "eth0";
@@ -68,6 +81,14 @@ in
       inetutils
       iperf3
       iperf2
+      xhost
+      dhcpcd
+      dnslookup
+      dig
+      tshark
+      dnsmasq
+      alacritty
+      nginx
       btop
       uv
       wget

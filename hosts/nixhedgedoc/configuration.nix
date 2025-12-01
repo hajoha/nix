@@ -25,6 +25,6 @@
     restartUnits = [ "hedgedoc.service" ];
   };
 
-  networking.nameservers = [ "10.60.1.16"];
+  networking.nameservers = [ "10.60.1.16" ];
   system.stateVersion = "24.05";
 }
