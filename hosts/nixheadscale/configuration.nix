@@ -45,7 +45,7 @@
 
   services.headplane = {
     enable = true;
-    debug = false;
+    debug = true;
     settings = {
       server = {
         host = "0.0.0.0";
@@ -57,9 +57,6 @@
       };
       headscale = {
         url = "https://headscale.johann-hackler.com";
-        #        url = "localhost:8080";
-        #        url = http://10.60.0.22:8080;
-        #        config_path = "${headscaleConfig}";
       };
       integration.agent = {
         enabled = true;
