@@ -7,7 +7,6 @@
 }:
 let
   python39 = old-nixpkgs.python39;
-
   myPython = python39.withPackages (
     ps: with ps; [
       pip
@@ -27,7 +26,6 @@ in
 {
 
   networking.hostName = "nix-mininet";
-
   imports = [
     (modulesPath + "/virtualisation/proxmox-lxc.nix")
     ./../../services/ssh/root.nix
@@ -41,7 +39,6 @@ in
 
   virtualisation.lxc.enable = true;
   boot.isContainer = true;
-
   fileSystems."/".device = "/dev/root";
   boot.loader.grub.enable = false;
   systemd.services."sys-kernel-debug.mount".enable = false;
@@ -52,7 +49,14 @@ in
       prefixLength = 24;
     }
   ];
+    nixpkgs.config = {
+      allowUnfree = true;
+      allowUnfreePredicate = _: true;
 
+      permittedInsecurePackages = [
+        "ciscoPacketTracer8-8.2.2"
+      ];
+    };
   services.resolved = {
     enable = false;
     domains = [
@@ -92,6 +96,7 @@ in
       btop
       uv
       wget
+      ciscoPacketTracer8
     ]
     ++ [ myPython ];
 
