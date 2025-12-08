@@ -55,7 +55,7 @@
     };
     masterKeyFile = "/run/secrets/zitadel-creds/ZITADEL_MASTERKEY";
   };
-
+  networking.nameservers = [ "10.60.1.16" ];
   networking.firewall.allowedTCPPorts = [
     8081
   ];
