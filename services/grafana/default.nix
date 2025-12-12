@@ -42,7 +42,7 @@
 
       };
       security.admin_password = "$__file{${config.sops.secrets."GRAFANA_ADMIN_PASSWORD".path}}";
-
+      security.allow_embedding = true;
       analytics.reporting_enabled = false;
     };
   };

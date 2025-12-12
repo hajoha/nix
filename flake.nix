@@ -142,6 +142,13 @@
             ./hosts/nixmininet/configuration.nix
           ];
         };
+        nixwebserver = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixwebserver/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
         nixhedgedoc = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [

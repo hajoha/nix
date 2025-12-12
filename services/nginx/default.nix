@@ -243,7 +243,29 @@
         };
 
       };
+      "web.johann-hackler.com" = {
+        useACMEHost = "johann-hackler.com";
+        forceSSL = true;
+        acmeRoot = null;
 
+        locations."/" = {
+          proxyPass = "http://10.60.1.28:80";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_set_header Host $server_name;
+            proxy_redirect http:// https://;
+            proxy_buffering off;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
+
+          '';
+
+        };
+        };
     };
   };
 
