@@ -243,13 +243,13 @@
         };
 
       };
-      "web.johann-hackler.com" = {
+      "paperless.johann-hackler.com" = {
         useACMEHost = "johann-hackler.com";
         forceSSL = true;
         acmeRoot = null;
 
         locations."/" = {
-          proxyPass = "http://10.60.1.28:80";
+          proxyPass = "http://10.60.1.30:8000";
           proxyWebsockets = true;
           extraConfig = ''
             proxy_set_header Upgrade $http_upgrade;
@@ -265,7 +265,12 @@
           '';
 
         };
-        };
+        extraConfig = ''
+          if ($remote_addr !~ ^10\.60\.) {
+            return 444;
+          }
+        '';
+      };
     };
   };
 

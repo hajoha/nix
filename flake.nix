@@ -53,6 +53,7 @@
           nixos-install
           nixos-rebuild
           nixos-option
+          mutagen
         ];
       };
       ryu = pkgs.callPackage ./pkgs/ryu/default.nix {
@@ -146,6 +147,13 @@
           system = "x86_64-linux";
           modules = [
             ./hosts/nixwebserver/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
+        nixpaperless = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixpaperless/configuration.nix
             sops-nix.nixosModules.sops
           ];
         };

@@ -30,6 +30,23 @@
 
   ];
 
+  networking = {
+    interfaces.service.ipv4 = {
+      routes = [
+        {
+          address = "10.60.0.0";
+          prefixLength = 24;
+          via = "10.60.1.1";
+        }
+      ];
+      addresses = [
+        {
+          address = "10.60.1.17";
+          prefixLength = 24;
+        }
+      ];
+    };
+  };
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.defaultSopsFile = ./secrets/inwx-creds.enc.yaml;
   sops.secrets."INWX_USERNAME" = { };

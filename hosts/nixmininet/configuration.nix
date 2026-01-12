@@ -11,6 +11,7 @@ let
     ps: with ps; [
       pip
       setuptools
+      networkx
       mininet-python
       (import ./../../pkgs/ryu/pypi.nix {
         inherit
@@ -49,14 +50,11 @@ in
       prefixLength = 24;
     }
   ];
-    nixpkgs.config = {
-      allowUnfree = true;
-      allowUnfreePredicate = _: true;
+  nixpkgs.config = {
+    allowUnfree = true;
+    allowUnfreePredicate = _: true;
 
-      permittedInsecurePackages = [
-        "ciscoPacketTracer8-8.2.2"
-      ];
-    };
+  };
   services.resolved = {
     enable = false;
     domains = [
@@ -96,7 +94,6 @@ in
       btop
       uv
       wget
-      ciscoPacketTracer8
     ]
     ++ [ myPython ];
 

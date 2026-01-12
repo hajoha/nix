@@ -10,6 +10,7 @@ keys:
   - &nixhedgedoc age1s6mwpas3nql8ve3pvrna0ecpd5gve2cem7c0yvzg4fe8r4dnc9jqm7ug7f
   - &nixgrafana age1sj998jequkhv0qqrx8futqvemy75080guz7zna0v6kz5hvtfxv6qtacary
   - &nixinflux age12pdk27hcxvk8fgc7r0rtt8l4tzjaghppgj3suyuz4vuqzlnft43sa6cjsy
+  - &nixpaperless age1cckct34a8k96kwcq7yqzruhal04pgw65yrvew6pceuhrxqeyn53slfgeak
 creation_rules:
   - path_regex: hosts/nixadguard/secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
@@ -61,4 +62,9 @@ creation_rules:
     key_groups:
       - age:
           - *nixinflux
+          - *fokus
+  - path_regex: hosts/nixpaperless/secrets/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - age:
+          - *nixpaperless
           - *fokus
