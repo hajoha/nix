@@ -35,7 +35,7 @@
   programs.ssh.extraConfig = "
 Include ${config.sops.secrets.dsp25-ssh.path}
   ";
-programs.ssh.startAgent = true;
+  programs.ssh.startAgent = true;
   networking = {
     defaultGateway = {
       address = "10.60.1.1";
@@ -50,11 +50,11 @@ programs.ssh.startAgent = true;
           }
         ];
         routes = [
-#          {
-#            address = "141.23.28.221";
-#            prefixLength = 32;
-#            via = "10.60.1.25";
-#          }
+          #          {
+          #            address = "141.23.28.221";
+          #            prefixLength = 32;
+          #            via = "10.60.1.25";
+          #          }
           {
             address = "10.60.1.0";
             prefixLength = 24;

@@ -7,6 +7,10 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nur.url = "github:nix-community/nur";
     sops-nix = {
       url = "github:Mic92/sops-nix";
@@ -36,6 +40,7 @@
       home-manager,
       sops-nix,
       nvf,
+      disko,
       headplane,
       old-nixpkgs,
       ...
@@ -53,7 +58,9 @@
           nixos-install
           nixos-rebuild
           nixos-option
+          nixos-install-tools
           mutagen
+          nixos-install
         ];
       };
       ryu = pkgs.callPackage ./pkgs/ryu/default.nix {
@@ -68,6 +75,12 @@
           ;
       };
       nixosConfigurations = {
+        nixnas = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./hosts/nixnas/configuration.nix
+          ];
+        };
         nixmaschine = nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
@@ -182,6 +195,13 @@
           system = "x86_64-linux";
           modules = [
             ./hosts/nixgrafana/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
+        nixhomeassistant = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/nixhomeassistant/configuration.nix
             sops-nix.nixosModules.sops
           ];
         };

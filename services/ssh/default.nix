@@ -11,5 +11,5 @@
       PermitRootLogin = "prohibit-password"; # "yes", "without-password", "prohibit-password", "forced-commands-only", "no"
     };
   };
-
+  networking.firewall.allowedTCPPorts = [ 22 ];
 }

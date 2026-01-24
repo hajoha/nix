@@ -6,7 +6,7 @@
     description = "Default User";
     home = "/home/mng";
     extraGroups = [ "wheel" ];
-    hashedPassword = "$y$j9T$svtRQSf0cMYgZncXlokqY.$3rHDLzmvVirnUGJ515R8795Vg09UEkPERvnuP6sRFa6";
+    hashedPassword = "$6$z8fny9TfC1DlKjUb$M17rvaZ4gfMBYmsjkjDPuMIfEguhzN84Xp4h/zLGw9itbFKiB7JuvP4G9id7MWvsAu7rmYeuoLPuZSMoywBwB1";
     packages = with pkgs; [
       tree
       vim
@@ -18,4 +18,5 @@
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIocRHpz5SimboTEV6r/YGafvLqNO5qH//VdzcInV/CB hajoha"
     ];
   };
+
 }
