@@ -1,5 +1,6 @@
 keys:
   - &fokus age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a
+  - &nixnas age1pcsgd5f5yefxk9667j40hsr8ereky6ufxhmda5dh0fzkajpzf5as9lcw36
   - &nixadguard age13xy8pp8z4snajjvxmuhgjzutrggerqafy7t48uxuperrgsa84c2scr3v8z
   - &nixcloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
   - &nixnginx age19a786mf6j8dd4p8knqz55j7hszaa8xx0u5sd738g2ws59ththu2qtnce6m
@@ -74,3 +75,8 @@ creation_rules:
       - age:
           - *nixhomeassistant
           - *fokus
+  - path_regex: services/.*\.enc.yaml$
+    key_groups:
+          - age:
+            - *nixnas
+            - *fokus
