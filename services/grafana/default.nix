@@ -14,6 +14,21 @@
     owner = "grafana";
   };
 
+  sops.secrets."dsp25-ssh" = {
+    # This ensures the decrypted file is available for the autossh session
+    path = "/etc/ssh/dsp25_ssh_config";
+  };
+
+  services.autossh.sessions = [
+    {
+      name = "dsp25-main-influx";
+      user = "root"; # Ensure root has access to the sops secret path
+      monitoringPort = 20000;
+      # We point to the path defined in sops.secrets above
+      extraArguments = "-N -T -F ${config.sops.secrets.dsp25-ssh.path} dsp25-main-influx";
+    }
+  ];
+
   services.grafana = {
     enable = true;
 
