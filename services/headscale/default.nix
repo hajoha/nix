@@ -5,7 +5,6 @@
   baseDomain,
   ...
 }:
-
 {
   # 1. SOPS Secrets Configuration
   # We define both Headscale and Headplane secrets here
@@ -30,21 +29,21 @@
   services.headscale = {
     enable = true;
     address = "0.0.0.0";
-    port = nodes.nixheadscale.port;
+    port = nodes.nix-headscale.port;
 
     settings = {
       log.level = "info";
-      server_url = "https://${nodes.nixheadscale.hostname}";
+      server_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
       metrics_listen_addr = "0.0.0.0:9090";
 
       tls_cert_path = null;
       tls_key_path = null;
 
       oidc = {
-        issuer = "https://${nodes.nixzitadel.hostname}";
+        issuer = "https://${nodes.nix-zitadel.hostname}.${baseDomain}";
         client_id = "343314794796875797";
         client_secret_path = config.sops.secrets."headplane/OIDC_CLIENT_SECRET".path;
-        redirect_url = "https://${nodes.nixheadscale.hostname}/oidc/callback";
+        redirect_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}/oidc/callback";
         scope = [
           "openid"
           "profile"
@@ -60,7 +59,7 @@
         base_domain = "vpn.${baseDomain}";
         nameservers = {
           global = [
-            nodes.nixadguard.ip
+            nodes.nix-adguard.ip
             "9.9.9.9"
           ];
         };
@@ -80,28 +79,22 @@
         cookie_secret_path = config.sops.secrets."headplane/serverCookieSecret".path;
       };
       headscale = {
-        url = "https://${nodes.nixheadscale.hostname}";
+        url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
       };
       integration.agent = {
         enabled = true;
         pre_authkey_path = config.sops.secrets."headplane/integrationAgentPreAuthkeyPath".path;
       };
       oidc = {
-        issuer = "https://${nodes.nixzitadel.hostname}";
+        issuer = "https://${nodes.nix-zitadel.hostname}.${baseDomain}";
         client_id = "343314794796875797";
         client_secret_path = config.sops.secrets."headplane/OIDC_CLIENT_SECRET".path;
         headscale_api_key_path = config.sops.secrets."headplane/oidcHeadscaleApiKey".path;
-        redirect_uri = "https://${nodes.nixheadscale.hostname}/admin/oidc/callback";
+        redirect_uri = "https://${nodes.nix-headscale.hostname}.${baseDomain}/admin/oidc/callback";
         disable_api_key_login = false;
         token_endpoint_auth_method = "client_secret_basic";
       };
     };
   };
 
-  # 4. Networking
-  networking.firewall.allowedTCPPorts = [
-    nodes.nixheadscale.port # 8080
-    3000 # Headplane UI
-    9090 # Metrics
-  ];
 }

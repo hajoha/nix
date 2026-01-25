@@ -24,7 +24,7 @@ rec {
             prefixLength = 24;
           }
         ];
-        defaultGateway.address = "10.60.50.17";
+        defaultGateway.address = "10.60.50.1";
         defaultGateway.interface = "dmz";
         firewall.allowedTCPPorts = [
           80
@@ -37,6 +37,45 @@ rec {
       port = 443;
     };
 
+    # --- Identity Provider (Zitadel) ---
+    nix-grafana = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.25";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        firewall.allowedTCPPorts = [ 3000 ];
+        # This now works because of the 'rec' keyword
+        nameservers = [ nodes.nix-adguard.ip ];
+      };
+      hostname = "grafana";
+      ip = "10.60.1.25";
+      port = 3000;
+    };
+
+    # --- Identity Provider (Zitadel) ---
+    nix-influx = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.26";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        firewall.allowedTCPPorts = [ 8086 ];
+        # This now works because of the 'rec' keyword
+        nameservers = [ nodes.nix-adguard.ip ];
+      };
+      hostname = "influxv2";
+      ip = "10.60.1.26";
+      port = 8086;
+    };
     # --- Identity Provider (Zitadel) ---
     nix-zitadel = {
       networking = {
@@ -103,22 +142,25 @@ rec {
     # --- VPN & Mesh (Headscale) ---
     nix-headscale = {
       networking = {
-        interfaces.eth0.ipv4.addresses = [
+        interfaces.service.ipv4.addresses = [
           {
-            address = "10.60.1.130";
+            address = "10.60.1.30";
             prefixLength = 24;
           }
         ];
         defaultGateway.address = "10.60.1.1";
-        defaultGateway.interface = "eth0";
+        defaultGateway.interface = "service";
         firewall.allowedTCPPorts = [
           8080
           3000
+          9090
         ];
+        nameservers = [ nodes.nix-adguard.ip ];
         firewall.allowedUDPPorts = [ 3478 ];
+
       };
       hostname = "headscale";
-      ip = "10.60.1.130";
+      ip = "10.60.1.30";
       port = 8080;
     };
 

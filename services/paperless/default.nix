@@ -64,7 +64,7 @@
               provider_id = "zitadel";
               name = "Zitadel";
               client_id = "351648507242807573";
-              settings.server_url = "https://${nodes.nixzitadel.hostname}/.well-known/openid-configuration";
+              settings.server_url = "https://${nodes.nix-zitadel.hostname}/.well-known/openid-configuration";
             }
           ];
         };

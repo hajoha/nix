@@ -62,6 +62,20 @@ in
         '';
       };
 
+      "default" = {
+        default = true; # This makes it the catch-all
+        rejectSSL = true; # Drops SSL handshakes for unknown domains
+        locations."/".extraConfig = ''
+          return 444; # "Connection Closed Without Response"
+        '';
+      };
+      "openwrt.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "http://10.60.1.1";
+      };
+
       # --- AdGuard ---
       "${nodes.nix-adguard.hostname}.${baseDomain}" = {
         useACMEHost = baseDomain;
@@ -77,6 +91,26 @@ in
         http2 = true;
         locations."/" = commonProxy // {
           proxyPass = "http://${nodes.nix-zitadel.ip}:8081";
+          # Notice the ''$ to escape Nginx variables from Nix interpolation
+          extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
+        };
+      };
+      "${nodes.nix-influx.hostname}.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        http2 = true;
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-influx.ip}:${toString nodes.nix-influx.port}";
+          # Notice the ''$ to escape Nginx variables from Nix interpolation
+          extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
+        };
+      };
+      "${nodes.nix-grafana.hostname}.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        http2 = true;
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-grafana.ip}:${toString nodes.nix-grafana.port}";
           # Notice the ''$ to escape Nginx variables from Nix interpolation
           extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
         };
@@ -120,7 +154,7 @@ in
       };
 
       # --- Headscale ---
-      "headscale.${baseDomain}" = {
+      "${nodes.nix-headscale.hostname}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
         locations."/" = commonProxy // {
