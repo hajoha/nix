@@ -1,5 +1,5 @@
 {
-  description = "Homelab nix configurations";
+  description = "Homelab NixOS LXC Infrastructure";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -7,17 +7,8 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    disko = {
-      url = "github:nix-community/disko";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    nur.url = "github:nix-community/nur";
     sops-nix = {
       url = "github:Mic92/sops-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    nvf = {
-      url = "github:NotAShelf/nvf";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     headplane = {
@@ -38,8 +29,6 @@
       nixpkgs,
       home-manager,
       sops-nix,
-      nvf,
-      disko,
       headplane,
       old-nixpkgs,
       ...
@@ -47,62 +36,55 @@
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
-      pkgs = import nixpkgs { inherit system; };
 
-      # Helper for standard service containers
-      # This looks for logic in ./services/<name>/default.nix
-      mkService = name: folder: extraModules: lib.nixosSystem {
+      # 1. Import the central network map
+      network = import ./network.nix;
+      
+      # 2. Extract variables for local scope to fix "undefined variable" errors
+      nodes = network.nodes;
+      baseDomain = network.baseDomain;
+
+      # 3. Unified LXC Generator
+      # name: The key from network.nix (e.g., "nix-nginx")
+      # servicePath: Path to the default.nix of the service
+      # extraModules: List of additional modules (overlays, headplane, etc.)
+      mkLXC = name: servicePath: extraModules: lib.nixosSystem {
         inherit system;
-        specialArgs = { inherit self inputs; };
+        specialArgs = { inherit inputs nodes baseDomain self; };
         modules = [
-          ./services/${folder}/default.nix
-          sops-nix.nixosModules.sops
+          # Base profile for Proxmox LXC plumbing
+          ./modules/profiles/lxc-base.nix 
+          
+          # The service logic
+          servicePath 
+          
+          # Global secrets management
+          sops-nix.nixosModules.sops 
+          
           {
-            boot.isContainer = true;
-            networking.useDHCP = false;
-            system.stateVersion = "25.11";
+            # Apply networking from network.nix automatically
+            networking = nodes.${name}.networking;
+
+            # Ensure SOPS can use the host's SSH key for decryption inside LXC
+            sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+            
+            # Disable documentation to keep container size small
+            documentation.enable = false;
+            documentation.nixos.enable = false;
           }
         ] ++ extraModules;
       };
 
     in
     {
-      # Custom Packages
-      packages.${system}.default = pkgs.mkShellNoCC {
-        packages = with pkgs; [
-          nixos-generators
-          nixos-install
-          nixos-rebuild
-          nixos-option
-          nixos-install-tools
-          mutagen
-          sops
-        ];
-      };
-
-      ryu = pkgs.callPackage ./pkgs/ryu/default.nix {
-        inherit (pkgs.python3Packages)
-          buildPythonPackage
-          setuptools
-          wheel
-          lxml
-          ncclient
-          paramiko
-          sqlalchemy
-          ;
-      };
-
       nixosConfigurations = {
         # --- PHYSICAL HOSTS ---
-
-        # Hypervisor (NAS)
         nixnas = lib.nixosSystem {
           inherit system;
-          specialArgs = { inherit self inputs; };
+          specialArgs = { inherit self inputs nodes baseDomain; };
           modules = [ ./hosts/nixnas/configuration.nix ];
         };
 
-        # Desktop
         nixmaschine = lib.nixosSystem {
           inherit system;
           specialArgs = { inherit self inputs; };
@@ -117,29 +99,27 @@
           ];
         };
 
-        # --- SERVICE CONTAINERS (GENERATED) ---
+        # --- LXC SERVICE CONTAINERS ---
+        # Syntax: name = mkLXC "network-key" ./service-path [extra-modules];
 
-        nixadguard      = mkService "nixadguard"      "adguardhome" [];
-        nixpostgres     = mkService "nixpostgres"     "postgres" [];
-        nixzitadel      = mkService "nixzitadel"      "zitadel" [];
-        nixpaperless    = mkService "nixpaperless"    "paperless" [];
-        nixhedgedoc     = mkService "nixhedgedoc"     "hedgedoc" [];
-        nixlms          = mkService "nixlms"          "lms" [];
-        nixinflux       = mkService "nixinflux"       "influxv2" [];
-        nixgrafana      = mkService "nixgrafana"      "grafana" [];
-        nixhomeassistant = mkService "nixhomeassistant" "home-assistant" [];
-        nixwebserver    = mkService "nixwebserver"    "nginx" []; # Assuming webserver uses nginx logic
-        nixnginx        = mkService "nixnginx"        "nginx" [];
-#        nixcloud        = mkService "nixcloud"        "nextcloud" [];
-#        nixnetbox       = mkService "nixnetbox"       "netbox" [];
+        nix-adguard       = mkLXC "nix-adguard"       ./services/adguardhome/default.nix [];
+        nix-postgres      = mkLXC "nix-postgres"      ./services/postgres/default.nix [];
+        nix-zitadel       = mkLXC "nix-zitadel"       ./services/zitadel/default.nix [];
+        nix-paperless     = mkLXC "nix-paperless"     ./services/paperless/default.nix [];
+        nix-hedgedoc      = mkLXC "nix-hedgedoc"      ./services/hedgedoc/default.nix [];
+        nix-influx        = mkLXC "nix-influx"        ./services/influxv2/default.nix [];
+        nix-grafana       = mkLXC "nix-grafana"       ./services/grafana/default.nix [];
+        nix-home-assistant = mkLXC "nix-home-assistant" ./services/home-assistant/default.nix [];
+        nix-nginx         = mkLXC "nix-nginx"         ./services/nginx/default.nix [];
+        nix-netbox        = mkLXC "nix-netbox"        ./services/netbox/default.nix [];
 
-        # Special Case: Headscale (Requires specific modules)
-        nixheadscale = mkService "nixheadscale" "headscale" [
+        # Headscale with Headplane UI & Overlays
+        nix-headscale = mkLXC "nix-headscale" ./services/headscale/default.nix [
           headplane.nixosModules.headplane
           { nixpkgs.overlays = [ headplane.overlays.default ]; }
         ];
 
-        # Special Case: Mininet (Requires old-nixpkgs)
+        # Specialized VM (Non-LXC)
         nixmininet = lib.nixosSystem {
           inherit system;
           specialArgs = {
@@ -150,6 +130,15 @@
         };
       };
 
-      formatter.${system} = pkgs.nixfmt-tree;
+      # Formatting tool
+      formatter.${system} = nixpkgs.legacyPackages.${system}.nixfmt-rfc-style;
+
+      # Development Shell
+      devShells.${system}.default = nixpkgs.legacyPackages.${system}.mkShell {
+        packages = with nixpkgs.legacyPackages.${system}; [
+          sops
+          age
+        ];
+      };
     };
 }

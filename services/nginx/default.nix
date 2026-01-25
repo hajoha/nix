@@ -1,352 +1,161 @@
-{ config, pkgs, ... }:
+{ config, pkgs, nodes, baseDomain, ... }:
 
+let
+  commonProxy = {
+    proxyWebsockets = true;
+    extraConfig = ''
+      proxy_set_header Host ''$host;
+      proxy_set_header X-Real-IP ''$remote_addr;
+      proxy_set_header X-Forwarded-For ''$proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto ''$scheme;
+      proxy_set_header X-Forwarded-Host ''$host;
+    '';
+  };
+
+  lanOnly = ''
+    if (''$remote_addr !~ ^(10\.60\.|172\.16\.0\.)) {
+      return 444;
+    }
+  '';
+in
 {
+
+
+sops.defaultSopsFile = ./secrets.enc.yaml;
+
+  # 2. Tell sops-nix which keys to decrypt
+  sops.secrets = {
+    "INWX_USERNAME" = { owner = "nginx"; };
+    "INWX_PASSWORD" = { owner = "nginx"; };
+  };
   services.nginx = {
     enable = true;
-    logError = "stderr debug";
     recommendedGzipSettings = true;
     recommendedOptimisation = true;
-    #    recommendedProxySettings = true;
     recommendedTlsSettings = true;
-    sslCiphers = "AES256+EECDH:AES256+EDH:!aNULL";
 
     appendHttpConfig = ''
-      map $http_upgrade $connection_upgrade {
-              default upgrade;
-              /'/'      close;
+      map ''$http_upgrade ''$connection_upgrade {
+          default upgrade;
+          # Escaped empty string for Nginx
+          '''       close;
       }
     '';
+
     virtualHosts = {
-      "johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
+      # --- Root Domain (Webfinger for Zitadel) ---
+      "${baseDomain}" = {
+        useACMEHost = baseDomain;
         forceSSL = true;
-        acmeRoot = null;
-        locations."/.well-known/webfinger" = {
-          extraConfig = ''
-            add_header Content-Type application/jrd+json;
-            return 200 '{"subject":"acct:info@johann-hackler.com","links":[{"rel":"http://openid.net/specs/connect/1.0/issuer","href":"https://zitadel.johann-hackler.com"}]}';
-          '';
-        };
-
+        locations."/.well-known/webfinger".extraConfig = ''
+          add_header Content-Type application/jrd+json;
+          return 200 '{"subject":"acct:info@${baseDomain}","links":[{"rel":"http://openid.net/specs/connect/1.0/issuer","href":"https://${nodes.nix-zitadel.hostname}"}]}';
+        '';
       };
-      "opencloud.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
+
+      # --- AdGuard ---
+      "${nodes.nix-adguard.hostname}" = {
+        useACMEHost = baseDomain;
         forceSSL = true;
-        acmeRoot = null;
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "http://${nodes.nix-adguard.ip}:${toString nodes.nix-adguard.port}";
+      };
+
+      # --- Zitadel ---
+      "${nodes.nix-zitadel.hostname}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
         http2 = true;
-        locations."/" = {
-          proxyPass = "https://10.60.1.14:9200";
-          extraConfig = ''
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-          '';
-
-        };
-        extraConfig = ''
-                if ($remote_addr !~ ^10\.60\.) {
-                  return 444;
-                }
-
-
-
-          # Increase max upload size (required for Tus — without this, uploads over 1 MB fail)
-          client_max_body_size 10M;
-
-          # Disable buffering - essential for SSE
-          proxy_buffering off;
-          proxy_request_buffering off;
-
-          # Extend timeouts for long connections
-          proxy_read_timeout 3600s;
-          proxy_send_timeout 3600s;
-          keepalive_requests 100000;
-          keepalive_timeout 5m;
-          http2_max_concurrent_streams 512;
-
-          # Prevent nginx from trying other upstreams
-          proxy_next_upstream off;
-
-        '';
-      };
-      "adguard.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
-        forceSSL = true;
-        acmeRoot = null;
-        locations."/" = {
-          proxyPass = "http://10.60.1.16:3000";
-        };
-        extraConfig = ''
-          if ($remote_addr !~ ^10\.60\.) {
-            return 444;
-          }
-        '';
-      };
-      "openwrt.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
-        forceSSL = true;
-        acmeRoot = null;
-        locations."/" = {
-          proxyPass = "http://10.60.1.1"; # Proxmox HTTPS backend
-        };
-
-        # Only allow LAN access
-        extraConfig = ''
-          if ($remote_addr !~ ^10\.60\.) {
-            return 444;
-          }
-        '';
-      };
-      # Internal-only Proxmox
-      "pve1.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
-        forceSSL = true;
-        acmeRoot = null;
-        locations."/" = {
-          proxyPass = "https://10.60.0.3:8006/"; # Proxmox HTTPS backend
-        };
-
-        # Only allow LAN access
-        extraConfig = ''
-          if ($remote_addr !~ ^10\.60\.) {
-            return 444;
-          }
-        '';
-      };
-      "grafana.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
-        forceSSL = true;
-        acmeRoot = null;
-        locations."/" = {
-          proxyPass = "http://10.60.1.25:3000";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-          '';
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-zitadel.ip}:8081";
+          # Notice the ''$ to escape Nginx variables from Nix interpolation
+          extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
         };
       };
-      "influxv2.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
+
+      # --- HedgeDoc ---
+      "${nodes.nix-hedgedoc.hostname}" = {
+        useACMEHost = baseDomain;
         forceSSL = true;
-        acmeRoot = null;
-        locations."/" = {
-          proxyPass = "http://10.60.1.26:8086";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-          '';
-        };
-      };
-      "zitadel.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
-        forceSSL = true;
-        acmeRoot = null;
         http2 = true;
-        locations."/" = {
-          proxyPass = "http://10.60.1.21:8081";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Host $host;
-            proxy_set_header X-Forwarded-Proto https;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-Port 443;
-          '';
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-hedgedoc.ip}:${toString nodes.nix-hedgedoc.port}";
         };
-        # Only allow LAN access
-        #        extraConfig = ''
-        #          if ($remote_addr !~ ^10\.60\.) {
-        #            return 444;
-        #          }
-        #        '';
-      };
-      "hedgedoc.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
-        forceSSL = true;
-        acmeRoot = null;
-        http2 = true;
-        locations."/socket.io/" = {
-          proxyPass = "http://10.60.1.23:8001";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-Host $host;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection $connection_upgrade;
+        locations."/socket.io/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-hedgedoc.ip}:${toString nodes.nix-hedgedoc.port}";
+          extraConfig = commonProxy.extraConfig + ''
+            proxy_set_header Upgrade ''$http_upgrade;
+            proxy_set_header Connection ''$connection_upgrade;
           '';
-        };
-        locations."/" = {
-          proxyPass = "http://10.60.1.23:8001";
-          extraConfig = ''
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-Host $host;
-          '';
-
         };
       };
-      "headscale.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
+
+      # --- Paperless ---
+      "${nodes.nix-paperless.hostname}" = {
+        useACMEHost = baseDomain;
         forceSSL = true;
-        acmeRoot = null;
-
-        locations."/" = {
-          proxyPass = "http://10.60.1.22:8080";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection $connection_upgrade;
-            proxy_set_header Host $server_name;
-            proxy_redirect http:// https://;
-            proxy_buffering off;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
-
-          '';
-
+        extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-paperless.ip}:${toString nodes.nix-paperless.port}";
         };
-
-        locations."/admin/" = {
-          proxyPass = "http://10.60.1.22:3000/admin/";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection $connection_upgrade;
-            proxy_set_header Host $host;
-            proxy_redirect http:// https://;
-            proxy_buffering off;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-          '';
-        };
-
-        locations."/admin" = {
-          extraConfig = ''
-            return 301 /admin/;
-          '';
-        };
-
-      };
-      "paperless.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
-        forceSSL = true;
-        acmeRoot = null;
-
-        locations."/" = {
-          proxyPass = "http://10.60.1.30:8000";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection $connection_upgrade;
-            proxy_set_header Host $server_name;
-            proxy_redirect http:// https://;
-            proxy_buffering off;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
-
-          '';
-
-        };
-        extraConfig = ''
-          if ($remote_addr !~ ^10\.60\.) {
-            return 444;
-          }
-        '';
       };
 
-      "music-assistant.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
+      # --- Home Assistant ---
+      "${nodes.nix-homeassistant.hostname}" = {
+        useACMEHost = baseDomain;
         forceSSL = true;
-        acmeRoot = null;
+        extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-homeassistant.ip}:${toString nodes.nix-homeassistant.port}";
+        };
+      };
 
-        locations."/" = {
-          proxyPass = "http://10.60.1.32:8095";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection $connection_upgrade;
-            proxy_set_header Host $server_name;
-            proxy_redirect http:// https://;
+      # --- Headscale ---
+      "headscale.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-headscale.ip}:8080";
+          extraConfig = commonProxy.extraConfig + ''
             proxy_buffering off;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
             add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
           '';
-
         };
-        extraConfig = ''
-          if ($remote_addr !~ ^10\.60\.) {
-            return 444;
-          }
-        '';
+        locations."/admin/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-headscale.ip}:3000/admin/";
+        };
+        locations."/admin".extraConfig = "return 301 /admin/ ;";
       };
 
-      "homeassistant.johann-hackler.com" = {
-        useACMEHost = "johann-hackler.com";
+      # --- External Hosts (Non-Containers) ---
+      "pve1.${baseDomain}" = {
+        useACMEHost = baseDomain;
         forceSSL = true;
-        acmeRoot = null;
-
-        locations."/" = {
-          proxyPass = "http://10.60.1.32:8123";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection $connection_upgrade;
-            proxy_set_header Host $server_name;
-            proxy_redirect http:// https://;
-            proxy_buffering off;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
-          '';
-
-        };
-        extraConfig = ''
-          if ($remote_addr !~ ^10\.60\.) {
-            return 444;
-          }
-        '';
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "https://10.60.0.3:8006/";
       };
     };
   };
 
-  security.acme = {
-    acceptTerms = true;
+  # ... (ACME and Firewall remain the same) ...
+security.acme = {
+  acceptTerms = true;
+  defaults.group = "nginx"; # This allows the nginx group to read the certs
 
-    certs."johann-hackler.com" = {
-      extraDomainNames = [ "*.johann-hackler.com" ];
-      dnsProvider = "inwx";
-      email = "joh.hackler@gmail.com";
-      credentialFiles = {
-        "INWX_USERNAME_FILE" = config.sops.secrets."INWX_USERNAME".path;
-        "INWX_PASSWORD_FILE" = config.sops.secrets."INWX_PASSWORD".path;
-      };
-      dnsPropagationCheck = false;
+  certs."${baseDomain}" = {
+    extraDomainNames = [ "*.${baseDomain}" ];
+    dnsProvider = "inwx";
+    email = "joh.hackler@gmail.com";
+
+    # This ensures Nginx reloads whenever the certificate is renewed
+    reloadServices = [ "nginx.service" ];
+
+    credentialFiles = {
+      "INWX_USERNAME_FILE" = config.sops.secrets."INWX_USERNAME".path;
+      "INWX_PASSWORD_FILE" = config.sops.secrets."INWX_PASSWORD".path;
     };
+    dnsPropagationCheck = false;
   };
-
-  networking.firewall.allowedTCPPorts = [
-    80
-    443
-  ];
+};
+  networking.firewall.allowedTCPPorts = [ 80 443 ];
 }

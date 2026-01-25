@@ -1,5 +1,4 @@
-{ config, pkgs, ... }:
-
+{ config, pkgs, lib, nodes, baseDomain, ... }:
 {
   services.adguardhome = {
     enable = true;
@@ -7,14 +6,12 @@
     settings = {
       schema_version = 29;
       http = {
-        # Changed from 10.60.1.16 to 0.0.0.0 so it binds to the
-        # container's internal eth0 (172.16.0.10)
+        # Binds to 0.0.0.0 so it is accessible on 10.60.1.53:3000
         address = "0.0.0.0:3000";
       };
       users = [
         {
           name = "mng";
-          # Tip: In the future, move this hash to a sops-nix secret
           password = "$2y$10$Ru/pd3y5UhFifHbwgX.gXOVL9s65EHi9JaoHbYapR3ftL1mFJSd3";
         }
       ];
@@ -32,12 +29,12 @@
         rewrites = [
           {
             domain = "*.johann-hackler.com";
-            # Changed to point to the Nginx Container's internal IP
-            answer = "172.16.0.2";
+            # Now points to the Nginx LXC's IP from network.nix
+            answer = "${nodes.nix-nginx.ip}";
           }
           {
             domain = "johann-hackler.com";
-            answer = "172.16.0.2";
+            answer = "${nodes.nix-nginx.ip}";
           }
         ];
         protection_enabled = true;
@@ -46,17 +43,11 @@
     };
   };
 
-  # Since this is a container, we disable resolved to avoid
-  # port 53 conflicts with AdGuard inside the container.
+  # Disable systemd-resolved to prevent port 53 conflicts
   services.resolved.enable = false;
 
-  # Networking for the container
-  networking = {
-    firewall = {
-      enable = true;
-      allowedTCPPorts = [ 53 3000 ];
-      allowedUDPPorts = [ 53 ];
-    };
-  };
+  # Note: networking.firewall is now handled by mkLXC + network.nix
+  # so it is omitted here to keep the service file clean.
+
   system.stateVersion = "25.11";
 }
