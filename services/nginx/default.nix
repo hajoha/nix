@@ -63,7 +63,7 @@ in
       };
 
       # --- AdGuard ---
-      "${nodes.nix-adguard.hostname}" = {
+      "${nodes.nix-adguard.hostname}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
         extraConfig = lanOnly;
@@ -71,7 +71,7 @@ in
       };
 
       # --- Zitadel ---
-      "${nodes.nix-zitadel.hostname}" = {
+      "${nodes.nix-zitadel.hostname}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
         http2 = true;
@@ -83,7 +83,7 @@ in
       };
 
       # --- HedgeDoc ---
-      "${nodes.nix-hedgedoc.hostname}" = {
+      "${nodes.nix-hedgedoc.hostname}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
         http2 = true;
@@ -100,7 +100,7 @@ in
       };
 
       # --- Paperless ---
-      "${nodes.nix-paperless.hostname}" = {
+      "${nodes.nix-paperless.hostname}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
         extraConfig = lanOnly;
@@ -110,7 +110,7 @@ in
       };
 
       # --- Home Assistant ---
-      "${nodes.nix-homeassistant.hostname}" = {
+      "${nodes.nix-homeassistant.hostname}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
         extraConfig = lanOnly;
