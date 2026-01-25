@@ -55,7 +55,7 @@ creation_rules:
       - age: [*nixinflux, *nixgrafana, *fokus]
 
   # Home Automation
-  - path_regex: services/home-assistant/.*\.enc\.yaml$
+  - path_regex: services/homeassistant/.*\.enc\.yaml$
     key_groups:
       - age: [*nixhomeassistant, *fokus]
 

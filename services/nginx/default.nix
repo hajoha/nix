@@ -19,7 +19,7 @@ let
   };
 
   lanOnly = ''
-    if (''$remote_addr !~ ^(10\.60\.|172\.16\.0\.)) {
+    if (''$remote_addr !~ ^(10\.60\.)) {
       return 444;
     }
   '';
@@ -150,6 +150,19 @@ in
         extraConfig = lanOnly;
         locations."/" = commonProxy // {
           proxyPass = "http://${nodes.nix-homeassistant.ip}:${toString nodes.nix-homeassistant.port}";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_set_header Host $server_name;
+            proxy_redirect http:// https://;
+            proxy_buffering off;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
+          '';
+
         };
       };
 

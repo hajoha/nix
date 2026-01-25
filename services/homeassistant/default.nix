@@ -48,6 +48,10 @@
     ];
 
     config = {
+      logger = {
+        default = "info"; # Keep general logs clean
+
+      };
       default_config = { };
       homeassistant = {
         name = "XHain";

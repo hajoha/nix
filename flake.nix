@@ -127,7 +127,7 @@
         nix-hedgedoc = mkLXC "nix-hedgedoc" ./services/hedgedoc/default.nix [ ];
         nix-influx = mkLXC "nix-influx" ./services/influxv2/default.nix [ ];
         nix-grafana = mkLXC "nix-grafana" ./services/grafana/default.nix [ ];
-        nix-home-assistant = mkLXC "nix-home-assistant" ./services/home-assistant/default.nix [ ];
+        nix-homeassistant = mkLXC "nix-homeassistant" ./services/homeassistant/default.nix [ ];
         nix-nginx = mkLXC "nix-nginx" ./services/nginx/default.nix [ ];
         nix-netbox = mkLXC "nix-netbox" ./services/netbox/default.nix [ ];
 

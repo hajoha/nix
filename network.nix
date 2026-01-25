@@ -167,36 +167,44 @@ rec {
     # --- Document Management (Paperless) ---
     nix-paperless = {
       networking = {
-        interfaces.eth0.ipv4.addresses = [
+        interfaces.service.ipv4.addresses = [
           {
-            address = "10.60.1.125";
+            address = "10.60.1.32";
             prefixLength = 24;
           }
         ];
+        nameservers = [ nodes.nix-adguard.ip ];
         defaultGateway.address = "10.60.1.1";
-        defaultGateway.interface = "eth0";
+        defaultGateway.interface = "service";
         firewall.allowedTCPPorts = [ 28981 ];
       };
       hostname = "paperless";
-      ip = "10.60.1.125";
+      ip = "10.60.1.32";
       port = 28981;
     };
 
     # --- Smart Home (Home Assistant) ---
     nix-homeassistant = {
       networking = {
-        interfaces.eth0.ipv4.addresses = [
+        interfaces.service.ipv4.addresses = [
           {
-            address = "10.60.1.140";
+            address = "10.60.1.33";
             prefixLength = 24;
           }
         ];
+        interfaces.wireguard.ipv4.addresses = [
+          {
+            address = "10.60.99.33";
+            prefixLength = 24;
+          }
+        ];
+        nameservers = [ nodes.nix-adguard.ip ];
         defaultGateway.address = "10.60.1.1";
-        defaultGateway.interface = "eth0";
+        defaultGateway.interface = "service";
         firewall.allowedTCPPorts = [ 8123 ];
       };
       hostname = "homeassistant";
-      ip = "10.60.1.140";
+      ip = "10.60.1.33";
       port = 8123;
     };
 

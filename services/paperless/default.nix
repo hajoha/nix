@@ -22,18 +22,18 @@
   services.paperless = {
     enable = true;
     address = "0.0.0.0";
-    port = nodes.nixpaperless.port;
+    port = nodes.nix-paperless.port;
     consumptionDirIsPublic = true;
 
     # Environment file for DB_PASS and other standard secrets
     environmentFile = config.sops.secrets."paperless-creds/env".path;
 
     settings = {
-      PAPERLESS_URL = "https://${nodes.nixpaperless.hostname}";
+      PAPERLESS_URL = "https://${nodes.nix-paperless.hostname}.${baseDomain}";
 
       # Database connection to central Postgres
-      PAPERLESS_DBHOST = nodes.nixpostgres.ip;
-      PAPERLESS_DBPORT = toString nodes.nixpostgres.port;
+      PAPERLESS_DBHOST = nodes.nix-postgres.ip;
+      PAPERLESS_DBPORT = toString nodes.nix-postgres.port;
       PAPERLESS_DBUSER = "paperless"; # Ensure this user exists in Postgres
 
       # Tika & Gotenberg (Running locally in this same container)
@@ -64,7 +64,7 @@
               provider_id = "zitadel";
               name = "Zitadel";
               client_id = "351648507242807573";
-              settings.server_url = "https://${nodes.nix-zitadel.hostname}/.well-known/openid-configuration";
+              settings.server_url = "https://${nodes.nix-zitadel.hostname}.${baseDomain}/.well-known/openid-configuration";
             }
           ];
         };
@@ -98,5 +98,5 @@
     RuntimeDirectory = "gotenberg";
   };
 
-  networking.firewall.allowedTCPPorts = [ nodes.nixpaperless.port ];
+  networking.firewall.allowedTCPPorts = [ nodes.nix-paperless.port ];
 }
