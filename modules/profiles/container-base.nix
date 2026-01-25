@@ -1,4 +1,5 @@
-{ lib, ... }: {
+{ lib, ... }:
+{
   boot.isContainer = true;
   networking.useDHCP = false;
   sops.defaultSopsFile = ./secrets.enc.yaml;

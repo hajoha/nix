@@ -5,10 +5,31 @@ rec {
     # --- Edge Proxy ---
     nix-nginx = {
       networking = {
-        interfaces.eth0.ipv4.addresses = [{ address = "10.60.1.17"; prefixLength = 24; }];
-                defaultGateway.address = "10.60.1.1";
-        defaultGateway.interface = "eth0";
-        firewall.allowedTCPPorts = [ 80 443 ];
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.17";
+            prefixLength = 24;
+          }
+        ];
+        interfaces.service.ipv4.routes = [
+          {
+            address = "10.60.0.0";
+            prefixLength = 24;
+            via = "10.60.1.1";
+          }
+        ];
+        interfaces.dmz.ipv4.addresses = [
+          {
+            address = "10.60.50.17";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.50.17";
+        defaultGateway.interface = "dmz";
+        firewall.allowedTCPPorts = [
+          80
+          443
+        ];
         nameservers = [ nodes.nix-adguard.ip ];
       };
       hostname = "nginx";
@@ -19,7 +40,12 @@ rec {
     # --- Identity Provider (Zitadel) ---
     nix-zitadel = {
       networking = {
-        interfaces.service.ipv4.addresses = [{ address = "10.60.1.21"; prefixLength = 24; }];
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.21";
+            prefixLength = 24;
+          }
+        ];
         defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "service";
         firewall.allowedTCPPorts = [ 8081 ];
@@ -34,7 +60,12 @@ rec {
     # --- Database (Postgres) ---
     nix-postgres = {
       networking = {
-        interfaces.service.ipv4.addresses = [{ address = "10.60.1.20"; prefixLength = 24; }];
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.20";
+            prefixLength = 24;
+          }
+        ];
         defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "service";
         firewall.allowedTCPPorts = [ 5432 ];
@@ -47,11 +78,21 @@ rec {
     # --- DNS & Ad-Blocking ---
     nix-adguard = {
       networking = {
-        interfaces.service
-        .ipv4.addresses = [{ address = "10.60.1.16"; prefixLength = 24; }];
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.16";
+            prefixLength = 24;
+          }
+        ];
+
         defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "service";
-        firewall.allowedTCPPorts = [ 53 80 443 3000 ];
+        firewall.allowedTCPPorts = [
+          53
+          80
+          443
+          3000
+        ];
         firewall.allowedUDPPorts = [ 53 ];
       };
       hostname = "adguard";
@@ -62,10 +103,18 @@ rec {
     # --- VPN & Mesh (Headscale) ---
     nix-headscale = {
       networking = {
-        interfaces.eth0.ipv4.addresses = [{ address = "10.60.1.130"; prefixLength = 24; }];
-                defaultGateway.address = "10.60.1.1";
+        interfaces.eth0.ipv4.addresses = [
+          {
+            address = "10.60.1.130";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "eth0";
-        firewall.allowedTCPPorts = [ 8080 3000 ];
+        firewall.allowedTCPPorts = [
+          8080
+          3000
+        ];
         firewall.allowedUDPPorts = [ 3478 ];
       };
       hostname = "headscale";
@@ -76,8 +125,13 @@ rec {
     # --- Document Management (Paperless) ---
     nix-paperless = {
       networking = {
-        interfaces.eth0.ipv4.addresses = [{ address = "10.60.1.125"; prefixLength = 24; }];
-                defaultGateway.address = "10.60.1.1";
+        interfaces.eth0.ipv4.addresses = [
+          {
+            address = "10.60.1.125";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "eth0";
         firewall.allowedTCPPorts = [ 28981 ];
       };
@@ -89,8 +143,13 @@ rec {
     # --- Smart Home (Home Assistant) ---
     nix-homeassistant = {
       networking = {
-        interfaces.eth0.ipv4.addresses = [{ address = "10.60.1.140"; prefixLength = 24; }];
-                defaultGateway.address = "10.60.1.1";
+        interfaces.eth0.ipv4.addresses = [
+          {
+            address = "10.60.1.140";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "eth0";
         firewall.allowedTCPPorts = [ 8123 ];
       };
@@ -102,13 +161,18 @@ rec {
     # --- Knowledge Base (HedgeDoc) ---
     nix-hedgedoc = {
       networking = {
-        interfaces.eth0.ipv4.addresses = [{ address = "10.60.1.127"; prefixLength = 24; }];
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.23";
+            prefixLength = 24;
+          }
+        ];
         defaultGateway.address = "10.60.1.1";
-        defaultGateway.interface = "eth0";
+        defaultGateway.interface = "service";
         firewall.allowedTCPPorts = [ 3005 ];
       };
       hostname = "hedgedoc";
-      ip = "10.60.1.127";
+      ip = "10.60.1.23";
       port = 3005;
     };
   };

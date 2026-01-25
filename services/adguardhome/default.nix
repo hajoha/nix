@@ -1,4 +1,11 @@
-{ config, pkgs, lib, nodes, baseDomain, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  nodes,
+  baseDomain,
+  ...
+}:
 {
   services.adguardhome = {
     enable = true;
@@ -18,13 +25,22 @@
       dns = {
         bind_hosts = [ "0.0.0.0" ];
         port = 53;
-        upstream_dns = [ "9.9.9.9" "1.1.1.1" ];
+        upstream_dns = [
+          "9.9.9.9"
+          "1.1.1.1"
+        ];
         bootstrap_dns = [ "9.9.9.9" ];
       };
-      filters = map (url: { enabled = true; inherit url; }) [
-        "https://adguardteam.github.io/HostlistsRegistry/assets/filter_9.txt"
-        "https://adguardteam.github.io/HostlistsRegistry/assets/filter_11.txt"
-      ];
+      filters =
+        map
+          (url: {
+            enabled = true;
+            inherit url;
+          })
+          [
+            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_9.txt"
+            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_11.txt"
+          ];
       filtering = {
         rewrites = [
           {

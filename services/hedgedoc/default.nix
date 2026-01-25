@@ -1,4 +1,11 @@
-{ config, pkgs, lib, nodes, baseDomain, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  nodes,
+  baseDomain,
+  ...
+}:
 {
   # 1. SOPS Configuration
   sops.defaultSopsFile = ./secrets.enc.yaml;

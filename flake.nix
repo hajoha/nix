@@ -39,7 +39,7 @@
 
       # 1. Import the central network map
       network = import ./network.nix;
-      
+
       # 2. Extract variables for local scope to fix "undefined variable" errors
       nodes = network.nodes;
       baseDomain = network.baseDomain;
@@ -48,32 +48,43 @@
       # name: The key from network.nix (e.g., "nix-nginx")
       # servicePath: Path to the default.nix of the service
       # extraModules: List of additional modules (overlays, headplane, etc.)
-      mkLXC = name: servicePath: extraModules: lib.nixosSystem {
-        inherit system;
-        specialArgs = { inherit inputs nodes baseDomain self; };
-        modules = [
-          # Base profile for Proxmox LXC plumbing
-          ./modules/profiles/lxc-base.nix 
-          
-          # The service logic
-          servicePath 
-          
-          # Global secrets management
-          sops-nix.nixosModules.sops 
-          
-          {
-            # Apply networking from network.nix automatically
-            networking = nodes.${name}.networking;
+      mkLXC =
+        name: servicePath: extraModules:
+        lib.nixosSystem {
+          inherit system;
+          specialArgs = {
+            inherit
+              inputs
+              nodes
+              baseDomain
+              self
+              ;
+          };
+          modules = [
+            # Base profile for Proxmox LXC plumbing
+            ./modules/profiles/lxc-base.nix
 
-            # Ensure SOPS can use the host's SSH key for decryption inside LXC
-            sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-            
-            # Disable documentation to keep container size small
-            documentation.enable = false;
-            documentation.nixos.enable = false;
-          }
-        ] ++ extraModules;
-      };
+            # The service logic
+            servicePath
+
+            # Global secrets management
+            sops-nix.nixosModules.sops
+
+            {
+              # Apply networking from network.nix automatically
+              networking = nodes.${name}.networking;
+
+              # Ensure SOPS can use the host's SSH key for decryption inside LXC
+              sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+
+              # Disable documentation to keep container size small
+              documentation.enable = false;
+              documentation.nixos.enable = false;
+
+            }
+          ]
+          ++ extraModules;
+        };
 
     in
     {
@@ -81,7 +92,14 @@
         # --- PHYSICAL HOSTS ---
         nixnas = lib.nixosSystem {
           inherit system;
-          specialArgs = { inherit self inputs nodes baseDomain; };
+          specialArgs = {
+            inherit
+              self
+              inputs
+              nodes
+              baseDomain
+              ;
+          };
           modules = [ ./hosts/nixnas/configuration.nix ];
         };
 
@@ -102,16 +120,16 @@
         # --- LXC SERVICE CONTAINERS ---
         # Syntax: name = mkLXC "network-key" ./service-path [extra-modules];
 
-        nix-adguard       = mkLXC "nix-adguard"       ./services/adguardhome/default.nix [];
-        nix-postgres      = mkLXC "nix-postgres"      ./services/postgres/default.nix [];
-        nix-zitadel       = mkLXC "nix-zitadel"       ./services/zitadel/default.nix [];
-        nix-paperless     = mkLXC "nix-paperless"     ./services/paperless/default.nix [];
-        nix-hedgedoc      = mkLXC "nix-hedgedoc"      ./services/hedgedoc/default.nix [];
-        nix-influx        = mkLXC "nix-influx"        ./services/influxv2/default.nix [];
-        nix-grafana       = mkLXC "nix-grafana"       ./services/grafana/default.nix [];
-        nix-home-assistant = mkLXC "nix-home-assistant" ./services/home-assistant/default.nix [];
-        nix-nginx         = mkLXC "nix-nginx"         ./services/nginx/default.nix [];
-        nix-netbox        = mkLXC "nix-netbox"        ./services/netbox/default.nix [];
+        nix-adguard = mkLXC "nix-adguard" ./services/adguardhome/default.nix [ ];
+        nix-postgres = mkLXC "nix-postgres" ./services/postgres/default.nix [ ];
+        nix-zitadel = mkLXC "nix-zitadel" ./services/zitadel/default.nix [ ];
+        nix-paperless = mkLXC "nix-paperless" ./services/paperless/default.nix [ ];
+        nix-hedgedoc = mkLXC "nix-hedgedoc" ./services/hedgedoc/default.nix [ ];
+        nix-influx = mkLXC "nix-influx" ./services/influxv2/default.nix [ ];
+        nix-grafana = mkLXC "nix-grafana" ./services/grafana/default.nix [ ];
+        nix-home-assistant = mkLXC "nix-home-assistant" ./services/home-assistant/default.nix [ ];
+        nix-nginx = mkLXC "nix-nginx" ./services/nginx/default.nix [ ];
+        nix-netbox = mkLXC "nix-netbox" ./services/netbox/default.nix [ ];
 
         # Headscale with Headplane UI & Overlays
         nix-headscale = mkLXC "nix-headscale" ./services/headscale/default.nix [

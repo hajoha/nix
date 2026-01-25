@@ -1,4 +1,10 @@
-{ config, lib, pkgs, nodes, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  nodes,
+  ...
+}:
 
 {
   # 1. SOPS Configuration

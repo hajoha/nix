@@ -1,12 +1,28 @@
-{ config, pkgs, nodes, baseDomain, ... }:
+{
+  config,
+  pkgs,
+  nodes,
+  baseDomain,
+  ...
+}:
 
 {
   # 1. SOPS Configuration
   sops.defaultSopsFile = ./secrets.enc.yaml;
   sops.secrets = {
-    "zitadel/masterkey" = { owner = "zitadel"; };
-    "zitadel/env" = { owner = "zitadel"; };
-    "zitadel/postgres_admin_password" = { owner = "zitadel"; };
+    "zitadel/masterkey" = {
+      owner = "zitadel";
+    };
+    "zitadel/env" = {
+      owner = "zitadel";
+      restartUnits = [ "zitadel.service" ];
+    };
+    "zitadel/postgres_admin_password" = {
+      owner = "zitadel";
+    };
+    "zitadel/POSTGRES_ZITADEL_PASSWORD" = {
+      owner = "zitadel";
+    };
   };
 
   services.zitadel = {
@@ -52,7 +68,7 @@
             existingDatabase = "postgres";
             username = "admin";
             # Path to the admin password secret
-            Password = config.sops.secrets."zitadel/postgres_admin_password".path;
+            Password = "/run/secrets/zitadel/POSTGRES_ZITADEL_PASSWORD";
             ssl.mode = "disable";
           };
         };
@@ -61,6 +77,7 @@
   };
 
   # DNS: Use your internal AdGuard instance for resolution
+  systemd.services.zitadel.serviceConfig.EnvironmentFile = config.sops.secrets."zitadel/env".path;
 
   # State version for the container
   system.stateVersion = "25.11";

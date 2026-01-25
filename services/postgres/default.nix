@@ -1,4 +1,10 @@
-{ config, pkgs, lib, nodes, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  nodes,
+  ...
+}:
 
 {
   services.postgresql = {
@@ -17,12 +23,30 @@
 
     # Automated user creation
     ensureUsers = [
-      { name = "zitadel";  ensureDBOwnership = true; }
-      { name = "hass";     ensureDBOwnership = true; }
-      { name = "hedgedoc"; ensureDBOwnership = true; }
-      { name = "paperless"; ensureDBOwnership = true; }
-      { name = "netbox";    ensureDBOwnership = true; }
-      { name = "admin";    ensureClauses.superuser = true; }
+      {
+        name = "zitadel";
+        ensureDBOwnership = true;
+      }
+      {
+        name = "hass";
+        ensureDBOwnership = true;
+      }
+      {
+        name = "hedgedoc";
+        ensureDBOwnership = true;
+      }
+      {
+        name = "paperless";
+        ensureDBOwnership = true;
+      }
+      {
+        name = "netbox";
+        ensureDBOwnership = true;
+      }
+      {
+        name = "admin";
+        ensureClauses.superuser = true;
+      }
     ];
 
     # Security: Subnet-based access control

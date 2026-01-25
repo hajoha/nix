@@ -1,11 +1,22 @@
-{ config, pkgs, lib, nodes, baseDomain, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  nodes,
+  baseDomain,
+  ...
+}:
 
 {
   # 1. SOPS Configuration
   sops.defaultSopsFile = ./secrets.enc.yaml;
   sops.secrets = {
-    "paperless-creds/env" = { owner = "paperless"; };
-    "paperless-creds/oidcSecret" = { owner = "paperless"; };
+    "paperless-creds/env" = {
+      owner = "paperless";
+    };
+    "paperless-creds/oidcSecret" = {
+      owner = "paperless";
+    };
   };
 
   services.paperless = {
@@ -32,7 +43,10 @@
 
       # Document Processing
       PAPERLESS_OCR_LANGUAGE = "deu+eng";
-      PAPERLESS_CONSUMER_IGNORE_PATTERN = [ ".DS_STORE/*" "desktop.ini" ];
+      PAPERLESS_CONSUMER_IGNORE_PATTERN = [
+        ".DS_STORE/*"
+        "desktop.ini"
+      ];
       PAPERLESS_OCR_USER_ARGS = {
         optimize = 1;
         pdfa_image_compression = "lossless";

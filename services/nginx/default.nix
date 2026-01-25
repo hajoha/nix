@@ -1,4 +1,10 @@
-{ config, pkgs, nodes, baseDomain, ... }:
+{
+  config,
+  pkgs,
+  nodes,
+  baseDomain,
+  ...
+}:
 
 let
   commonProxy = {
@@ -20,13 +26,16 @@ let
 in
 {
 
-
-sops.defaultSopsFile = ./secrets.enc.yaml;
+  sops.defaultSopsFile = ./secrets.enc.yaml;
 
   # 2. Tell sops-nix which keys to decrypt
   sops.secrets = {
-    "INWX_USERNAME" = { owner = "nginx"; };
-    "INWX_PASSWORD" = { owner = "nginx"; };
+    "INWX_USERNAME" = {
+      owner = "nginx";
+    };
+    "INWX_PASSWORD" = {
+      owner = "nginx";
+    };
   };
   services.nginx = {
     enable = true;
@@ -138,24 +147,27 @@ sops.defaultSopsFile = ./secrets.enc.yaml;
   };
 
   # ... (ACME and Firewall remain the same) ...
-security.acme = {
-  acceptTerms = true;
-  defaults.group = "nginx"; # This allows the nginx group to read the certs
+  security.acme = {
+    acceptTerms = true;
+    defaults.group = "nginx"; # This allows the nginx group to read the certs
 
-  certs."${baseDomain}" = {
-    extraDomainNames = [ "*.${baseDomain}" ];
-    dnsProvider = "inwx";
-    email = "joh.hackler@gmail.com";
+    certs."${baseDomain}" = {
+      extraDomainNames = [ "*.${baseDomain}" ];
+      dnsProvider = "inwx";
+      email = "joh.hackler@gmail.com";
 
-    # This ensures Nginx reloads whenever the certificate is renewed
-    reloadServices = [ "nginx.service" ];
+      # This ensures Nginx reloads whenever the certificate is renewed
+      reloadServices = [ "nginx.service" ];
 
-    credentialFiles = {
-      "INWX_USERNAME_FILE" = config.sops.secrets."INWX_USERNAME".path;
-      "INWX_PASSWORD_FILE" = config.sops.secrets."INWX_PASSWORD".path;
+      credentialFiles = {
+        "INWX_USERNAME_FILE" = config.sops.secrets."INWX_USERNAME".path;
+        "INWX_PASSWORD_FILE" = config.sops.secrets."INWX_PASSWORD".path;
+      };
+      dnsPropagationCheck = false;
     };
-    dnsPropagationCheck = false;
   };
-};
-  networking.firewall.allowedTCPPorts = [ 80 443 ];
+  networking.firewall.allowedTCPPorts = [
+    80
+    443
+  ];
 }

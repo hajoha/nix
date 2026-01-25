@@ -1,9 +1,17 @@
-{ config, pkgs, modulesPath, nodes, baseDomain, ... }:
+{
+  config,
+  pkgs,
+  modulesPath,
+  nodes,
+  baseDomain,
+  ...
+}:
 
 {
   imports = [
     (modulesPath + "/virtualisation/proxmox-lxc.nix")
     ./../../user/root.nix # Standardize your root/admin user
+    ./../../services/ssh/root.nix
   ];
 
   # Proxmox LXC Essentials
@@ -15,11 +23,19 @@
   systemd.services."sys-kernel-debug.mount".enable = false;
 
   # Shared Nix Settings
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   # Common tools for debugging
   environment.systemPackages = with pkgs; [
-    vim wget curl htop tcpdump dnsutils
+    vim
+    wget
+    curl
+    htop
+    tcpdump
+    dnsutils
   ];
 
   system.stateVersion = "25.11";

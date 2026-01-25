@@ -1,4 +1,10 @@
-{ config, pkgs, nodes, baseDomain, ... }:
+{
+  config,
+  pkgs,
+  nodes,
+  baseDomain,
+  ...
+}:
 
 {
   # 1. SOPS Secrets Configuration
@@ -6,10 +12,18 @@
   sops.defaultSopsFile = ./secrets.enc.yaml;
 
   sops.secrets = {
-    "headplane/OIDC_CLIENT_SECRET" = { owner = "headscale"; };
-    "headplane/serverCookieSecret" = { owner = "headscale"; };
-    "headplane/integrationAgentPreAuthkeyPath" = { owner = "headscale"; };
-    "headplane/oidcHeadscaleApiKey" = { owner = "headscale"; };
+    "headplane/OIDC_CLIENT_SECRET" = {
+      owner = "headscale";
+    };
+    "headplane/serverCookieSecret" = {
+      owner = "headscale";
+    };
+    "headplane/integrationAgentPreAuthkeyPath" = {
+      owner = "headscale";
+    };
+    "headplane/oidcHeadscaleApiKey" = {
+      owner = "headscale";
+    };
   };
 
   # 2. Core Headscale Service
@@ -31,7 +45,11 @@
         client_id = "343314794796875797";
         client_secret_path = config.sops.secrets."headplane/OIDC_CLIENT_SECRET".path;
         redirect_url = "https://${nodes.nixheadscale.hostname}/oidc/callback";
-        scope = [ "openid" "profile" "email" ];
+        scope = [
+          "openid"
+          "profile"
+          "email"
+        ];
         extra_params = {
           domain_hint = baseDomain;
         };
@@ -83,7 +101,7 @@
   # 4. Networking
   networking.firewall.allowedTCPPorts = [
     nodes.nixheadscale.port # 8080
-    3000                    # Headplane UI
-    9090                    # Metrics
+    3000 # Headplane UI
+    9090 # Metrics
   ];
 }

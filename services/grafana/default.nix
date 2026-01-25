@@ -1,4 +1,11 @@
-{ config, lib, pkgs, nodes, baseDomain, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  nodes,
+  baseDomain,
+  ...
+}:
 
 {
   # 1. SOPS Configuration

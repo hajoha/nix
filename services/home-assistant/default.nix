@@ -1,4 +1,10 @@
-{ config, lib, pkgs, nodes, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  nodes,
+  ...
+}:
 
 {
   # 1. SOPS Configuration
@@ -14,7 +20,14 @@
 
   services.music-assistant = {
     enable = true;
-    providers = [ "tidal" "soundcloud" "builtin_player" "hass" "hass_players" "dlna" ];
+    providers = [
+      "tidal"
+      "soundcloud"
+      "builtin_player"
+      "hass"
+      "hass_players"
+      "dlna"
+    ];
   };
 
   services.home-assistant = {
@@ -22,9 +35,16 @@
     extraPackages = ps: with ps; [ psycopg2 ];
 
     extraComponents = [
-      "analytics" "google_translate" "met" "radio_browser"
-      "shopping_list" "isal" "recorder" "matter"
-      "dwd_weather_warnings" "music_assistant"
+      "analytics"
+      "google_translate"
+      "met"
+      "radio_browser"
+      "shopping_list"
+      "isal"
+      "recorder"
+      "matter"
+      "dwd_weather_warnings"
+      "music_assistant"
     ];
 
     config = {
@@ -40,8 +60,8 @@
         trusted_proxies = [
           "127.0.0.1"
           "::1"
-          nodes.nix-nginx.ip  # Dynamic IP of your Proxy from network.nix
-          "10.60.1.0/24"      # Your physical LAN range
+          nodes.nix-nginx.ip # Dynamic IP of your Proxy from network.nix
+          "10.60.1.0/24" # Your physical LAN range
         ];
       };
 
@@ -52,7 +72,10 @@
   };
 
   # Permissions for Zigbee/Z-Wave USB sticks passed through from Proxmox
-  users.users.hass.extraGroups = [ "dialout" "tty" ];
+  users.users.hass.extraGroups = [
+    "dialout"
+    "tty"
+  ];
 
   # Ensure secrets are decrypted before HASS starts
   systemd.services.home-assistant.after = [ "sops-nix.service" ];
