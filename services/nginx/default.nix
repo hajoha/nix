@@ -19,7 +19,7 @@ let
   };
 
   lanOnly = ''
-    if (''$remote_addr !~ ^(10\.60\.)) {
+    if (''$remote_addr !~ ^(10\.60\.|100\.64\.)) {
       return 444;
     }
   '';
@@ -164,6 +164,30 @@ in
           '';
 
         };
+        locations."/login" = commonProxy // {
+          return = "301 https://${nodes.nix-homeassistant.hostname}.${baseDomain}/auth/oidc/welcome";
+        };
+      };
+      "musicassistant.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-homeassistant.ip}:8095";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_set_header Host $server_name;
+            proxy_redirect http:// https://;
+            proxy_buffering off;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
+          '';
+
+        };
       };
 
       # --- Headscale ---
@@ -189,6 +213,15 @@ in
         forceSSL = true;
         extraConfig = lanOnly;
         locations."/".proxyPass = "https://10.60.0.3:8006/";
+      };
+
+      "${nodes.nix-unifi-controller.hostname}.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "https://${nodes.nix-unifi-controller.ip}:${toString nodes.nix-unifi-controller.port}";
+        };
       };
     };
   };

@@ -2,6 +2,9 @@
   description = "Homelab NixOS LXC Infrastructure";
 
   inputs = {
+    otbr-pr = {
+      url = "github:mrene/nixpkgs/openthread-border-router";
+    };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -30,6 +33,7 @@
       home-manager,
       sops-nix,
       headplane,
+      otbr-pr,
       old-nixpkgs,
       ...
     }@inputs:
@@ -127,7 +131,19 @@
         nix-hedgedoc = mkLXC "nix-hedgedoc" ./services/hedgedoc/default.nix [ ];
         nix-influx = mkLXC "nix-influx" ./services/influxv2/default.nix [ ];
         nix-grafana = mkLXC "nix-grafana" ./services/grafana/default.nix [ ];
-        nix-homeassistant = mkLXC "nix-homeassistant" ./services/homeassistant/default.nix [ ];
+        nix-unifi-controller = mkLXC "nix-unifi-controller" ./services/unifi-controller/default.nix [ ];
+        nix-homeassistant = mkLXC "nix-homeassistant" ./services/homeassistant/default.nix [
+          # This pulls the actual .nix file from the PR branch
+          "${inputs.otbr-pr}/nixos/modules/services/home-automation/openthread-border-router.nix"
+          {
+            nixpkgs.overlays = [
+              (final: prev: {
+                # This maps the package from the PR branch into the current pkgs
+                openthread-border-router = inputs.otbr-pr.legacyPackages.${system}.openthread-border-router;
+              })
+            ];
+          }
+        ];
         nix-nginx = mkLXC "nix-nginx" ./services/nginx/default.nix [ ];
         nix-netbox = mkLXC "nix-netbox" ./services/netbox/default.nix [ ];
 
@@ -156,6 +172,7 @@
         packages = with nixpkgs.legacyPackages.${system}; [
           sops
           age
+          nixos-rebuild
         ];
       };
     };
