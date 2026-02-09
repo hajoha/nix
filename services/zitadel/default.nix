@@ -1,8 +1,36 @@
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  nodes,
+  baseDomain,
+  ...
+}:
 
 {
+  # 1. SOPS Configuration
+  sops.defaultSopsFile = ./secrets.enc.yaml;
+  sops.secrets = {
+    "zitadel/masterkey" = {
+      owner = "zitadel";
+    };
+    "zitadel/env" = {
+      owner = "zitadel";
+      restartUnits = [ "zitadel.service" ];
+    };
+    "zitadel/postgres_admin_password" = {
+      owner = "zitadel";
+    };
+    "zitadel/POSTGRES_ZITADEL_PASSWORD" = {
+      owner = "zitadel";
+    };
+  };
+
   services.zitadel = {
     enable = true;
+
+    # Path to the decrypted masterkey
+    masterKeyFile = config.sops.secrets."zitadel/masterkey".path;
+
     steps = {
       FirstInstance = {
         InstanceName = "ZITADEL";
@@ -15,48 +43,42 @@
 
     settings = {
       log.level = "info";
-      Port = 8081;
-      ExternalDomain = "zitadel.johann-hackler.com";
+      Port = nodes.nix-zitadel.port; # 8081
+      # Must use FQDN for browser redirects and cookie safety
+      ExternalDomain = "${nodes.nix-zitadel.hostname}.${baseDomain}";
       ExternalSecure = true;
+
+      # TLS is terminated at the nix-nginx gateway
       tlsMode = "disabled";
       TLS.Enabled = false;
-      Cache = {
-        AuthRequests = {
-          Size = 100;
-        };
-      };
+
       Database = {
-        # Postgres is the default database of ZITADEL
         postgres = {
-          Host = "10.60.1.20"; # ZITADEL_DATABASE_POSTGRES_HOST
-          Port = "5432"; # ZITADEL_DATABASE_POSTGRES_PORT
-          Database = "zitadel"; # ZITADEL_DATABASE_POSTGRES_DATABASE
-          MaxOpenConns = "25";
-          MaxConnLifetime = "1h";
-          MaxConnIdleTime = "5m";
+          # Connect to the central nix-postgres node
+          Host = nodes.nix-postgres.ip;
+          Port = nodes.nix-postgres.port;
+          Database = "zitadel";
+
           User = {
-            Username = "zitadel"; # ZITADEL_DATABASE_POSTGRES_USER_USERNAME
+            Username = "zitadel";
             SSL.Mode = "disable";
           };
 
           admin = {
-            existingDatabase = "postgres"; # ZITADEL_DATABASE_POSTGRES_ADMIN_EXISTINGDATABASE
-            username = "admin"; # ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME
-            Password = "/run/secrets/POSTGRES_ZITADEL_PASSWORD"; # mapped from secret
-            ssl = {
-              mode = "disable"; # ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE
-              rootCert = ""; # ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_ROOTCERT
-              cert = ""; # ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_CERT
-              key = ""; # ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_KEY
-            };
+            existingDatabase = "postgres";
+            username = "admin";
+            # Path to the admin password secret
+            Password = "/run/secrets/zitadel/POSTGRES_ZITADEL_PASSWORD";
+            ssl.mode = "disable";
           };
         };
       };
     };
-    masterKeyFile = "/run/secrets/zitadel-creds/ZITADEL_MASTERKEY";
   };
-  networking.nameservers = [ "10.60.1.16" ];
-  networking.firewall.allowedTCPPorts = [
-    8081
-  ];
+
+  # DNS: Use your internal AdGuard instance for resolution
+  systemd.services.zitadel.serviceConfig.EnvironmentFile = config.sops.secrets."zitadel/env".path;
+
+  # State version for the container
+  system.stateVersion = "25.11";
 }

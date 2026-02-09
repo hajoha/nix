@@ -1,4 +1,11 @@
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  nodes,
+  baseDomain,
+  ...
+}:
 {
   services.adguardhome = {
     enable = true;
@@ -6,7 +13,8 @@
     settings = {
       schema_version = 29;
       http = {
-        address = "10.60.1.16:3000";
+        # Binds to 0.0.0.0 so it is accessible on 10.60.1.53:3000
+        address = "0.0.0.0:3000";
       };
       users = [
         {
@@ -17,49 +25,45 @@
       dns = {
         bind_hosts = [ "0.0.0.0" ];
         port = 53;
-        upstream_dns = [ "9.9.9.9" ];
+        upstream_dns = [
+          "9.9.9.9"
+          "1.1.1.1"
+        ];
         bootstrap_dns = [ "9.9.9.9" ];
       };
       filters =
         map
           (url: {
             enabled = true;
-            url = url;
+            inherit url;
           })
           [
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_9.txt" # The Big List of Hacked Malware Web Sites
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_11.txt" # malicious url blocklist
+            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_9.txt"
+            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_11.txt"
           ];
       filtering = {
         rewrites = [
           {
             domain = "*.johann-hackler.com";
-            answer = "10.60.1.17";
+            # Now points to the Nginx LXC's IP from network.nix
+            answer = "${nodes.nix-nginx.ip}";
           }
           {
             domain = "johann-hackler.com";
-            answer = "10.60.1.17";
+            answer = "${nodes.nix-nginx.ip}";
           }
         ];
         protection_enabled = true;
         filtering_enabled = true;
-        parental_enabled = false; # Parental control-based DNS requests filtering.
-        safe_search = {
-          enabled = false; # Enforcing "Safe search" option for search engines, when possible.
-        };
-      };
-      tls = {
-        #        enabled = true;
-        #force_https = true;
       };
     };
   };
 
+  # Disable systemd-resolved to prevent port 53 conflicts
   services.resolved.enable = false;
 
-  networking.firewall.allowedTCPPorts = [
-    53
-    3000
-  ];
-  networking.firewall.allowedUDPPorts = [ 53 ];
+  # Note: networking.firewall is now handled by mkLXC + network.nix
+  # so it is omitted here to keep the service file clean.
+
+  system.stateVersion = "25.11";
 }
