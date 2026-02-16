@@ -3,6 +3,7 @@
   pkgs,
   lib,
   nodes,
+  keycloakRealm,
   baseDomain,
   ...
 }:
@@ -59,11 +60,10 @@
         enabled = true;
         provider = "generic";
         # Public URLs require the FQDN for browser redirects via Nginx
-        baseURL = "https://${nodes.nix-zitadel.hostname}.${baseDomain}";
-        authorizationURL = "https://${nodes.nix-zitadel.hostname}.${baseDomain}/oauth/v2/authorize";
-        tokenURL = "https://${nodes.nix-zitadel.hostname}.${baseDomain}/oauth/v2/token";
-        userProfileURL = "https://${nodes.nix-zitadel.hostname}.${baseDomain}/oidc/v1/userinfo";
-
+        baseURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
+        authorizationURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/auth";
+        tokenURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/token";
+        userProfileURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/userinfo";
         scope = "openid email profile";
         userProfileDisplayNameAttr = "preferred_username";
         userProfileEmailAttr = "email";

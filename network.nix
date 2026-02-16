@@ -201,6 +201,12 @@ rec {
             "nix-homeassistant.local"
           ];
         };
+        interfaces.iot.ipv4.addresses = [
+          {
+            address = "10.60.60.33";
+            prefixLength = 24;
+          }
+        ];
         interfaces.service.ipv4.addresses = [
           {
             address = "10.60.1.33";
@@ -263,42 +269,84 @@ rec {
         ];
         defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "service";
+        nameservers = [ nodes.nix-adguard.ip ];
         firewall.allowedTCPPorts = [ 3005 ];
       };
       hostname = "hedgedoc";
       ip = "10.60.1.23";
       port = 3005;
     };
-nix-unifi-controller = {
-  networking = {
-    interfaces.service.ipv4.addresses = [
-      {
-        address = "10.60.1.34";
-        prefixLength = 24;
-      }
-    ];
-    defaultGateway.address = "10.60.1.1";
-    defaultGateway.interface = "service";
-    hosts = {
-    "127.0.0.1" = [ "localhost" "nix-unifi-controller" ];
-  "::1"       = [ "localhost" "nix-unifi-controller" ];
+    nix-opencloud = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.14";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        nameservers = [ nodes.nix-adguard.ip ];
+        firewall.allowedTCPPorts = [ 9100 ];
+      };
+      hostname = "opencloud";
+      ip = "10.60.1.14";
+      port = 9200;
     };
-    # Updated Firewall Settings
-    firewall = {
-      allowedTCPPorts = [
-        8080  # Device Inform (Crucial!)
-        8443  # Default Management UI
-      ];
-      allowedUDPPorts = [
-        3478  # STUN
-        10001 # Discovery
-        19002
-      ];
+    nix-keycloak = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.22";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        firewall.allowedTCPPorts = [ 8080 ];
+        nameservers = [ nodes.nix-adguard.ip ];
+      };
+      hostname = "keycloak";
+      sub = "sso";
+      ip = "10.60.1.22";
+      port = 8080;
     };
-  };
-  hostname = "unifi";
-  ip = "10.60.1.34";
-  port = 8443;
-};
+    nix-unifi-controller = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.34";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        hosts = {
+          "127.0.0.1" = [
+            "localhost"
+            "nix-unifi-controller"
+          ];
+          "::1" = [
+            "localhost"
+            "nix-unifi-controller"
+          ];
+        };
+        # Updated Firewall Settings
+        firewall = {
+          allowedTCPPorts = [
+            8080 # Device Inform (Crucial!)
+            8443 # Default Management UI
+          ];
+          allowedUDPPorts = [
+            3478 # STUN
+            10001 # Discovery
+            19002
+          ];
+        };
+      };
+      hostname = "unifi";
+      ip = "10.60.1.34";
+      port = 8443;
+    };
   };
 }

@@ -58,7 +58,7 @@ in
         forceSSL = true;
         locations."/.well-known/webfinger".extraConfig = ''
           add_header Content-Type application/jrd+json;
-          return 200 '{"subject":"acct:info@${baseDomain}","links":[{"rel":"http://openid.net/specs/connect/1.0/issuer","href":"https://${nodes.nix-zitadel.hostname}"}]}';
+          return 200 '{"subject":"acct:info@${baseDomain}","links":[{"rel":"http://openid.net/specs/connect/1.0/issuer","href":"https://${nodes.nix-keycloak.sub}.${baseDomain}"}]}';
         '';
       };
 
@@ -82,6 +82,15 @@ in
         forceSSL = true;
         extraConfig = lanOnly;
         locations."/".proxyPass = "http://${nodes.nix-adguard.ip}:${toString nodes.nix-adguard.port}";
+      };
+      "${nodes.nix-keycloak.sub}.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+
+        locations."/" =commonProxy // {
+         proxyPass =  "http://${nodes.nix-keycloak.ip}:${toString nodes.nix-keycloak.port}";
+            extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
+       };
       };
 
       # --- Zitadel ---
@@ -205,6 +214,14 @@ in
           proxyPass = "http://${nodes.nix-headscale.ip}:3000/admin/";
         };
         locations."/admin".extraConfig = "return 301 /admin/ ;";
+      };
+      "${nodes.nix-opencloud.hostname}.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-opencloud.ip}:${toString nodes.nix-opencloud.port}";
+          # Add this line to handle the self-signed cert on the backend
+        };
       };
 
       # --- External Hosts (Non-Containers) ---

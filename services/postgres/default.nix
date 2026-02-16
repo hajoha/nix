@@ -5,8 +5,32 @@
   nodes,
   ...
 }:
+let
+  servicesWithDB = [
+    "keycloak"
+  ];
 
+  # Helper: Maps a service name to its specific sops secret configuration
+  mkSopsSecret = name: {
+    # The physical file on disk
+    sopsFile = ../${name}/postgres.enc.yaml;
+
+    # The KEY inside the encrypted YAML file
+    key = "password";
+
+    owner = "postgres";
+  };
+in
 {
+
+  sops.secrets = lib.genAttrs (map (svc: "users/${svc}") servicesWithDB) (
+    path:
+    let
+      svc = lib.last (lib.splitString "/" path);
+    in
+    mkSopsSecret svc
+  );
+
   services.postgresql = {
     enable = true;
     package = pkgs.postgresql_17;
@@ -18,8 +42,17 @@
       "hass"
       "hedgedoc"
       "paperless"
+      "keycloak"
       "netbox" # Added NetBox as well
     ];
+
+    #    ensureDatabases = servicesWithDB;
+    #    ensureUsers = map (svc: {
+    #      name = svc;
+    #      ensureDBOwnership = true;
+    #    }) servicesWithDB ++ [
+    #      { name = "admin"; ensureClauses.superuser = true; }
+    #    ];
 
     # Automated user creation
     ensureUsers = [
@@ -37,6 +70,10 @@
       }
       {
         name = "paperless";
+        ensureDBOwnership = true;
+      }
+      {
+        name = "keycloak";
         ensureDBOwnership = true;
       }
       {
@@ -71,9 +108,29 @@
       listen_addresses = "*";
     };
   };
+  systemd.services.postgresql-password-sync = {
+    description = "Sync Postgres passwords from per-service SOPS files";
+    after = [
+      "postgresql.service"
+      "sops-nix.service"
+    ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "postgres";
+      RemainAfterExit = true;
+    };
+    script = lib.concatMapStringsSep "\n" (svc: ''
+            SECRET_PATH="${config.sops.secrets."users/${svc}".path}"
+            if [ -f "$SECRET_PATH" ]; then
+              PASSWORD=$(cat "$SECRET_PATH")
 
-  # Port management is now handled by mkLXC and network.nix
-  # (No manual networking.firewall block needed here)
-
+              # Removed 'c' from -tAc. -tA makes it quiet/unaligned.
+              ${config.services.postgresql.package}/bin/psql -tA <<EOF
+                ALTER USER ${svc} WITH PASSWORD '$PASSWORD';
+      EOF
+            fi
+    '') servicesWithDB;
+  };
   system.stateVersion = "25.11";
 }

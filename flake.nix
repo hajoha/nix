@@ -6,6 +6,15 @@
       url = "github:mrene/nixpkgs/openthread-border-router";
     };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nur = {
+      url = "github:nix-community/NUR";
+    };
+
+    # Also add nvf if you haven't, since your home.nix uses it
+    nvf = {
+      url = "github:notashelf/nvf";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -43,10 +52,12 @@
 
       # 1. Import the central network map
       network = import ./network.nix;
+      pkgs = nixpkgs.legacyPackages.${system};
 
       # 2. Extract variables for local scope to fix "undefined variable" errors
       nodes = network.nodes;
       baseDomain = network.baseDomain;
+      keycloakRealm = "main";
 
       # 3. Unified LXC Generator
       # name: The key from network.nix (e.g., "nix-nginx")
@@ -61,6 +72,7 @@
               inputs
               nodes
               baseDomain
+              keycloakRealm
               self
               ;
           };
@@ -92,20 +104,26 @@
 
     in
     {
+    homeConfigurations = {
+    # Replace "hajoha" with your Ubuntu username
+    "haa" = home-manager.lib.homeManagerConfiguration {
+      inherit pkgs;
+      extraSpecialArgs = { inherit inputs; };
+      modules = [
+        # Point this to your home.nix file
+        ./hosts/nixarbeitsmaschine/home.nix
+        {
+          # Required for Ubuntu/Non-NixOS
+          targets.genericLinux.enable = true;
+          home.username = "haa";
+          home.homeDirectory = "/home/haa";
+        }
+      ];
+    };
+  };
       nixosConfigurations = {
         # --- PHYSICAL HOSTS ---
-        nixnas = lib.nixosSystem {
-          inherit system;
-          specialArgs = {
-            inherit
-              self
-              inputs
-              nodes
-              baseDomain
-              ;
-          };
-          modules = [ ./hosts/nixnas/configuration.nix ];
-        };
+
 
         nixmaschine = lib.nixosSystem {
           inherit system;
@@ -131,7 +149,10 @@
         nix-hedgedoc = mkLXC "nix-hedgedoc" ./services/hedgedoc/default.nix [ ];
         nix-influx = mkLXC "nix-influx" ./services/influxv2/default.nix [ ];
         nix-grafana = mkLXC "nix-grafana" ./services/grafana/default.nix [ ];
+        nix-keycloak = mkLXC "nix-keycloak" ./services/keycloak/default.nix [ ];
         nix-unifi-controller = mkLXC "nix-unifi-controller" ./services/unifi-controller/default.nix [ ];
+
+        nix-opencloud = mkLXC "nix-opencloud" ./services/opencloud/default.nix [ ];
         nix-homeassistant = mkLXC "nix-homeassistant" ./services/homeassistant/default.nix [
           # This pulls the actual .nix file from the PR branch
           "${inputs.otbr-pr}/nixos/modules/services/home-automation/openthread-border-router.nix"

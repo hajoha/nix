@@ -2,12 +2,17 @@
   config,
   pkgs,
   nodes,
+  keycloakRealm,
   baseDomain,
   ...
 }:
+let
+  # Construct the Keycloak Issuer URL
+  # Standard format: https://<domain>/realms/<realm-name>
+  keycloakIssuer = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
+in
 {
   # 1. SOPS Secrets Configuration
-  # We define both Headscale and Headplane secrets here
   sops.defaultSopsFile = ./secrets.enc.yaml;
 
   sops.secrets = {
@@ -40,8 +45,9 @@
       tls_key_path = null;
 
       oidc = {
-        issuer = "https://${nodes.nix-zitadel.hostname}.${baseDomain}";
-        client_id = "343314794796875797";
+        issuer = keycloakIssuer;
+        # Change this to match the 'Client ID' you create in Keycloak
+        client_id = "headplane";
         client_secret_path = config.sops.secrets."headplane/OIDC_CLIENT_SECRET".path;
         redirect_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}/oidc/callback";
         scope = [
@@ -50,7 +56,8 @@
           "email"
         ];
         extra_params = {
-          domain_hint = baseDomain;
+          # 'domain_hint' is Zitadel-specific.
+          # You can remove it or use 'kc_idp_hint' if using external IDPs in Keycloak.
         };
       };
 
@@ -75,7 +82,7 @@
       server = {
         host = "0.0.0.0";
         port = 3000;
-        cookie_secure = true; # Nginx handles SSL
+        cookie_secure = true;
         cookie_secret_path = config.sops.secrets."headplane/serverCookieSecret".path;
       };
       headscale = {
@@ -86,15 +93,19 @@
         pre_authkey_path = config.sops.secrets."headplane/integrationAgentPreAuthkeyPath".path;
       };
       oidc = {
-        issuer = "https://${nodes.nix-zitadel.hostname}.${baseDomain}";
-        client_id = "343314794796875797";
+        issuer = keycloakIssuer;
+        # Often Headplane and Headscale share a client,
+        # but you can create a separate "headplane" client if preferred.
+        client_id = "headplane";
         client_secret_path = config.sops.secrets."headplane/OIDC_CLIENT_SECRET".path;
         headscale_api_key_path = config.sops.secrets."headplane/oidcHeadscaleApiKey".path;
         redirect_uri = "https://${nodes.nix-headscale.hostname}.${baseDomain}/admin/oidc/callback";
-        disable_api_key_login = false;
+        disable_api_key_login = true;
         token_endpoint_auth_method = "client_secret_basic";
+role_map = {
+         "headplane-admin" = "owner";
+        };
       };
     };
   };
-
 }

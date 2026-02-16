@@ -3,6 +3,7 @@
   lib,
   pkgs,
   nodes,
+  keycloakRealm,
   baseDomain,
   ...
 }:
@@ -12,7 +13,7 @@
   sops.secrets."hass_db_url" = {
     owner = "hass";
   };
-  sops.secrets."zitadel_client_id" = {
+  sops.secrets."client_id" = {
     owner = "hass";
   };
 
@@ -22,7 +23,7 @@
     path = "/var/lib/hass/secrets.yaml"; # This is the file HA reads
     content = ''
       hass_db_url: "${config.sops.placeholder.hass_db_url}"
-      zitadel_client_id: "${config.sops.placeholder.zitadel_client_id}"
+      client_id: "${config.sops.placeholder.client_id}"
     '';
   };
   # 2. Kernel & Networking Adjustments
@@ -103,10 +104,9 @@
 
       };
 
-      # OIDC Configuration for Zitadel
       auth_oidc = {
-        client_id = "!secret zitadel_client_id";
-        discovery_url = "https://${nodes.nix-zitadel.hostname}.${baseDomain}/.well-known/openid-configuration";
+        client_id = "!secret client_id";
+        discovery_url = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/.well-known/openid-configuration";
       };
 
       thread = { };
