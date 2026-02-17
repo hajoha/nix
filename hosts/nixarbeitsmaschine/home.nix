@@ -345,7 +345,6 @@
     solaar
     pdfpc
     gcc
-    inetutils
     zip
     tio
     nextcloud-client

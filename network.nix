@@ -29,13 +29,13 @@ rec {
             prefixLength = 24;
           }
         ];
-        defaultGateway.address = "10.60.50.1";
-        defaultGateway.interface = "dmz";
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
         firewall.allowedTCPPorts = [
           80
           443
         ];
-        nameservers = [ nodes.nix-adguard.ip ];
+        nameservers = [ "1.1.1.1" "9.9.9.9" ];
       };
       hostname = "nginx";
       ip = "10.60.1.17";

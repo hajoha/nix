@@ -29,14 +29,9 @@ in
   sops.defaultSopsFile = ./secrets.enc.yaml;
 
   # 2. Tell sops-nix which keys to decrypt
-  sops.secrets = {
-    "INWX_USERNAME" = {
-      owner = "nginx";
-    };
-    "INWX_PASSWORD" = {
-      owner = "nginx";
-    };
-  };
+sops.secrets."acme-inwx-env" = {
+  owner = "acme";
+};
   services.nginx = {
     enable = true;
     recommendedGzipSettings = true;
@@ -247,19 +242,16 @@ in
   security.acme = {
     acceptTerms = true;
     defaults.group = "nginx"; # This allows the nginx group to read the certs
-
+    defaults.enableDebugLogs = true;
     certs."${baseDomain}" = {
       extraDomainNames = [ "*.${baseDomain}" ];
       dnsProvider = "inwx";
-      email = "joh.hackler@gmail.com";
+      email = "acme@hackler.io";
 
       # This ensures Nginx reloads whenever the certificate is renewed
       reloadServices = [ "nginx.service" ];
 
-      credentialFiles = {
-        "INWX_USERNAME_FILE" = config.sops.secrets."INWX_USERNAME".path;
-        "INWX_PASSWORD_FILE" = config.sops.secrets."INWX_PASSWORD".path;
-      };
+      environmentFile = config.sops.secrets."acme-inwx-env".path;
       dnsPropagationCheck = false;
     };
   };
