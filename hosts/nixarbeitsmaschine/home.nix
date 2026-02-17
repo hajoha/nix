@@ -14,6 +14,7 @@ let
 in
 {
 
+  xdg.portal.enable = false;
   nixpkgs = {
     overlays = [
       inputs.nur.overlays.default
@@ -158,7 +159,7 @@ in
     enable = true;
     wrapperFeatures.gtk = true;
     extraConfig = ''
-
+      output DP-8 transform 90
       set $left h
       set $down j
       set $up k
@@ -301,20 +302,26 @@ in
         outer = 0;
       };
       bars = [ ];
-startup = [
-  # 1. Clear previous environment hangs
-  { command = "systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"; }
-  { command = "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway"; }
+      startup = [
+        # 1. Clear previous environment hangs
+        { command = "systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"; }
+        {
+          command = "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway";
+        }
 
-  # 2. Restart core services (excluding portals which we'll handle via Ubuntu)
-  { command = "systemctl --user restart pipewire wireplumber swaync"; }
+        { command = "systemctl --user restart pipewire wireplumber swaync"; }
 
-  # 3. Launch Waybar with nixGL and explicitly bypass portals
-  { command = "killall .waybar-wrapped waybar || true; GTK_USE_PORTAL=0 nixGL waybar &"; always = true; }
 
-  # 4. Workspace setup
-  { command = "swaymsg workspace 1; swaymsg layout tabbed"; }
-];
+        {
+          command = "killall .waybar-wrapped waybar || true; GTK_USE_PORTAL=0 nixGL waybar &";
+          always = true;
+        }
+{
+    command = "sh -c 'sleep 5; nm-applet --indicator & 1password --silent & opencloud &'";
+  }
+        # 4. Workspace setup
+        { command = "swaymsg workspace 1; swaymsg layout tabbed"; }
+      ];
 
     };
   };
@@ -404,17 +411,18 @@ startup = [
     #jetbrains.pycharm-professional
     #jetbrains.clion
     (pkgs.jetbrains.plugins.addPlugins pkgs.jetbrains.clion [
-    #  pkgs.jetbrains.plugins.github-copilot
+      #  pkgs.jetbrains.plugins.github-copilot
     ])
     (pkgs.jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm [
-    #  pkgs.jetbrains.plugins.github-copilot
-    #  pkgs.jetbrains.plugins.nixidea
+      #  pkgs.jetbrains.plugins.github-copilot
+      #  pkgs.jetbrains.plugins.nixidea
     ])
     android-studio
     nixfmt-rfc-style
     ollama
     wdisplays
     alacritty
+    opencloud-desktop
     #    xdg-desktop-portal
     #    xdg-desktop-portal-wlr
     #    xdg-desktop-portal-gtk
@@ -446,7 +454,6 @@ startup = [
   programs.firefox = {
     enable = true;
   };
-
 
   programs.zsh = {
     enable = true;
@@ -544,14 +551,14 @@ startup = [
     };
   };
 
-home.sessionVariables = {
-  GTK_THEME = "Adwaita:dark";
-  QT_QPA_PLATFORMTHEME = "qt5ct";
-  QT_STYLE_OVERRIDE = "kvantum";
-  # Add this line to stop Waybar from hanging on portal timeouts
-  GTK_USE_PORTAL = "0";
-};
-
+  home.sessionVariables = {
+    GTK_THEME = "Adwaita:dark";
+    QT_QPA_PLATFORMTHEME = "qt5ct";
+    QT_STYLE_OVERRIDE = "kvantum";
+    # Add this line to stop Waybar from hanging on portal timeouts
+    GTK_USE_PORTAL = "0";
+    XDG_DATA_DIRS = lib.mkForce "$HOME/.nix-profile/share:$HOME/.local/share:$XDG_DATA_DIRS:/usr/local/share:/usr/share";
+  };
   programs.waybar = {
     enable = true;
     systemd.enable = false;
@@ -563,9 +570,8 @@ home.sessionVariables = {
         mod = "dock";
         exclusive = true;
         passtrough = false;
-        output = "eDP-1";
         #        gtk-layer-shell = true;
-        height = 30;
+        height = 10;
         modules-left = [
           "sway/workspaces"
           "custom/divider"
@@ -575,7 +581,7 @@ home.sessionVariables = {
         ];
         modules-center = [ "sway/window" ];
         modules-right = [
-          #          "tray"
+
           "network"
           "custom/divider"
           "backlight"
@@ -586,23 +592,24 @@ home.sessionVariables = {
           "custom/divider"
           "clock"
           "custom/divider"
-#          "custom/notification"
+          "custom/notification"
           "custom/divider"
+          "tray"
         ];
         "sway/window" = {
           format = "{}";
         };
-#        "wlr/workspaces" = {
-#          on-scroll-up = "hyprctl dispatch workspace e+1";
-#          on-scroll-down = "hyprctl dispatch workspace e-1";
-#          all-outputs = true;
-#          on-click = "activate";
-#        };
-"sway/workspaces" = {
-  all-outputs = true;
-  on-click = "activate";
-  # Remove the hyprctl command since you are in Sway
-};
+        "wlr/workspaces" = {
+          on-scroll-up = "hyprctl dispatch workspace e+1";
+          on-scroll-down = "hyprctl dispatch workspace e-1";
+          all-outputs = true;
+          on-click = "activate";
+        };
+        "sway/workspaces" = {
+          all-outputs = true;
+          on-click = "activate";
+          # Remove the hyprctl command since you are in Sway
+        };
         battery = {
           # Show an icon that varies with capacity + percentage
           format = "{icon} {capacity}%";
@@ -646,7 +653,7 @@ home.sessionVariables = {
           device = "acpi_video0";
         };
         tray = {
-          icon-size = 13;
+          icon-size = 15;
           tooltip = false;
           spacing = 3;
         };

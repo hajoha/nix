@@ -87,10 +87,10 @@ in
         useACMEHost = baseDomain;
         forceSSL = true;
 
-        locations."/" =commonProxy // {
-         proxyPass =  "http://${nodes.nix-keycloak.ip}:${toString nodes.nix-keycloak.port}";
-            extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
-       };
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-keycloak.ip}:${toString nodes.nix-keycloak.port}";
+          extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
+        };
       };
 
       # --- Zitadel ---

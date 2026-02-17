@@ -1,14 +1,20 @@
-{ config, pkgs, nodes, baseDomain, ... }:
+{
+  config,
+  pkgs,
+  nodes,
+  baseDomain,
+  ...
+}:
 
 {
 
-users.users.keycloak = {
+  users.users.keycloak = {
     group = "keycloak";
     isNormalUser = true;
   };
-  users.groups.keycloak = {};
+  users.groups.keycloak = { };
   # 1. SOPS Secret Configuration
-sops.secrets."keycloak-env" = {
+  sops.secrets."keycloak-env" = {
     sopsFile = ./secrets.enc.yaml;
     owner = "keycloak";
     group = "keycloak";
@@ -56,7 +62,7 @@ sops.secrets."keycloak-env" = {
   };
 
   # 3. Systemd Override for LXC Compatibility
-systemd.services.keycloak = {
+  systemd.services.keycloak = {
     # This creates the directory before the service starts
     preStart = ''
       mkdir -p /var/lib/keycloak

@@ -104,26 +104,25 @@
 
     in
     {
-    homeConfigurations = {
-    # Replace "hajoha" with your Ubuntu username
-    "haa" = home-manager.lib.homeManagerConfiguration {
-      inherit pkgs;
-      extraSpecialArgs = { inherit inputs; };
-      modules = [
-        # Point this to your home.nix file
-        ./hosts/nixarbeitsmaschine/home.nix
-        {
-          # Required for Ubuntu/Non-NixOS
-          targets.genericLinux.enable = true;
-          home.username = "haa";
-          home.homeDirectory = "/home/haa";
-        }
-      ];
-    };
-  };
+      homeConfigurations = {
+        # Replace "hajoha" with your Ubuntu username
+        "haa" = home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          extraSpecialArgs = { inherit inputs; };
+          modules = [
+            # Point this to your home.nix file
+            ./hosts/nixarbeitsmaschine/home.nix
+            {
+              # Required for Ubuntu/Non-NixOS
+              targets.genericLinux.enable = true;
+              home.username = "haa";
+              home.homeDirectory = "/home/haa";
+            }
+          ];
+        };
+      };
       nixosConfigurations = {
         # --- PHYSICAL HOSTS ---
-
 
         nixmaschine = lib.nixosSystem {
           inherit system;

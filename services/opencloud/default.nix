@@ -6,7 +6,8 @@
   keycloakRealm,
   baseDomain,
   ...
-}: {
+}:
+{
   services.opencloud = {
     enable = true;
     url = "https://opencloud.johann-hackler.com";
@@ -15,40 +16,40 @@
 
     # The module maps each key here to /etc/opencloud/<key>.yaml
     settings = {
-    proxy = {
-    role_quotas = {
-        # 'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11' is the hardcoded ID for the 'User' role
-        "d7beeea8-8ff4-406b-8fb6-ab2dd81e6b11" = 274877906944; # 256 GB in bytes
-      };
-      role_assignment = {
-        driver = "oidc";
-        oidc_role_mapper = {
-          # This is the name of the 'key' in your Keycloak JWT
-          role_claim = "opencloudRoles";
-          role_mapping = [
-            {
-              role_name = "admin";
-              claim_value = "admin"; # The value found in your Keycloak 'opencloudRoles' claim
-            }
-            {
-              role_name = "admin";
-              claim_value = "opencloud-admin";
-            }
-            {
-              role_name = "user";
-              claim_value = "opencloud-user";
-            }
-            # You can add more mappings here as needed
-          ];
+      proxy = {
+        role_quotas = {
+          # 'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11' is the hardcoded ID for the 'User' role
+          "d7beeea8-8ff4-406b-8fb6-ab2dd81e6b11" = 274877906944; # 256 GB in bytes
         };
-      };
+        role_assignment = {
+          driver = "oidc";
+          oidc_role_mapper = {
+            # This is the name of the 'key' in your Keycloak JWT
+            role_claim = "opencloudRoles";
+            role_mapping = [
+              {
+                role_name = "admin";
+                claim_value = "admin"; # The value found in your Keycloak 'opencloudRoles' claim
+              }
+              {
+                role_name = "admin";
+                claim_value = "opencloud-admin";
+              }
+              {
+                role_name = "user";
+                claim_value = "opencloud-user";
+              }
+              # You can add more mappings here as needed
+            ];
+          };
+        };
       };
 
       # This replaces your manual environment.etc."opencloud/csp.yaml"
       csp = {
         directives = {
-          default-src = ["'none'"];
-          child-src = ["'self'"];
+          default-src = [ "'none'" ];
+          child-src = [ "'self'" ];
           connect-src = [
             "'self'"
             "'blob:'"
@@ -56,8 +57,8 @@
             "https://update.opencloud.eu/"
             "https://sso.johann-hackler.com"
           ];
-          font-src = ["'self'"];
-          frame-ancestors = ["'self'"];
+          font-src = [ "'self'" ];
+          frame-ancestors = [ "'self'" ];
           frame-src = [
             "'self'"
             "'blob:'"
@@ -73,9 +74,12 @@
             "https://raw.githubusercontent.com/opencloud-eu/awesome-apps/"
             "https://sso.johann-hackler.com"
           ];
-          manifest-src = ["'self'"];
-          media-src = ["'self'"];
-          object-src = ["'self'" "'blob:'"];
+          manifest-src = [ "'self'" ];
+          media-src = [ "'self'" ];
+          object-src = [
+            "'self'"
+            "'blob:'"
+          ];
           script-src = [
             "'self'"
             "'unsafe-inline'"
@@ -83,7 +87,11 @@
             "'unsafe-eval'"
             "https://sso.johann-hackler.com"
           ];
-          style-src = ["'self'" "'unsafe-inline'" "'unsafe-hashes'"];
+          style-src = [
+            "'self'"
+            "'unsafe-inline'"
+            "'unsafe-hashes'"
+          ];
         };
       };
     };
@@ -109,7 +117,7 @@
       PROXY_ROLE_ASSIGNMENT_OIDC_CLAIM = "groups";
       PROXY_AUTOPROVISION_CLAIM_USERNAME = "preferred_username";
       OC_EXCLUDE_RUN_SERVICES = "idp";
-      WEB_OPTION_ACCOUNT_EDIT_LINK_HREF="https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/account";
+      WEB_OPTION_ACCOUNT_EDIT_LINK_HREF = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/account";
       PROXY_AUTOPROVISION_CLAIM_DISPLAYNAME = "preferred_username";
       GRAPH_ASSIGN_DEFAULT_USER_ROLE = "false";
       GRAPH_USERNAME_MATCH = "none";
