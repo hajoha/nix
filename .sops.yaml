@@ -1,5 +1,6 @@
 keys:
   - &fokus age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a
+  - &private age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t
   - &nixnas age1pcsgd5f5yefxk9667j40hsr8ereky6ufxhmda5dh0fzkajpzf5as9lcw36
   - &nixadguard age13xy8pp8z4snajjvxmuhgjzutrggerqafy7t48uxuperrgsa84c2scr3v8z
   - &nixcloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
@@ -14,71 +15,72 @@ keys:
   - &nixpaperless age1cckct34a8k96kwcq7yqzruhal04pgw65yrvew6pceuhrxqeyn53slfgeak
   - &nixhomeassistant age1jj90rpvwju98ssmp4n2755fa6zmcyql489k8qh6hnnwfg4fmdcyscm4k3h
   - &nixkeycloak age1cphj25m2fa320yjy0mtt6l0u9k9v78g0s3x69msgx2gxhjdjz5jsu0ztu6
+  - &niximmich age1y9ykrzglk2w9sj546awh4qr0pfhq7xlm8nnq4hvmg8gpqyc6md2qzyjap8
 creation_rules:
   - path_regex: hosts/nixnas/secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
-    - age: [*nixnas, *fokus]
+    - age: [*nixnas, *fokus, *private]
 
   # --- LXC Service Containers (Specific Isolation) ---
 
 
   - path_regex: services/hedgedoc/.*\.enc\.yaml$
     key_groups:
-    - age: [*nixhedgedoc, *fokus]
+    - age: [*nixhedgedoc, *fokus, *private]
 
   - path_regex: services/adguard/.*\.enc\.yaml$
     key_groups:
-    - age: [*nixadguard, *fokus]
+    - age: [*nixadguard, *fokus, *private]
 
   # Headscale & Headplane
   - path_regex: services/headscale/.*\.enc\.yaml$
     key_groups:
-      - age: [*nixheadscale, *fokus]
+      - age: [*nixheadscale, *fokus, *private]
 
   # Adguard (LXC version)
   - path_regex: services/adguardhome/.*\.enc\.yaml$
     key_groups:
-      - age: [*nixadguard, *fokus]
+      - age: [*nixadguard, *fokus, *private]
 
   # Postgres & Zitadel (Shared group because Zitadel needs Postgres credentials)
   - path_regex: services/(postgres|zitadel)/.*\.enc\.yaml$
     key_groups:
-      - age: [*nixpostgres, *nixzitadel, *fokus]
+      - age: [*nixpostgres, *nixzitadel, *fokus, *private]
 
   # Paperless
   - path_regex: services/paperless/.*\.enc\.yaml$
     key_groups:
-      - age: [*nixpaperless, *fokus]
+      - age: [*nixpaperless, *fokus, *private]
 
   # Monitoring Stack
   - path_regex: services/(influxv2|grafana)/.*\.enc\.yaml$
     key_groups:
-      - age: [*nixinflux, *nixgrafana, *fokus]
+      - age: [*nixinflux, *nixgrafana, *fokus, *private]
 
   # Home Automation
   - path_regex: services/homeassistant/.*\.enc\.yaml$
     key_groups:
-      - age: [*nixhomeassistant, *fokus]
+      - age: [*nixhomeassistant, *fokus, *private]
 
   # Networking & Others
   - path_regex: services/nginx/.*\.enc\.yaml$
     key_groups:
-      - age: [*nixnginx, *fokus]
+      - age: [*nixnginx, *fokus, *private]
 
   - path_regex: services/netbox/.*\.enc\.yaml$
     key_groups:
-      - age: [*nixheadscale, *fokus] # Adjust if netbox has its own key
+      - age: [*nixheadscale, *fokus, *private] # Adjust if netbox has its own key
 
   - path_regex: services/keycloak/secrets.enc.yaml$
     key_groups:
-      - age: [*nixkeycloak, *fokus] # Adjust if netbox has its own key
+      - age: [*nixkeycloak, *fokus, *private] # Adjust if netbox has its own key
 
   - path_regex: services/keycloak/postgres.enc.yaml$
     key_groups:
-      - age: [*nixkeycloak, *nixpostgres, *fokus] # Adjust if netbox has its own key
+      - age: [*nixkeycloak, *nixpostgres, *fokus, *private] # Adjust if netbox has its own key
 
 
   # Catch-all for any other services (Safety net for the NAS)
   - path_regex: services/.*\.enc\.yaml$
     key_groups:
-      - age: [*nixnas, *fokus]
+      - age: [*nixnas, *fokus, *private]
