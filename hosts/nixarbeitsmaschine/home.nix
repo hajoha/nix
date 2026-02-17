@@ -6,12 +6,7 @@
   inputs,
   ...
 }:
-let
-  firefox-config = import ./../../modules/browser/firefox.nix {
-    inherit pkgs;
-    inherit inputs;
-  };
-in
+
 {
 
   xdg.portal.enable = false;
@@ -25,12 +20,18 @@ in
 
   };
   imports = [
-    firefox-config
     inputs.nvf.homeManagerModules.default
   ];
   targets.genericLinux.enable = true;
   fonts.fontconfig.enable = true;
   systemd.user.startServices = "sd-switch";
+  services.gnome-keyring = {
+    enable = false;
+    components = [
+      "secrets"
+      "ssh"
+    ];
+  };
   programs.nvf = {
     enable = true;
     settings = {
@@ -158,6 +159,7 @@ in
   wayland.windowManager.sway = {
     enable = true;
     wrapperFeatures.gtk = true;
+    systemd.enable = true;
     extraConfig = ''
       output DP-8 transform 90
       set $left h
@@ -168,14 +170,17 @@ in
       for_window [title="nmtui-floating"] floating enable, move position center, focus
       for_window [title="btop-floating"] floating enable, move position center, focus
 
-      assign [class="Signal"] workspace 1
-      assign [app_id="thunderbird"] workspace 1
-      assign [app_id="firefox"] workspace 2
+      assign [app_id="signal-desktop"] workspace number 1
+      assign [app_id="thunderbird"] workspace number 1
+      assign [app_id="mattermost-desktop"] workspace number 1
+      assign [app_id="firefox"] workspace number 2
 
+      # Autostart
+      exec signal-desktop --password-store=gnome-libsecret --enable-features=UseOzonePlatform --ozone-platform=wayland
+      exec mattermost-desktop
+      exec thunderbird
 
       exec firefox
-      exec thunderbird
-      exec signal-desktop
 
       exec swayidle -w \
         timeout 600 'swaylock -f -c 000000' \
@@ -190,6 +195,7 @@ in
     config = {
       modifier = "Mod4"; # Super/Windows key
       terminal = "alacritty";
+      defaultWorkspace = "workspace number 1";
       menu = "wofi --show drun"; # You can replace this with bemenu, fuzzel, etc.
       keybindings = {
         "${config.wayland.windowManager.sway.config.modifier}+Return" =
@@ -311,22 +317,14 @@ in
 
         { command = "systemctl --user restart pipewire wireplumber swaync"; }
 
-
+        { command = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"; }
         {
-          command = "killall .waybar-wrapped waybar || true; GTK_USE_PORTAL=0 nixGL waybar &";
-          always = true;
+          command = "sh -c 'sleep 5; nm-applet --indicator & 1password --silent & opencloud &'";
         }
-{
-    command = "sh -c 'sleep 5; nm-applet --indicator & 1password --silent & opencloud &'";
-  }
-        # 4. Workspace setup
-        { command = "swaymsg workspace 1; swaymsg layout tabbed"; }
       ];
 
     };
   };
-
-  programs.swaylock.enable = true;
 
   home.packages = with pkgs; [
     # 3D-stuff
@@ -337,6 +335,7 @@ in
     #cura
     ffmpeg
     libqmi
+    libsecret
     tmux
     zsh
     inkscape
@@ -434,8 +433,10 @@ in
     pipewire
     wireplumber
     wofi
-    swaylock
+    #    swaylock
+    swaybg
     swayidle
+    glib
     wl-clipboard
     swaynotificationcenter
     waybar # status bar
@@ -451,8 +452,48 @@ in
     cliphist
   ];
 
-  programs.firefox = {
+programs.firefox = {
     enable = true;
+
+    policies = {
+      DisableFirefoxAccounts = false;
+      DisableSync = false;
+    };
+
+    # Force the imported profile to NOT be the default
+    profiles.hajoha.isDefault = lib.mkForce false;
+
+    profiles.haa = {
+      isDefault = true;
+      id = 1;
+
+      # Pull the extensions from the imported hajoha profile
+
+      settings = {
+        "identity.fxaccounts.enabled" = true;
+        "sidebar.revamp" = true;
+        "sidebar.verticalTabs" = true;
+        "sidebar.main.tools" = "history,syncedtabs,bookmarks";
+        "browser.tabs.inTitlebar" = 1;
+        "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
+        "dom.security.https_only_mode" = true;
+      };
+
+      userChrome = ''
+        #TabsToolbar {
+          visibility: collapse !important;
+        }
+        #sidebar-header {
+          display: none;
+        }
+      '';
+      extensions.packages = with pkgs.nur.repos.rycee.firefox-addons; [
+        ublock-origin
+        sponsorblock
+        onepassword-password-manager
+        youtube-shorts-block
+      ];
+    };
   };
 
   programs.zsh = {
@@ -475,7 +516,18 @@ in
       theme = "rkj-repos";
     };
   };
-
+xdg.desktopEntries."signal-desktop" = {
+  name = "Signal";
+  genericName = "Messaging and Video Chat";
+  exec = "signal-desktop --password-store=gnome-libsecret --enable-features=UseOzonePlatform --ozone-platform=wayland %U";
+  icon = "signal";
+  terminal = false;
+  categories = [ "Network" "InstantMessaging" ];
+  # Adding this ensures it takes precedence
+  settings = {
+    Keywords = "chat;messaging;talk;";
+  };
+};
   dconf.settings = {
     "org/virt-manager/virt-manager/connections" = {
       autoconnect = [ "qemu:///system" ];
@@ -555,13 +607,17 @@ in
     GTK_THEME = "Adwaita:dark";
     QT_QPA_PLATFORMTHEME = "qt5ct";
     QT_STYLE_OVERRIDE = "kvantum";
+    XDG_CURRENT_DESKTOP = "sway";
+    XDG_SESSION_TYPE = "wayland";
     # Add this line to stop Waybar from hanging on portal timeouts
     GTK_USE_PORTAL = "0";
     XDG_DATA_DIRS = lib.mkForce "$HOME/.nix-profile/share:$HOME/.local/share:$XDG_DATA_DIRS:/usr/local/share:/usr/share";
   };
   programs.waybar = {
     enable = true;
-    systemd.enable = false;
+    systemd.enable = true;
+    systemd.target = "sway-session.target"; # Ensures it starts with Sway
+
     style = builtins.readFile ./style.css;
     settings = [
       {
