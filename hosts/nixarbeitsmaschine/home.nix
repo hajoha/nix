@@ -451,7 +451,7 @@
     cliphist
   ];
 
-programs.firefox = {
+  programs.firefox = {
     enable = true;
 
     policies = {
@@ -515,18 +515,21 @@ programs.firefox = {
       theme = "rkj-repos";
     };
   };
-xdg.desktopEntries."signal-desktop" = {
-  name = "Signal";
-  genericName = "Messaging and Video Chat";
-  exec = "signal-desktop --password-store=gnome-libsecret --enable-features=UseOzonePlatform --ozone-platform=wayland %U";
-  icon = "signal";
-  terminal = false;
-  categories = [ "Network" "InstantMessaging" ];
-  # Adding this ensures it takes precedence
-  settings = {
-    Keywords = "chat;messaging;talk;";
+  xdg.desktopEntries."signal-desktop" = {
+    name = "Signal";
+    genericName = "Messaging and Video Chat";
+    exec = "signal-desktop --password-store=gnome-libsecret --enable-features=UseOzonePlatform --ozone-platform=wayland %U";
+    icon = "signal";
+    terminal = false;
+    categories = [
+      "Network"
+      "InstantMessaging"
+    ];
+    # Adding this ensures it takes precedence
+    settings = {
+      Keywords = "chat;messaging;talk;";
+    };
   };
-};
   dconf.settings = {
     "org/virt-manager/virt-manager/connections" = {
       autoconnect = [ "qemu:///system" ];

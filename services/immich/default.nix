@@ -10,71 +10,65 @@
 {
   # 1. SOPS Configuration
   sops.defaultSopsFile = ./secrets.enc.yaml;
-  sops.secrets."env" = {
-    # File should contain: CMD_DB_PASSWORD, CMD_OAUTH2_CLIENT_ID, CMD_OAUTH2_CLIENT_SECRET
-    owner = "hedgedoc";
+  sops.secrets."immich-env" = {
+    # File should contain: DB_PASSWORD
+    owner = "immich";
+  };
+  sops.secrets."immich-oauth-client-secret" = {
+    # File should contain: DB_PASSWORD
+    owner = "immich";
   };
 
-  services.hedgedoc = {
+  services.immich = {
     enable = true;
-    # Decrypted environment file containing secrets
-    environmentFile = config.sops.secrets."env".path;
+    host = "0.0.0.0";
+    port = nodes.nix-immich.port;
+    # Decrypted environment file containing the DB password
+    secretsFile = config.sops.secrets."immich-env".path;
 
+    # Media storage location
+    mediaLocation = "/var/lib/immich";
+
+    # Database Configuration (pointing to your external Postgres node)
+    database = {
+      enable = false; # Set to false since you use an external nix-postgres node
+      host = nodes.nix-postgres.ip;
+      port = nodes.nix-postgres.port;
+      name = "immich";
+      user = "immich";
+    };
+
+    # Redis Configuration
+    redis = {
+      enable = true; # Set to true if you want a local redis, or false to point elsewhere
+    };
+
+    # Main System Settings
     settings = {
-      # Networking & Branding
-      host = "0.0.0.0";
-      port = nodes.nix-hedgedoc.port;
-      domain = "${nodes.nix-hedgedoc.hostname}.${baseDomain}";
-
-      # SSL handled by Nginx proxy
-      protocolUseSSL = true;
-      useSSL = false;
-      urlAddPort = false;
-
-      # Access Controls
-      allowEmailRegister = false;
-      allowGravatar = false;
-      allowAnonymous = true;
-      allowAnonymousEdits = true;
-      allowFreeURL = true;
-      disableNoteCreation = false;
-      defaultPermission = "freely";
-
-      allowOrigin = [
-        "localhost"
-        "${nodes.nix-hedgedoc.hostname}.${baseDomain}"
-      ];
-
-      # Database connection using the nix-postgres node
-      db = {
-        database = "hedgedoc";
-        dialect = "postgresql";
-        host = nodes.nix-postgres.ip;
-        port = nodes.nix-postgres.port;
-        username = "hedgedoc";
-        # Password is injected via CMD_DB_PASSWORD in environmentFile
-      };
-
-      # OAuth2 (Zitadel Integration)
-      oauth2 = {
+      server.externalDomain = "https://${nodes.nix-immich.sub}.${baseDomain}";
+      newVersionCheck.enabled = false;
+      # Immich OAuth2 (OIDC) Integration
+      # Note: Immich uses a specific schema for OIDC in its config
+      oauth = {
         enabled = true;
-        provider = "generic";
-        # Public URLs require the FQDN for browser redirects via Nginx
-        baseURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
-        authorizationURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/auth";
-        tokenURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/token";
-        userProfileURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/userinfo";
+        autoRegister = true;
+        issuerUrl = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
+        clientId = "immich";
+        clientSecret._secret =  config.sops.secrets."immich-oauth-client-secret".path;
         scope = "openid email profile";
-        userProfileDisplayNameAttr = "preferred_username";
-        userProfileEmailAttr = "email";
-        userProfileUsernameAttr = "preferred_username";
+        buttonText = "SSO";
+        defaultStorageQuota = 250;
       };
+    };
+    environment = {
+        IMMICH_TRUSTED_PROXIES="${nodes.nix-nginx.ip}";
+    };
 
-      debug = true;
-      email = false;
+    # Machine Learning Settings
+    machine-learning = {
+      enable = true;
     };
   };
 
-  # Firewall is now handled by mkLXC + network.nix
   system.stateVersion = "25.11";
 }

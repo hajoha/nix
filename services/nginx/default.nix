@@ -29,9 +29,9 @@ in
   sops.defaultSopsFile = ./secrets.enc.yaml;
 
   # 2. Tell sops-nix which keys to decrypt
-sops.secrets."acme-inwx-env" = {
-  owner = "acme";
-};
+  sops.secrets."acme-inwx-env" = {
+    owner = "acme";
+  };
   services.nginx = {
     enable = true;
     recommendedGzipSettings = true;
@@ -119,6 +119,25 @@ sops.secrets."acme-inwx-env" = {
           extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
         };
       };
+
+"${nodes.nix-immich.sub}.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        # Immich can handle large photo/video uploads, so we must raise the limit
+        globalRedirect = null;
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-immich.ip}:${toString nodes.nix-immich.port}";
+          proxyWebsockets = true;
+          extraConfig = commonProxy.extraConfig + ''
+            client_max_body_size 50000M;
+            proxy_read_timeout 600s;
+            proxy_send_timeout 600s;
+            send_timeout 600s;
+          '';
+        };
+      };
+
+
 
       # --- HedgeDoc ---
       "${nodes.nix-hedgedoc.hostname}.${baseDomain}" = {

@@ -79,8 +79,16 @@ creation_rules:
     key_groups:
       - age: [*nixkeycloak, *nixpostgres, *fokus, *private] # Adjust if netbox has its own key
 
+  - path_regex: services/immich/postgres.enc.yaml$
+    key_groups:
+      - age: [*nixpostgres, *fokus, *private] # Adjust if netbox has its own key
+
+  - path_regex: services/immich/secrets.enc.yaml$
+    key_groups:
+      - age: [*niximmich, *fokus, *private] # Adjust if netbox has its own key
+
 
   # Catch-all for any other services (Safety net for the NAS)
   - path_regex: services/.*\.enc\.yaml$
     key_groups:
-      - age: [*nixnas, *fokus, *private]
+      - age: [*fokus, *private]

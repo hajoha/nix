@@ -146,6 +146,7 @@
         nix-zitadel = mkLXC "nix-zitadel" ./services/zitadel/default.nix [ ];
         nix-paperless = mkLXC "nix-paperless" ./services/paperless/default.nix [ ];
         nix-hedgedoc = mkLXC "nix-hedgedoc" ./services/hedgedoc/default.nix [ ];
+        nix-immich = mkLXC "nix-immich" ./services/immich/default.nix [ ];
         nix-influx = mkLXC "nix-influx" ./services/influxv2/default.nix [ ];
         nix-grafana = mkLXC "nix-grafana" ./services/grafana/default.nix [ ];
         nix-keycloak = mkLXC "nix-keycloak" ./services/keycloak/default.nix [ ];
@@ -192,6 +193,7 @@
         packages = with nixpkgs.legacyPackages.${system}; [
           sops
           age
+          ssh-to-age
           nixos-rebuild
         ];
       };

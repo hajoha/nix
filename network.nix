@@ -29,19 +29,40 @@ rec {
             prefixLength = 24;
           }
         ];
-        defaultGateway.address = "10.60.1.1";
-        defaultGateway.interface = "service";
+        defaultGateway.address = "10.60.50.1";
+        defaultGateway.interface = "dmz";
         firewall.allowedTCPPorts = [
           80
           443
         ];
-        nameservers = [ "1.1.1.1" "9.9.9.9" ];
+        nameservers = [
+          "1.1.1.1"
+          "9.9.9.9"
+        ];
       };
       hostname = "nginx";
       ip = "10.60.1.17";
       port = 443;
     };
 
+    nix-immich = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.35";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        nameservers = [ nodes.nix-adguard.ip ];
+        firewall.allowedTCPPorts = [ 2283 ];
+      };
+      hostname = "immich";
+      sub = "photo";
+      ip = "10.60.1.35";
+      port = 2283;
+    };
     # --- Identity Provider (Zitadel) ---
     nix-grafana = {
       networking = {
