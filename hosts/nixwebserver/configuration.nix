@@ -1,10 +1,14 @@
-{ config, pkgs, modulesPath, ... }:
+{
+  config,
+  pkgs,
+  modulesPath,
+  ...
+}:
 
 {
-  networking.hostName = "nix-nginx";
+  networking.hostName = "nix-webserver";
   imports = [
     (modulesPath + "/virtualisation/proxmox-lxc.nix")
-    ./../../services/nginx/default.nix
     ./../../services/ssh/root.nix
   ];
   users.users = import ./../../user/root.nix { inherit pkgs; };
@@ -13,12 +17,19 @@
   fileSystems."/".device = "/dev/root";
   boot.loader.grub.enable = false;
   systemd.services."sys-kernel-debug.mount".enable = false;
-  environment.systemPackages = [
-    pkgs.tshark
-    pkgs.unixtools.netstat
-    pkgs.nginx
-    pkgs.openssl
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  services.nginx = {
+    enable = true;
+    virtualHosts = {
+      "/" = {
+        root = "/var/www";
+      };
+    };
+  };
 
+  networking.firewall.allowedTCPPorts = [
+    80
   ];
+
   system.stateVersion = "24.05";
 }

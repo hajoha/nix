@@ -1,4 +1,9 @@
-{ inputs, config, pkgs, ... }:
+{
+  inputs,
+  config,
+  pkgs,
+  ...
+}:
 
 {
   nixpkgs.config = {
@@ -12,10 +17,8 @@
     ];
   };
 
-  imports =
-    [
-    ];
-
+  imports = [
+  ];
 
   services.openssh = {
     enable = true;
@@ -29,11 +32,12 @@
     };
   };
 
-
   users.users = import ./../../user/root.nix { inherit pkgs; };
 
-
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   #  boot.loader.systemd-boot.enable = true;
 
@@ -57,7 +61,6 @@
 
   services.xserver.enable = true;
 
-
   services.xserver.xkb = {
     layout = "us";
     variant = "intl";
@@ -66,7 +69,6 @@
   console.keyMap = "us-acentos";
   services.printing.enable = true;
   security.rtkit.enable = true;
-
 
   nixpkgs.config.allowUnfreePredicate = pkg: true;
   environment.systemPackages = with pkgs; [

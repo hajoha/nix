@@ -32,3 +32,13 @@ sudo nix-collect-garbage --delete-older-than 2d
 ```nix
 nix-store --gc
 ```
+
+
+## encrypt
+```bash
+nix run nixpkgs#sops encrypt hosts/nixadguard/secrets/example.yaml > hosts/nixadguard/secrets/example.enc.yaml
+```
+## decrypt
+```bash
+nix run nixpkgs#sops hosts/nixadguard/secrets/example.enc.yaml
+```

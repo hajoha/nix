@@ -1,4 +1,9 @@
-{ config, pkgs, modulesPath, ... }:
+{
+  config,
+  pkgs,
+  modulesPath,
+  ...
+}:
 
 {
   networking.hostName = "nix-cloud";
@@ -7,7 +12,9 @@
     ./../../services/opencloud/default.nix
     ./../../services/ssh/root.nix
   ];
+
   users.users = import ./../../user/root.nix { inherit pkgs; };
+
   virtualisation.lxc.enable = true;
   boot.isContainer = true;
   fileSystems."/".device = "/dev/root";
