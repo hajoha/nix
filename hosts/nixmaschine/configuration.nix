@@ -19,8 +19,7 @@
 
   imports = [
     ./hardware-configuration.nix
-    ./../../modules/virt/vm.nix
-    ./../../services/ollama.nix
+#    ./../../modules/virt/vm.nix
   ];
 
   users.defaultUserShell = pkgs.zsh;
@@ -131,7 +130,7 @@
     liberation_ttf # fallback sans-serif / monospace
     noto-fonts # wide Unicode coverage
     noto-fonts-cjk-sans # CJK characters
-    noto-fonts-emoji # emoji
+    noto-fonts-color-emoji # emoji
     twemoji-color-font # optional color emoji
     nerd-fonts.symbols-only # Nerd icons
     nerd-fonts.fira-code # patched Fira Code
@@ -170,7 +169,7 @@
     alsa.support32Bit = true;
     pulse.enable = true;
   };
-
+services.tailscale.enable = true;
   services.greetd = {
     enable = true;
     settings = {

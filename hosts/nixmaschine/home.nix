@@ -348,9 +348,6 @@ in
     anydesk
     chromium
     gimp
-    python312Full
-    python312Packages.pyudev
-    python312Packages.systemd
     udev
     libvirt
     kvmtool
@@ -365,7 +362,7 @@ in
     liberation_ttf
     noto-fonts
     noto-fonts-cjk-sans
-    noto-fonts-emoji
+    noto-fonts-color-emoji
     twemoji-color-font
     nerd-fonts.symbols-only
     nerd-fonts.fira-code
@@ -402,13 +399,13 @@ in
     tuigreet
     thunderbird
     killall
-    #jetbrains.pycharm-professional
+    jetbrains.pycharm
     #jetbrains.clion
-    (jetbrains.plugins.addPlugins pkgs.jetbrains.clion [ "github-copilot" ])
-    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm-professional [
-      "github-copilot"
-      "nixidea"
-    ])
+#    (jetbrains.plugins.addPlugins pkgs.jetbrains.clion [ "github-copilot" ])
+#    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm [
+#      "github-copilot"
+#      "nixidea"
+#    ])
     android-studio
     nixfmt-rfc-style
     ollama
@@ -430,7 +427,7 @@ in
     wl-clipboard
     swaynotificationcenter
     waybar # status bar
-    noto-fonts-emoji # Best overall support
+    noto-fonts-color-emoji # Best overall support
     twemoji-color-font # Twitter-style emojis (optional)
     fontconfig # Ensures font configuration
     nerd-fonts.symbols-only
@@ -576,7 +573,6 @@ in
         ];
         modules-center = [ "sway/window" ];
         modules-right = [
-          #          "tray"
           "network"
           "custom/divider"
           "backlight"
@@ -589,6 +585,7 @@ in
           "custom/divider"
           "custom/notification"
           "custom/divider"
+          "tray"
         ];
         "sway/window" = {
           format = "{}";
