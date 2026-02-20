@@ -209,7 +209,7 @@
         "${config.wayland.windowManager.sway.config.modifier}+j" = "focus down";
         "${config.wayland.windowManager.sway.config.modifier}+k" = "focus up";
         "${config.wayland.windowManager.sway.config.modifier}+l" = "focus right";
-        "${config.wayland.windowManager.sway.config.modifier}+f" = "fullscreen toggle";
+        "${config.wayland.windowManager.sway.config.modifier}+f" = "fullscreenV toggle";
 
         "${config.wayland.windowManager.sway.config.modifier}+Shift+v" = ''
           exec cliphist list | sed -E "s/^([0-9]+)\t/\1 /" | wofi --dmenu | sed -E "s/^([0-9]+) /\1\t/" | cliphist decode | wl-copy
@@ -319,7 +319,7 @@
 
         { command = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"; }
         {
-          command = "sh -c 'sleep 5; nm-applet --indicator & 1password --silent & opencloud &'";
+          command = "sh -c 'sleep 5; nm-applet --indicator & 1password --silent & opencloud & blueman-applet &'";
         }
       ];
 
@@ -328,8 +328,10 @@
 
   home.packages = with pkgs; [
     # 3D-stuff
+    nix-ld
     freecad
     ferrishot
+    uv
     way-displays
     #orca-slicer
     #cura
@@ -610,6 +612,9 @@
     QT_QPA_PLATFORMTHEME = "qt5ct";
     QT_STYLE_OVERRIDE = "kvantum";
     XDG_CURRENT_DESKTOP = "sway";
+    NIX_LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:${pkgs.stdenv.cc.cc.lib}/lib";
+    NIX_LD = "${pkgs.stdenv.cc.cc.lib}/lib/ld-linux-x86-64.so.2";
+    LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib/";
     XDG_SESSION_TYPE = "wayland";
     # Add this line to stop Waybar from hanging on portal timeouts
     GTK_USE_PORTAL = "0";
