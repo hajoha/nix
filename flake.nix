@@ -9,6 +9,7 @@
     nur = {
       url = "github:nix-community/NUR";
     };
+     nixgl.url   = "github:nix-community/nixGL";
 
     # Also add nvf if you haven't, since your home.nix uses it
     nvf = {
@@ -43,6 +44,7 @@
       sops-nix,
       headplane,
       otbr-pr,
+      nixgl,
       old-nixpkgs,
       ...
     }@inputs:
@@ -108,7 +110,7 @@
         # Replace "hajoha" with your Ubuntu username
         "haa" = home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
-          extraSpecialArgs = { inherit inputs; };
+          extraSpecialArgs = { inherit inputs; inherit nixgl;};
           modules = [
             # Point this to your home.nix file
             ./hosts/nixarbeitsmaschine/home.nix

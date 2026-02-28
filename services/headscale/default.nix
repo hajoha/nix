@@ -102,9 +102,9 @@ in
         redirect_uri = "https://${nodes.nix-headscale.hostname}.${baseDomain}/admin/oidc/callback";
         disable_api_key_login = true;
         token_endpoint_auth_method = "client_secret_basic";
-        role_map = {
-          "headplane-admin" = "owner";
-        };
+#        role_map = {
+#          "headplane-admin" = "owner";
+#        };
       };
     };
   };
