@@ -19,7 +19,7 @@
 
   imports = [
     ./hardware-configuration.nix
-#    ./../../modules/virt/vm.nix
+    #    ./../../modules/virt/vm.nix
   ];
 
   users.defaultUserShell = pkgs.zsh;
@@ -169,7 +169,7 @@
     alsa.support32Bit = true;
     pulse.enable = true;
   };
-services.tailscale.enable = true;
+  services.tailscale.enable = true;
   services.greetd = {
     enable = true;
     settings = {

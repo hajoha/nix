@@ -41,7 +41,7 @@ for LXC in "${LXCS[@]}"; do
     --flake ".#${LXC}" \
     --build-host "$BUILD_HOST" \
     --target-host "$TARGET_HOST" \
-    --use-remote-sudo \
+    --sudo \
     || echo "❌ Failed to rebuild $LXC"
 
 done

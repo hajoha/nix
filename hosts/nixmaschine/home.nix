@@ -401,11 +401,11 @@ in
     killall
     jetbrains.pycharm
     #jetbrains.clion
-#    (jetbrains.plugins.addPlugins pkgs.jetbrains.clion [ "github-copilot" ])
-#    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm [
-#      "github-copilot"
-#      "nixidea"
-#    ])
+    #    (jetbrains.plugins.addPlugins pkgs.jetbrains.clion [ "github-copilot" ])
+    #    (jetbrains.plugins.addPlugins pkgs.jetbrains.pycharm [
+    #      "github-copilot"
+    #      "nixidea"
+    #    ])
     android-studio
     nixfmt-rfc-style
     ollama

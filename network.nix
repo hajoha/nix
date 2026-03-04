@@ -74,7 +74,10 @@ rec {
         ];
         defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "service";
-        firewall.allowedTCPPorts = [ 3000 ];
+        firewall.allowedTCPPorts = [
+          3000
+          3100
+        ];
         # This now works because of the 'rec' keyword
         nameservers = [ nodes.nix-adguard.ip ];
       };

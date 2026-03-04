@@ -143,35 +143,35 @@ in
     '') servicesWithDB;
   };
 
-systemd.services.postgresql-immich-setup = {
-  description = "Setup Immich extensions";
-  partOf = [ "postgresql.service" ];
-  after = [ "postgresql.service" ];
-  wantedBy = [ "multi-user.target" ];
+  systemd.services.postgresql-immich-setup = {
+    description = "Setup Immich extensions";
+    partOf = [ "postgresql.service" ];
+    after = [ "postgresql.service" ];
+    wantedBy = [ "multi-user.target" ];
 
-  serviceConfig = {
-    Type = "oneshot";
-    User = "postgres";
-    ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
-    RemainAfterExit = true;
+    serviceConfig = {
+      Type = "oneshot";
+      User = "postgres";
+      ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
+      RemainAfterExit = true;
+    };
+
+    script = ''
+          # Wait for the DB to be ready
+          ${config.services.postgresql.package}/bin/psql -d immich <<EOF
+            -- These must be created by a superuser (which this script runs as)
+            CREATE EXTENSION IF NOT EXISTS "unaccent";
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+            CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+            CREATE EXTENSION IF NOT EXISTS "cube";          -- Missing earlier
+            CREATE EXTENSION IF NOT EXISTS "earthdistance"; -- The one causing the crash
+            CREATE EXTENSION IF NOT EXISTS "vector";
+            CREATE EXTENSION IF NOT EXISTS "vchord";
+
+            -- Ensure the immich user owns the schema to manage tables
+            ALTER SCHEMA public OWNER TO immich;
+      EOF
+    '';
   };
-
-  script = ''
-    # Wait for the DB to be ready
-    ${config.services.postgresql.package}/bin/psql -d immich <<EOF
-      -- These must be created by a superuser (which this script runs as)
-      CREATE EXTENSION IF NOT EXISTS "unaccent";
-      CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-      CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-      CREATE EXTENSION IF NOT EXISTS "cube";          -- Missing earlier
-      CREATE EXTENSION IF NOT EXISTS "earthdistance"; -- The one causing the crash
-      CREATE EXTENSION IF NOT EXISTS "vector";
-      CREATE EXTENSION IF NOT EXISTS "vchord";
-
-      -- Ensure the immich user owns the schema to manage tables
-      ALTER SCHEMA public OWNER TO immich;
-EOF
-  '';
-};
   system.stateVersion = "25.11";
 }

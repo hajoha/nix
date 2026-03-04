@@ -28,6 +28,48 @@ in
 
   sops.defaultSopsFile = ./secrets.enc.yaml;
 
+  services.fail2ban = {
+    enable = true;
+    # Max retry attempts before banning
+    maxretry = 5;
+    # Ban for 1 hour
+    bantime = "1h";
+
+    # Whitelist your local LAN so you don't lock yourself out
+    ignoreIP = [
+      "127.0.0.1"
+      "10.60.0.0/16"
+      "100.64.0.0/10" # Tailscale/Headscale range
+    ];
+
+    jails = {
+      # Standard SSH protection
+      sshd.settings = {
+        enabled = true;
+      };
+
+      # Nginx protection - looks for 4xx and 5xx errors
+      nginx-http-auth = {
+        settings = {
+          enabled = true;
+          filter = "nginx-http-auth";
+          port = "http,https";
+          logpath = "/var/log/nginx/error.log";
+        };
+      };
+
+      # Custom jail for your "lanOnly" 444 returns (unauthorized access)
+      nginx-unauthorized = {
+        settings = {
+          enabled = true;
+          port = "http,https";
+          filter = "nginx-botsearch";
+          logpath = "/var/log/nginx/access.log";
+          maxretry = 3;
+        };
+      };
+    };
+  };
   # 2. Tell sops-nix which keys to decrypt
   sops.secrets."acme-inwx-env" = {
     owner = "acme";
@@ -120,7 +162,7 @@ in
         };
       };
 
-"${nodes.nix-immich.sub}.${baseDomain}" = {
+      "${nodes.nix-immich.sub}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
         # Immich can handle large photo/video uploads, so we must raise the limit
@@ -136,8 +178,6 @@ in
           '';
         };
       };
-
-
 
       # --- HedgeDoc ---
       "${nodes.nix-hedgedoc.hostname}.${baseDomain}" = {
@@ -232,9 +272,26 @@ in
       "${nodes.nix-opencloud.hostname}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
-        locations."/" = commonProxy // {
+        http2 = false;
+
+        # These settings apply to the entire Virtual Host (Server block)
+        extraConfig = ''
+          client_max_body_size 10M;
+          proxy_buffering off;
+          proxy_request_buffering off;
+          proxy_read_timeout 3600s;
+          proxy_send_timeout 3600s;
+          keepalive_requests 100000;
+          keepalive_timeout 5m;
+          http2_max_concurrent_streams 512;
+          proxy_next_upstream off;
+        '';
+
+        locations."/" = {
           proxyPass = "http://${nodes.nix-opencloud.ip}:${toString nodes.nix-opencloud.port}";
-          # Add this line to handle the self-signed cert on the backend
+          proxyWebsockets = true;
+          # We use the commonProxy headers here to avoid repetition
+          extraConfig = commonProxy.extraConfig;
         };
       };
 

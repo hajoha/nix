@@ -13,6 +13,9 @@
   sops.secrets."GRAFANA_ADMIN_PASSWORD" = {
     owner = "grafana";
   };
+  sops.secrets."GRAFANA_SECRET_KEY" = {
+    owner = "grafana";
+  };
 
   sops.secrets."dsp25-ssh" = {
     # This ensures the decrypted file is available for the autossh session
@@ -28,6 +31,34 @@
       extraArguments = "-N -T -F ${config.sops.secrets.dsp25-ssh.path} dsp25-main-influx";
     }
   ];
+
+  services.loki = {
+    enable = true;
+    configuration = {
+      auth_enabled = false;
+      server.http_listen_port = 3100;
+
+      #    common.instance_addr = "127.0.0.1";
+      common.path_prefix = "/tmp/loki";
+      common.storage.filesystem = {
+        chunks_directory = "/tmp/loki/chunks";
+        rules_directory = "/tmp/loki/rules";
+      };
+
+      schema_config.configs = [
+        {
+          from = "2020-10-24";
+          store = "tsdb";
+          object_store = "filesystem";
+          schema = "v13";
+          index = {
+            prefix = "index_";
+            period = "24h";
+          };
+        }
+      ];
+    };
+  };
 
   services.grafana = {
     enable = true;
@@ -67,6 +98,7 @@
       };
 
       security = {
+        secret_key = "$__file{${config.sops.secrets."GRAFANA_SECRET_KEY".path}}";
         # Securely read password via sops-nix file path
         admin_password = "$__file{${config.sops.secrets."GRAFANA_ADMIN_PASSWORD".path}}";
         allow_embedding = true;

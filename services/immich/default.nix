@@ -54,14 +54,14 @@
         autoRegister = true;
         issuerUrl = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
         clientId = "immich";
-        clientSecret._secret =  config.sops.secrets."immich-oauth-client-secret".path;
+        clientSecret._secret = config.sops.secrets."immich-oauth-client-secret".path;
         scope = "openid email profile";
         buttonText = "SSO";
         defaultStorageQuota = 250;
       };
     };
     environment = {
-        IMMICH_TRUSTED_PROXIES="${nodes.nix-nginx.ip}";
+      IMMICH_TRUSTED_PROXIES = "${nodes.nix-nginx.ip}";
     };
 
     # Machine Learning Settings

@@ -56,6 +56,7 @@
             "https://raw.githubusercontent.com/opencloud-eu/awesome-apps/"
             "https://update.opencloud.eu/"
             "https://sso.johann-hackler.com"
+            "https://opencloud-eu.github.io/"
           ];
           font-src = [ "'self'" ];
           frame-ancestors = [ "'self'" ];
@@ -65,6 +66,7 @@
             "https://embed.diagrams.net/"
             "https://docs.opencloud.eu"
             "https://sso.johann-hackler.com"
+            "https://opencloud-eu.github.io/"
           ];
           img-src = [
             "'self'"
@@ -86,6 +88,8 @@
             "'unsafe-hashes'"
             "'unsafe-eval'"
             "https://sso.johann-hackler.com"
+            "https://opencloud-eu.github.io/"
+            "'unsafe-eval'"
           ];
           style-src = [
             "'self'"
@@ -108,6 +112,8 @@
       OC_INSECURE = "true";
       PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD = "none";
       PROXY_AUTOPROVISION_ACCOUNTS = "true";
+      OC_SHARING_PUBLIC_SHARE_MUST_HAVE_PASSWORD = "false";
+      OC_SHARING_PUBLIC_WRITEABLE_SHARE_MUST_HAVE_PASSWORD = "false";
       PROXY_TLS = "false";
       PROXY_USER_OIDC_CLAIM = "sub";
       PROXY_USER_CS3_CLAIM = "username";

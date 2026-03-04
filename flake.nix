@@ -9,7 +9,7 @@
     nur = {
       url = "github:nix-community/NUR";
     };
-     nixgl.url   = "github:nix-community/nixGL";
+    nixgl.url = "github:nix-community/nixGL";
 
     # Also add nvf if you haven't, since your home.nix uses it
     nvf = {
@@ -81,6 +81,7 @@
           modules = [
             # Base profile for Proxmox LXC plumbing
             ./modules/profiles/lxc-base.nix
+            ./services/promtail/default.nix
 
             # The service logic
             servicePath
@@ -110,7 +111,10 @@
         # Replace "hajoha" with your Ubuntu username
         "haa" = home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
-          extraSpecialArgs = { inherit inputs; inherit nixgl;};
+          extraSpecialArgs = {
+            inherit inputs;
+            inherit nixgl;
+          };
           modules = [
             # Point this to your home.nix file
             ./hosts/nixarbeitsmaschine/home.nix
