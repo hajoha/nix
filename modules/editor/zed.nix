@@ -17,31 +17,14 @@
 
     # Everything inside of these brackets are Zed options
     userSettings = {
+      autosave = {
+        # Options: "off", "on_focus_change", "on_window_change", or { "after_delay": { "milliseconds": 1000 } }
+        after_delay = {
+          milliseconds = 200;
+        };
+      };
       assistant = {
-        enabled = true;
-        version = "2";
-        default_open_ai_model = null;
-        autosave = {
-          # Options: "off", "on_focus_change", "on_window_change", or { "after_delay": { "milliseconds": 1000 } }
-          after_delay = {
-            milliseconds = 200;
-          };
-        };
-        # Provider options:
-        # - zed.dev models (claude-3-5-sonnet-latest) requires GitHub connected
-        # - anthropic models (claude-3-5-sonnet-latest, claude-3-haiku-latest, claude-3-opus-latest) requires API_KEY
-        # - copilot_chat models (gpt-4o, gpt-4, gpt-3.5-turbo, o1-preview) requires GitHub connected
-        default_model = {
-          provider = "zed.dev";
-          model = "claude-3-5-sonnet-latest";
-        };
-
-        # inline_alternatives = [
-        #   {
-        #     provider = "copilot_chat";
-        #     model = "gpt-3.5-turbo";
-        #   }
-        # ];
+        enabled = false;
       };
 
       node = {

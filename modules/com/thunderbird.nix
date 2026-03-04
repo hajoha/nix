@@ -1,5 +1,6 @@
-{ pkgs, config, ... }: {
-programs.thunderbird = {
+{ pkgs, config, ... }:
+{
+  programs.thunderbird = {
     enable = true;
     #  package = pkgs.thunderbird;
 

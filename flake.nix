@@ -60,6 +60,7 @@
       nodes = network.nodes;
       baseDomain = network.baseDomain;
       keycloakRealm = "main";
+      sopsFile = ./secrets/backups.yaml;
 
       # 3. Unified LXC Generator
       # name: The key from network.nix (e.g., "nix-nginx")
@@ -107,8 +108,11 @@
 
     in
     {
+      packages.${system}.pve-zfs-backup = import ./pkgs/pve-zfs-backup.nix { 
+          inherit pkgs; 
+          inherit sopsFile; 
+      };
       homeConfigurations = {
-        # Replace "hajoha" with your Ubuntu username
         "haa" = home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
           extraSpecialArgs = {

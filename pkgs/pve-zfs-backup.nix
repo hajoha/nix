@@ -1,7 +1,6 @@
 { pkgs, sopsFile }:
 
 let
-  # Your specific updated ZFS dataset mapping
   backups = [
     { name = "postgres";  path = "/threetbpool/postgres"; }
     { name = "immich";    path = "/threetbpool/subvol-113-disk-0"; }
@@ -9,25 +8,19 @@ let
     { name = "proxmox-etc"; path = "/etc/pve"; }
   ];
 
-  # Borgmatic YAML Configuration
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
     source_directories = map (b: b.path) backups;
     
-    repositories = [{
-      # Note: Replace <user> with your actual Hetzner Storage Box username
-      path = "ssh://<user>@<user>.your-storagebox.de:23/./backups/proxmox-host";
-      label = "hetzner";
-    }];
-
+    # We remove the hardcoded repositories list here because 
+    # we will pass it via the CLI at runtime.
+    
     storage = {
       encryption = "repokey-blake2";
       ssh_command = "ssh -p 23 -i /root/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new";
       archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}"; 
     };
 
-    zfs = {
-      enabled = true; # Handles snapshots for the /threetbpool/ paths automatically
-    };
+    zfs.enabled = true;
 
     retention = {
       keep_daily = 7;
@@ -36,23 +29,27 @@ let
     };
   };
 
-  # The backup script wrapper
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
+    
+    # 1. Extract both secrets from SOPS
     export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
-    # 2. Verify ZFS paths are available
+    REPO_PATH=$(${pkgs.sops}/bin/sops -d --extract '["repo_path"]' ${sopsFile})
+
+    # 2. Verify ZFS paths
     for path in ${builtins.concatStringsSep " " (map (b: b.path) backups)}; do
       if [ ! -d "$path" ]; then
         echo "Warning: Path $path not found. Skipping validation..."
       fi
     done
 
-    # 3. Execute Borgmatic
+    # 3. Execute Borgmatic, overriding the repository path with the secret
     echo "Starting backup to Hetzner Storage Box..."
-    ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} --verbosity 1 --stats "$@"
+    ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} \
+      --repository "$REPO_PATH" \
+      --verbosity 1 --stats "$@"
   '';
 
-  # Systemd Service Unit
   serviceUnit = pkgs.writeText "pve-zfs-backup.service" ''
     [Unit]
     Description=Borgmatic ZFS Backup
@@ -66,7 +63,6 @@ let
     Group=root
   '';
 
-  # Systemd Timer Unit
   timerUnit = pkgs.writeText "pve-zfs-backup.timer" ''
     [Unit]
     Description=Daily PVE ZFS Backup Timer
@@ -89,7 +85,6 @@ pkgs.symlinkJoin {
     cp ${serviceUnit} $out/etc/systemd/system/pve-zfs-backup.service
     cp ${timerUnit} $out/etc/systemd/system/pve-zfs-backup.timer
 
-    # The installer script that links everything into the host's /etc
     mkdir -p $out/bin
     cat <<EOF > $out/bin/pve-zfs-backup-install
     #!/bin/bash

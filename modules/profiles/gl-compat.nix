@@ -1,4 +1,11 @@
-{ pkgs, nixgl, config, lib, ... }: {
+{
+  pkgs,
+  nixgl,
+  config,
+  lib,
+  ...
+}:
+{
   targets.genericLinux.enable = true;
   targets.genericLinux.nixGL = {
     packages = import nixgl { inherit pkgs; };

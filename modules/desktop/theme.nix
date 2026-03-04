@@ -1,4 +1,5 @@
-{ pkgs, ... }: {
+{ pkgs, ... }:
+{
   gtk = {
     enable = true;
     theme = {
@@ -20,7 +21,7 @@
     "org/gnome/desktop/interface".color-scheme = "prefer-dark";
   };
 
-    fonts.fontconfig.enable = true;
+  fonts.fontconfig.enable = true;
   home.packages = with pkgs; [
     noto-fonts-color-emoji # Best overall support
     twemoji-color-font

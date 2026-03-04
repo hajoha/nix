@@ -1,6 +1,9 @@
-{ pkgs, ... }: {
+{ pkgs, ... }:
+{
   home.packages = with pkgs; [
-    gcc gnumake nixfmt
+    gcc
+    gnumake
+    nixfmt
     (pkgs.jetbrains.plugins.addPlugins pkgs.jetbrains.clion [
       #  pkgs.jetbrains.plugins.github-copilot
     ])
@@ -9,7 +12,7 @@
       #  pkgs.jetbrains.plugins.nixidea
     ])
     android-studio
-    android-android-tools
+    android-tools
     # ... other heavy dev apps ...
   ];
 }

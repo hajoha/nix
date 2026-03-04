@@ -5,11 +5,25 @@
   ...
 }:
 {
-
+  xdg.portal = {
+    enable = true;
+    # Use gtk for file pickers and wlr for screen sharing
+    extraPortals = [ 
+      pkgs.xdg-desktop-portal-wlr 
+      pkgs.xdg-desktop-portal-gtk 
+    ];
+    config = {
+      common = {
+        default = [ "gtk" ];
+        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+        "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+      };
+    };
+  };
   programs.waybar = {
     enable = true;
     systemd.enable = true;
-    systemd.target = "sway-session.target"; # Ensures it starts with Sway
+    systemd.target = "graphical-session.target"; # Ensures it starts with Sway
 
     style = builtins.readFile ./style.css;
     settings = [
@@ -216,7 +230,7 @@
     '';
     config = {
       modifier = "Mod4"; # Super/Windows key
-      terminal = "alacritty";
+      terminal = "ghostty";
       defaultWorkspace = "workspace number 1";
       menu = "wofi --show drun"; # You can replace this with bemenu, fuzzel, etc.
       keybindings = {

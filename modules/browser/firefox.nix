@@ -9,7 +9,6 @@
     enable = true;
     package = config.lib.nixGL.wrap pkgs.firefox;
 
-    # 1. ENTERPRISE POLICIES (Global settings)
     policies = {
       AutofillAddressEnabled = false;
       AutofillCreditCardEnabled = false;
@@ -77,24 +76,7 @@
       # Search Engine Declarations
       SearchEngines = {
         Add = [
-          {
-            Name = "Arch Wiki";
-            Alias = "@aw";
-            URLTemplate = "https://wiki.archlinux.org/index.php?search={searchTerms}";
-            IconURL = "https://wiki.archlinux.org/favicon.ico";
-          }
-          {
-            Name = "Docker Hub";
-            Alias = "@dh";
-            URLTemplate = "https://hub.docker.com/search?q={searchTerms}";
-            IconURL = "https://hub.docker.com/favicon.ico";
-          }
-          {
-            Name = "Flathub";
-            Alias = "@fh";
-            URLTemplate = "https://flathub.org/apps/search?q={searchTerms}";
-            IconURL = "https://flathub.org/favicon.png";
-          }
+          
           {
             Name = "GitHub";
             Alias = "@gh";
@@ -131,18 +113,7 @@
             URLTemplate = "https://wiki.nixos.org/w/index.php?search={searchTerms}";
             IconURL = "https://wiki.nixos.org/favicon.ico";
           }
-          {
-            Name = "ProtonDB";
-            Alias = "@pd";
-            URLTemplate = "https://www.protondb.com/search?q={searchTerms}";
-            IconURL = "https://www.protondb.com/favicon.ico";
-          }
-          {
-            Name = "Reddit";
-            Alias = "@rd";
-            URLTemplate = "https://www.reddit.com/search/?q={searchTerms}";
-            IconURL = "https://www.reddit.com/favicon.ico";
-          }
+          
           {
             Name = "Stack Overflow";
             Alias = "@so";
