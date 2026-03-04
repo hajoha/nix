@@ -1,0 +1,30 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "Fira Code", monospace; /* Using a font we know you have */
+    font-weight: bold;
+    font-size: 14px;
+}
+
+window#waybar {
+    background: rgba(30, 30, 46, 1.0); /* Solid background */
+    color: #cdd6f4;
+    border-bottom: 2px solid #89b4fa;
+}
+
+#workspaces button {
+    padding: 0 8px;
+    color: #cdd6f4;
+}
+
+#workspaces button.focused {
+    color: #89b4fa;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#clock, #battery, #pulseaudio, #network, #cpu, #memory, #backlight {
+    padding: 0 10px;
+    background: #313244;
+    margin: 2px 4px;
+    border-radius: 4px;
+}

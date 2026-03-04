@@ -1,5 +1,11 @@
-{ pkgs, lib, ... }: {
-programs.nvf = {
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
+{
+  programs.nvf = {
     enable = true;
     settings = {
 

@@ -1,5 +1,6 @@
-{ pkgs, lib, ... }: {
-programs.zed-editor = {
+{ pkgs, lib, ... }:
+{
+  programs.zed-editor = {
     enable = true;
 
     # This populates the userSettings "auto_install_extensions"
@@ -20,7 +21,12 @@ programs.zed-editor = {
         enabled = true;
         version = "2";
         default_open_ai_model = null;
-
+        autosave = {
+          # Options: "off", "on_focus_change", "on_window_change", or { "after_delay": { "milliseconds": 1000 } }
+          after_delay = {
+            milliseconds = 200;
+          };
+        };
         # Provider options:
         # - zed.dev models (claude-3-5-sonnet-latest) requires GitHub connected
         # - anthropic models (claude-3-5-sonnet-latest, claude-3-haiku-latest, claude-3-opus-latest) requires API_KEY
@@ -145,7 +151,7 @@ programs.zed-editor = {
         };
       };
 
-      vim_mode = true;
+      vim_mode = false;
 
       # Tell Zed to use direnv and direnv can use a flake.nix environment
       load_direnv = "shell_hook";
@@ -163,4 +169,4 @@ programs.zed-editor = {
     };
   };
 
- }
+}
