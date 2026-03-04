@@ -60,7 +60,7 @@
       nodes = network.nodes;
       baseDomain = network.baseDomain;
       keycloakRealm = "main";
-      sopsFile = ./secrets/backups.yaml;
+      pve2Secret = ./secrets/pve2.enc.yaml;
 
       # 3. Unified LXC Generator
       # name: The key from network.nix (e.g., "nix-nginx")
@@ -109,8 +109,8 @@
     in
     {
       packages.${system}.pve-zfs-backup = import ./pkgs/pve-zfs-backup.nix { 
-          inherit pkgs; 
-          inherit sopsFile; 
+          inherit pkgs;
+          sopsFile = pve2Secret;
       };
       homeConfigurations = {
         "haa" = home-manager.lib.homeManagerConfiguration {
