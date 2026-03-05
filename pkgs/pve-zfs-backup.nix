@@ -1,11 +1,9 @@
 { pkgs, sopsFile }:
 
 let
-  # The base path on your 6 TB ZFS pool
   zfsPoolBase = "/threetbpool";
   mountRoot = "${zfsPoolBase}/borg_mounts";
 
-  # Dataset definitions
   backups = [
     { name = "postgres";  dataset = "threetbpool/postgres";            mount = "${mountRoot}/postgres"; }
     { name = "immich";    dataset = "threetbpool/subvol-113-disk-0";  mount = "${mountRoot}/immich"; }
@@ -14,7 +12,6 @@ let
 
   repoPath = "ssh://backup-01/./pve2";
 
-  # Borgmatic Configuration (Nested Format)
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
     source_directories = map (b: b.mount) backups;
 
@@ -23,6 +20,8 @@ let
       ssh_command = "ssh";
       archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
       compression = "lz4";
+      # Ensure it stays within the mount points
+      one_file_system = true;
     };
 
     retention = {
@@ -31,8 +30,9 @@ let
       keep_monthly = 6;
     };
 
-    # Empty ZFS block to bypass internal path validation errors
-    zfs = {}; 
+    # REMOVED: zfs = {}; 
+    # By removing the zfs key entirely, Borgmatic won't try to run its 
+    # internal ZFS hook, which stops the "No ZFS datasets found" error.
 
     hooks = {
       before_everything = [ "echo 'Starting Borgmatic backup using ZFS-hosted mount points...'" ];
@@ -40,16 +40,13 @@ let
     };
   };
 
-  # The Shell Script wrapper
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
     
-    # 1. Aggressive Cleanup Trap
     cleanup() {
       echo "--- Post-execution cleanup ---"
       [[ -f "$TMP_KEY" ]] && rm -f "$TMP_KEY"
       
-      # Unmount in reverse order using util-linux and pkgs.lib helpers
       for item in ${builtins.concatStringsSep " " (map (b: "'${b.name}'") (pkgs.lib.reverseList backups))}; do
          target_mnt="${mountRoot}/$item"
          if ${pkgs.util-linux}/bin/mountpoint -q "$target_mnt"; then
@@ -58,18 +55,15 @@ let
          fi
       done
 
-      # Destroy snapshots
       for ds in ${builtins.concatStringsSep " " (map (b: "'${b.dataset}'") backups)}; do
          ${pkgs.zfs}/bin/zfs destroy -r "$ds@backup-snap" 2>/dev/null || true
       done
 
-      # Remove the temporary mount root on the ZFS pool
       rmdir "${mountRoot}" 2>/dev/null || true
     }
 
     trap cleanup EXIT
 
-    # 2. Key Management
     export TMP_KEY=$(mktemp)
     chmod 600 "$TMP_KEY"
     ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > "$TMP_KEY"
@@ -78,7 +72,6 @@ let
     echo "Decrypting BORG_PASSPHRASE..."
     export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
 
-    # 3. Mount Logic
     echo "Creating snapshots and mounting to ${mountRoot}..."
     mkdir -p "${mountRoot}"
     
@@ -86,16 +79,13 @@ let
       echo "Snapshotting ${b.dataset}..."
       ${pkgs.zfs}/bin/zfs snapshot "${b.dataset}@backup-snap"
       mkdir -p "${b.mount}"
-      # Use util-linux mount which correctly interacts with ZFS kernel module
       ${pkgs.util-linux}/bin/mount -t zfs "${b.dataset}@backup-snap" "${b.mount}"
     '') backups)}
 
-    # 4. Borgmatic Execution
     echo "Executing Borgmatic..."
     ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} --verbosity 1 --stats "$@"
   '';
 
-  # Systemd Service
   serviceUnit = pkgs.writeText "pve-zfs-backup.service" ''
     [Unit]
     Description=Borgmatic ZFS Backup
@@ -108,7 +98,6 @@ let
     User=root
   '';
 
-  # Systemd Timer
   timerUnit = pkgs.writeText "pve-zfs-backup.timer" ''
     [Unit]
     Description=Daily PVE ZFS Backup Timer
