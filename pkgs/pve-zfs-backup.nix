@@ -9,23 +9,32 @@ let
   ];
 
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
-    source_directories = map (b: b.path) backups;
-    
-    storage = {
-      encryption = "repokey-blake2";
-      # Note: Ensure this path matches where your Hetzner backup key lives
-      ssh_command = "ssh backup-01";
-      archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}"; 
+      location = {
+        source_directories = map (b: b.path) backups;
+        # We provide a dummy or template repo here because the script 
+        # overrides it with --repository via the CLI.
+        repositories = [ "ssh://backup-01:/home/pve2/" ];
+      };
+      
+      storage = {
+        encryption_passphrase = "placeholder"; # Handled by BORG_PASSPHRASE env var
+        ssh_command = "ssh backup-01";
+        archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}"; 
+      };
+  
+      # Note: 'zfs' block in borgmatic is for specific hooks/options.
+      # If you just want to backup the files, source_directories is enough.
+      # If you want to use ZFS snapshots, use the 'hooks' section.
+      hooks = {
+            # This tells borgmatic to snapshot ZFS before the backup
+            extra_backup_borders = [ "zfs" ]; 
+          };
+      retention = {
+        keep_daily = 7;
+        keep_weekly = 4;
+        keep_monthly = 6;
+      };
     };
-
-    zfs.enabled = true;
-
-    retention = {
-      keep_daily = 7;
-      keep_weekly = 4;
-      keep_monthly = 6;
-    };
-  };
 
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
