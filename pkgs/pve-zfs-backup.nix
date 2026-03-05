@@ -8,8 +8,7 @@ let
     { name = "opencloud"; path = "/threetbpool/subvol-101-disk-0"; }
   ];
 
-  repoPath = "ssh://backup-01/./home/pve2";
-
+  repoPath = "ssh://backup-01/./pve2";
   # Generate the Borgmatic YAML configuration
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
     location = {
