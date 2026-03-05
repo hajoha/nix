@@ -49,13 +49,12 @@ let
       echo "--- Post-execution cleanup ---"
       [[ -f "$TMP_KEY" ]] && rm -f "$TMP_KEY"
       
-      # Unmount in reverse order to avoid 'target is busy' errors
-      # Note: using pkgs.lib.reverseList instead of builtins
+      # Unmount in reverse order using util-linux and pkgs.lib helpers
       for item in ${builtins.concatStringsSep " " (map (b: "'${b.name}'") (pkgs.lib.reverseList backups))}; do
          target_mnt="${mountRoot}/$item"
-         if mountpoint -q "$target_mnt"; then
+         if ${pkgs.util-linux}/bin/mountpoint -q "$target_mnt"; then
             echo "Unmounting $target_mnt..."
-            umount -l "$target_mnt" || true
+            ${pkgs.util-linux}/bin/umount -l "$target_mnt" || true
          fi
       done
 
@@ -87,7 +86,8 @@ let
       echo "Snapshotting ${b.dataset}..."
       ${pkgs.zfs}/bin/zfs snapshot "${b.dataset}@backup-snap"
       mkdir -p "${b.mount}"
-      ${pkgs.zfs}/bin/mount -t zfs "${b.dataset}@backup-snap" "${b.mount}"
+      # Use util-linux mount which correctly interacts with ZFS kernel module
+      ${pkgs.util-linux}/bin/mount -t zfs "${b.dataset}@backup-snap" "${b.mount}"
     '') backups)}
 
     # 4. Borgmatic Execution
