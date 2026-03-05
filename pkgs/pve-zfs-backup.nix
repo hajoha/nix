@@ -69,7 +69,6 @@ let
     # create, mount, and destroy snapshots for each source_directory.
     echo "Starting backup to Hetzner Storage Box..."
     ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} \
-      --repository "$REPO_PATH" \
       --verbosity 1 --stats "$@"
   '';
 
