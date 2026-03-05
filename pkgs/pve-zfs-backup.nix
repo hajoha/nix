@@ -51,7 +51,6 @@ let
     # 2. Extract secrets from SOPS
     echo "Decrypting backup secrets..."
     export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
-    REPO_PATH=$(${pkgs.sops}/bin/sops -d --extract '["repo_path"]' ${sopsFile})
 
     # 3. Verify ZFS paths
     for path in ${builtins.concatStringsSep " " (map (b: b.path) backups)}; do
