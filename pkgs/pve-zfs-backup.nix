@@ -1,25 +1,29 @@
 { pkgs, sopsFile }:
 
 let
+  # Define the datasets to backup
   backups = [
     { name = "postgres";  path = "/threetbpool/postgres"; }
     { name = "immich";    path = "/threetbpool/subvol-113-disk-0"; }
     { name = "opencloud"; path = "/threetbpool/subvol-101-disk-0"; }
   ];
 
-  # Define the repository path once to keep it DRY
-  repoPath = "ssh://backup-01:/home/pve2";
+  # Repository URL using your SSH alias from .ssh/config
+  # The /./ is a Borg convention to indicate an absolute path on the remote
+  repoPath = "ssh://backup-01/./home/pve2";
 
+  # Generate the Borgmatic YAML configuration
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
     location = {
       source_directories = map (b: b.path) backups;
       repositories = [ repoPath ];
-      # FIX: Moved from hooks to location
-      extra_backup_borders = [ "zfs" ];
+      # Required to allow Borgmatic to step into the ZFS snapshots it creates
+      extra_borders = [ "zfs" ];
     };
 
     storage = {
-      ssh_command = "ssh backup-01";
+      # Uses the 'ssh' alias defined in /root/.ssh/config
+      ssh_command = "ssh";
       archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
     };
 
@@ -29,49 +33,38 @@ let
       keep_monthly = 6;
     };
 
+    # This section enables automatic ZFS snapshotting during the backup process
+    zfs = {
+      # Borgmatic will automatically detect the datasets for your source_directories
+    };
+
     hooks = {
-      # This runs before any backup starts
-      before_backup = [
-        "echo 'Starting ZFS snapshot and backup process...'"
-      ];
-      # This runs after everything is finished
-      after_backup = [
-        "echo 'Backup and retention pruning complete.'"
-      ];
+      before_backup = [ "echo 'Starting ZFS snapshot and backup process...'" ];
+      after_backup = [ "echo 'Backup and retention pruning complete.'" ];
     };
   };
 
+  # The shell script that handles SOPS decryption and runs Borgmatic
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
     
-    # 1. Setup temporary age key for SOPS
-    TMP_KEY=$(mktemp)
+    # 1. Setup temporary age key for SOPS decryption using host SSH key
+    export TMP_KEY=$(mktemp)
     trap "rm -f $TMP_KEY" EXIT
     ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > "$TMP_KEY"
     export SOPS_AGE_KEY_FILE="$TMP_KEY"
 
-    # 2. Extract secrets
-    echo "Decrypting backup secrets..."
+    # 2. Extract the Borg passphrase from your encrypted SOPS file
+    echo "Decrypting BORG_PASSPHRASE..."
     export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
 
-    # 3. Define Repo Path (needed for the --repository flag below)
-    REPO_PATH="${repoPath}"
-
-    # 4. Verify ZFS paths
-    for path in ${builtins.concatStringsSep " " (map (b: b.path) backups)}; do
-      if [ ! -d "$path" ]; then
-        echo "Warning: Path $path not found. Skipping validation..."
-      fi
-    done
-
-    # 5. Execute Borgmatic
-    # Note: With 'extra_backup_borders: [zfs]', Borgmatic will automatically 
-    # create, mount, and destroy snapshots for each source_directory.
-    echo "Starting backup to Hetzner Storage Box..."
+    # 3. Execute Borgmatic with the generated config
+    echo "Executing Borgmatic backup to Hetzner Storage Box..."
     ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} \
       --verbosity 1 --stats "$@"
   '';
 
+  # Systemd Service Definition
   serviceUnit = pkgs.writeText "pve-zfs-backup.service" ''
     [Unit]
     Description=Borgmatic ZFS Backup
@@ -85,6 +78,7 @@ let
     Group=root
   '';
 
+  # Systemd Timer Definition (Daily at 3:00 AM)
   timerUnit = pkgs.writeText "pve-zfs-backup.timer" ''
     [Unit]
     Description=Daily PVE ZFS Backup Timer
@@ -100,28 +94,29 @@ let
 
 in
 pkgs.symlinkJoin {
-  name = "pve-zfs-backup";
+  name = "pve-zfs-backup-tool";
   paths = [ backupScript ];
   postBuild = ''
+    # Create the directory structure for systemd units
     mkdir -p $out/etc/systemd/system
     cp ${serviceUnit} $out/etc/systemd/system/pve-zfs-backup.service
     cp ${timerUnit} $out/etc/systemd/system/pve-zfs-backup.timer
 
+    # Create an easy installation script to link the units into /etc
     mkdir -p $out/bin
     cat <<EOF > $out/bin/pve-zfs-backup-install
-    #!/bin/bash
-    if [[ \$EUID -ne 0 ]]; then
-       echo "This script must be run as root" 
-       exit 1
-    fi
-    echo "Installing systemd units from Nix store..."
-    ln -sf $out/etc/systemd/system/pve-zfs-backup.service /etc/systemd/system/
-    ln -sf $out/etc/systemd/system/pve-zfs-backup.timer /etc/systemd/system/
-    systemctl daemon-reload
-    systemctl enable pve-zfs-backup.timer
-    systemctl start pve-zfs-backup.timer
-    echo "Installation complete. Backup timer is active."
-    EOF
+#!/bin/bash
+if [[ \$EUID -ne 0 ]]; then
+   echo "This script must be run as root" 
+   exit 1
+fi
+echo "Linking systemd units from Nix store..."
+ln -sf $out/etc/systemd/system/pve-zfs-backup.service /etc/systemd/system/
+ln -sf $out/etc/systemd/system/pve-zfs-backup.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now pve-zfs-backup.timer
+echo "Installation complete. You can trigger a manual backup with: pve-zfs-backup"
+EOF
     chmod +x $out/bin/pve-zfs-backup-install
   '';
 }
