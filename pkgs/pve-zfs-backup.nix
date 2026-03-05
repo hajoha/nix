@@ -9,30 +9,30 @@ let
   ];
 
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
+      # 1. Location block: Handles WHERE and WHAT
       location = {
         source_directories = map (b: b.path) backups;
-        # We provide a dummy or template repo here because the script 
-        # overrides it with --repository via the CLI.
-        repositories = [ "ssh://backup-01:/home/pve2/" ];
-      };
-      
-      storage = {
-        encryption_passphrase = "placeholder"; # Handled by BORG_PASSPHRASE env var
-        ssh_command = "ssh backup-01";
-        archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}"; 
+        repositories = [ "ssh://backup-01:/home/pve2/" ]; # Must match what's in SOPS
       };
   
-      # Note: 'zfs' block in borgmatic is for specific hooks/options.
-      # If you just want to backup the files, source_directories is enough.
-      # If you want to use ZFS snapshots, use the 'hooks' section.
-      hooks = {
-            # This tells borgmatic to snapshot ZFS before the backup
-            extra_backup_borders = [ "zfs" ]; 
-          };
+      # 2. Storage block: Handles HOW
+      storage = {
+        # encryption_passphrase is not needed here as BORG_PASSPHRASE env var is used
+        ssh_command = "ssh backup-01";
+        archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
+      };
+  
+      # 3. Retention block: Handles HOW LONG
       retention = {
         keep_daily = 7;
         keep_weekly = 4;
         keep_monthly = 6;
+      };
+  
+      # 4. Hooks block: Handles SPECIAL ACTIONS (like ZFS)
+      hooks = {
+        # This must be under hooks, not at the top level
+        extra_backup_borders = [ "zfs" ];
       };
     };
 
