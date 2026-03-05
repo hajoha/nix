@@ -5,17 +5,15 @@ let
     { name = "postgres";  path = "/threetbpool/postgres"; }
     { name = "immich";    path = "/threetbpool/subvol-113-disk-0"; }
     { name = "opencloud"; path = "/threetbpool/subvol-101-disk-0"; }
-    { name = "proxmox-etc"; path = "/etc/pve"; }
+    # { name = "proxmox-etc"; path = "/etc/pve"; }
   ];
 
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
     source_directories = map (b: b.path) backups;
     
-    # We remove the hardcoded repositories list here because 
-    # we will pass it via the CLI at runtime.
-    
     storage = {
       encryption = "repokey-blake2";
+      # Note: Ensure this path matches where your Hetzner backup key lives
       ssh_command = "ssh -p 23 -i /root/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new";
       archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}"; 
     };
@@ -32,18 +30,28 @@ let
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
     
-    # 1. Extract both secrets from SOPS
+    # 1. Generate age key from SSH host key on the fly
+    # We use a temporary file to keep the decrypted age key out of the Nix store
+    TMP_KEY=$(mktemp)
+    trap "rm -f $TMP_KEY" EXIT
+    
+    # Convert private SSH key to age format
+    ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > "$TMP_KEY"
+    export SOPS_AGE_KEY_FILE="$TMP_KEY"
+
+    # 2. Extract secrets from SOPS
+    echo "Decrypting backup secrets..."
     export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
     REPO_PATH=$(${pkgs.sops}/bin/sops -d --extract '["repo_path"]' ${sopsFile})
 
-    # 2. Verify ZFS paths
+    # 3. Verify ZFS paths
     for path in ${builtins.concatStringsSep " " (map (b: b.path) backups)}; do
       if [ ! -d "$path" ]; then
         echo "Warning: Path $path not found. Skipping validation..."
       fi
     done
 
-    # 3. Execute Borgmatic, overriding the repository path with the secret
+    # 4. Execute Borgmatic
     echo "Starting backup to Hetzner Storage Box..."
     ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} \
       --repository "$REPO_PATH" \
@@ -58,6 +66,7 @@ let
 
     [Service]
     Type=oneshot
+    # Run as root to access /etc/ssh/ssh_host_ed25519_key
     ExecStart=${backupScript}/bin/pve-zfs-backup
     User=root
     Group=root
