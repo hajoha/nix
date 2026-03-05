@@ -93,7 +93,10 @@ creation_rules:
   - path_regex: services/.*\.enc\.yaml$
     key_groups:
       - age: [*fokus, *private]
+  - path_regex: secrets/.*\.enc\.toml$
+    key_groups:
+      - age: [*fokus, *private]
         
-  - path_regex: secrets/pve2.enc.yaml
+  - path_regex: secrets/pve2.enc\.yaml$
     key_groups:
       - age: [*fokus, *private, *pve2]

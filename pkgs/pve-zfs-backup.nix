@@ -21,6 +21,7 @@ let
     storage = {
       ssh_command = "ssh";
       archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
+      progress = true;
     };
 
     retention = {
