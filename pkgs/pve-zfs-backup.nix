@@ -1,10 +1,11 @@
 { pkgs, sopsFile }:
 
 let
-  # The base path on your LARGE ZFS pool where we will temporarily mount snapshots
+  # The base path on your 6 TB ZFS pool
   zfsPoolBase = "/threetbpool";
   mountRoot = "${zfsPoolBase}/borg_mounts";
 
+  # Dataset definitions
   backups = [
     { name = "postgres";  dataset = "threetbpool/postgres";            mount = "${mountRoot}/postgres"; }
     { name = "immich";    dataset = "threetbpool/subvol-113-disk-0";  mount = "${mountRoot}/immich"; }
@@ -13,6 +14,7 @@ let
 
   repoPath = "ssh://backup-01/./pve2";
 
+  # Borgmatic Configuration (Nested Format)
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
     source_directories = map (b: b.mount) backups;
 
@@ -29,7 +31,7 @@ let
       keep_monthly = 6;
     };
 
-    # Keeping this empty avoids the path validation errors you saw earlier
+    # Empty ZFS block to bypass internal path validation errors
     zfs = {}; 
 
     hooks = {
@@ -38,6 +40,7 @@ let
     };
   };
 
+  # The Shell Script wrapper
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
     
@@ -46,8 +49,9 @@ let
       echo "--- Post-execution cleanup ---"
       [[ -f "$TMP_KEY" ]] && rm -f "$TMP_KEY"
       
-      # Unmount in reverse order
-      for item in ${builtins.concatStringsSep " " (map (b: "'${b.name}'") (builtins.reverseList backups))}; do
+      # Unmount in reverse order to avoid 'target is busy' errors
+      # Note: using pkgs.lib.reverseList instead of builtins
+      for item in ${builtins.concatStringsSep " " (map (b: "'${b.name}'") (pkgs.lib.reverseList backups))}; do
          target_mnt="${mountRoot}/$item"
          if mountpoint -q "$target_mnt"; then
             echo "Unmounting $target_mnt..."
@@ -66,7 +70,7 @@ let
 
     trap cleanup EXIT
 
-    # 2. Setup Keys
+    # 2. Key Management
     export TMP_KEY=$(mktemp)
     chmod 600 "$TMP_KEY"
     ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > "$TMP_KEY"
@@ -75,7 +79,7 @@ let
     echo "Decrypting BORG_PASSPHRASE..."
     export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
 
-    # 3. Create Snapshots and Mount on the ZFS Pool
+    # 3. Mount Logic
     echo "Creating snapshots and mounting to ${mountRoot}..."
     mkdir -p "${mountRoot}"
     
@@ -86,11 +90,12 @@ let
       ${pkgs.zfs}/bin/mount -t zfs "${b.dataset}@backup-snap" "${b.mount}"
     '') backups)}
 
-    # 4. Run Borgmatic
+    # 4. Borgmatic Execution
     echo "Executing Borgmatic..."
     ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} --verbosity 1 --stats "$@"
   '';
 
+  # Systemd Service
   serviceUnit = pkgs.writeText "pve-zfs-backup.service" ''
     [Unit]
     Description=Borgmatic ZFS Backup
@@ -103,6 +108,7 @@ let
     User=root
   '';
 
+  # Systemd Timer
   timerUnit = pkgs.writeText "pve-zfs-backup.timer" ''
     [Unit]
     Description=Daily PVE ZFS Backup Timer
