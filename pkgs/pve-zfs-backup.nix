@@ -14,7 +14,7 @@ let
     storage = {
       encryption = "repokey-blake2";
       # Note: Ensure this path matches where your Hetzner backup key lives
-      ssh_command = "ssh -p 23 -i /root/.ssh/id_ed25519_hetzner -o StrictHostKeyChecking=accept-new";
+      ssh_command = "ssh backup-01";
       archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}"; 
     };
 
