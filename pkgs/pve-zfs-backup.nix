@@ -10,39 +10,45 @@ let
   repoPath = "ssh://backup-01/./pve2";
 
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
-    # --- Global Scope (Current stable borgmatic uses flat keys for most options) ---
-    source_directories = map (b: b.path) backups;
-    
-    repositories = [ { path = repoPath; } ];
-
-    one_file_system = true;
-    
-    # THE CRITICAL FIX:
-    # Based on the documentation, this replaces the old "exclude_runtime_directory"
-    # It allows backups even if the ZFS mounts are inside the runtime directory.
-    unsafe_skip_path_validation_before_create = true;
-
-    # --- Storage & Encryption ---
-    ssh_command = "ssh";
-    archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
-    compression = "lz4";
-
-    # --- Retention ---
-    keep_daily = 7;
-    keep_weekly = 4;
-    keep_monthly = 6;
-
-    # --- ZFS ---
-    zfs = {};
-
-    # --- Hooks ---
-    # Note: Modern borgmatic uses 'before_everything', but 'before_backup' 
-    # is often still accepted for backward compatibility. 
-    # Let's use the documentation-suggested flat hook keys.
-    before_everything = [ "echo 'Starting ZFS snapshot and backup process...'" ];
-    after_everything = [ "echo 'Backup and retention pruning complete.'" ];
-  };
-
+      # --- Source Directories (Top Level) ---
+      source_directories = map (b: b.path) backups;
+      one_file_system = true;
+  
+      # --- Storage Section (The new Nested way) ---
+      storage = {
+        repositories = [ { path = repoPath; } ];
+        ssh_command = "ssh";
+        archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
+        compression = "lz4";
+        # This is the "Critical Fix" from before, moved to its correct home
+        unsafe_skip_path_validation_before_create = true;
+      };
+  
+      # --- Retention Section (The new Nested way) ---
+      retention = {
+        keep_daily = 7;
+        keep_weekly = 4;
+        keep_monthly = 6;
+      };
+  
+      # --- ZFS Section ---
+      zfs = {};
+  
+      # --- Hooks Section ---
+      # Note: Using the modern 'commands' syntax instead of deprecated hooks
+      hooks = {
+        commands = [
+          {
+            before = "everything";
+            run = [ "echo 'Starting ZFS snapshot and backup process...'" ];
+          }
+          {
+            after = "everything";
+            run = [ "echo 'Backup and retention pruning complete.'" ];
+          }
+        ];
+      };
+    };
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
     
