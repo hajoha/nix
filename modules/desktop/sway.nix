@@ -20,6 +20,30 @@
       };
     };
   };
+  
+  home.packages = with pkgs; [
+    swaynotificationcenter
+    adwaita-icon-theme
+    gnome-themes-extra
+  ];
+  
+  
+  services.swaync = {
+    enable = true;
+    settings = {
+      positionX = "right";
+      positionY = "top";
+      layer = "top";
+      control-center-margin-top = 10;
+      control-center-margin-bottom = 10;
+      control-center-margin-right = 10;
+      control-center-margin-left = 10;
+      notification-icon-size = 64;
+      notification-body-image-height = 100;
+      notification-body-image-width = 200;
+    };
+  };
+  
   programs.waybar = {
     enable = true;
     systemd.enable = true;

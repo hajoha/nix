@@ -10,34 +10,42 @@ let
 
   repoPath = "ssh://backup-01/./pve2";
   # Generate the Borgmatic YAML configuration
-  borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
-    location = {
+  # Generate the Borgmatic YAML configuration
+    borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
+      # --- New Flat Layout (No more 'location:', 'storage:', etc.) ---
+      
       source_directories = map (b: b.path) backups;
-      repositories = [ repoPath ];
-      # Prevents Borg from crossing mount points outside the specified datasets
-      one_file_system = true; 
-    };
-
-    storage = {
+      
+      # New repository format: list of attribute sets
+      repositories = [ 
+        { path = repoPath; } 
+      ];
+  
+      one_file_system = true;
       ssh_command = "ssh";
       archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
-      progress = true;
-    };
-
-    retention = {
+      
+      # Retention
       keep_daily = 7;
       keep_weekly = 4;
       keep_monthly = 6;
+  
+      # ZFS Magic
+      zfs = {};
+  
+      # --- THE FIX FOR THE OVERLAP ERROR ---
+      # Explicitly set the runtime directory to avoid the /run/user/0 conflict
+      # and disable the automatic exclusion that causes the crash.
+      extra_borg_options = {
+        create = "--exclude-caches";
+      };
+      exclude_runtime_directory = false;
+  
+      # Modern Hooks syntax
+      on_error = [ "echo 'Backup failed!'" ];
+      before_everything = [ "echo 'Starting ZFS snapshot and backup process...'" ];
+      after_everything = [ "echo 'Backup and retention pruning complete.'" ];
     };
-
-    # Enables automatic ZFS snapshotting and mounts them temporarily for backup
-    zfs = {};
-
-    hooks = {
-      before_backup = [ "echo 'Starting ZFS snapshot and backup process...'" ];
-      after_backup = [ "echo 'Backup and retention pruning complete.'" ];
-    };
-  };
 
   # Shell script that handles SOPS decryption and runs Borgmatic
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
