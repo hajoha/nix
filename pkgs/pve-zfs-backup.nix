@@ -1,72 +1,73 @@
 { pkgs, sopsFile }:
 
 let
+  # The base path on your LARGE ZFS pool where we will temporarily mount snapshots
+  zfsPoolBase = "/threetbpool";
+  mountRoot = "${zfsPoolBase}/borg_mounts";
+
   backups = [
-    { name = "postgres";  path = "/threetbpool/postgres"; }
-    { name = "immich";    path = "/threetbpool/subvol-113-disk-0"; }
-    { name = "opencloud"; path = "/threetbpool/subvol-101-disk-0"; }
+    { name = "postgres";  dataset = "threetbpool/postgres";            mount = "${mountRoot}/postgres"; }
+    { name = "immich";    dataset = "threetbpool/subvol-113-disk-0";  mount = "${mountRoot}/immich"; }
+    { name = "opencloud"; dataset = "threetbpool/subvol-101-disk-0";  mount = "${mountRoot}/opencloud"; }
   ];
 
   repoPath = "ssh://backup-01/./pve2";
 
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
-      # --- Source Directories (Top Level) ---
-      source_directories = map (b: b.path) backups;
-      one_file_system = true;
-  
-      # --- Storage Section (The new Nested way) ---
-      storage = {
-        repositories = [ { path = repoPath; } ];
-        ssh_command = "ssh";
-        archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
-        compression = "lz4";
-        # This is the "Critical Fix" from before, moved to its correct home
-        unsafe_skip_path_validation_before_create = true;
-      };
-  
-      # --- Retention Section (The new Nested way) ---
-      retention = {
-        keep_daily = 7;
-        keep_weekly = 4;
-        keep_monthly = 6;
-      };
-  
-      # --- ZFS Section ---
-      zfs = {};
-  
-      # --- Hooks Section ---
-      # Note: Using the modern 'commands' syntax instead of deprecated hooks
-      hooks = {
-        commands = [
-          {
-            before = "everything";
-            run = [ "echo 'Starting ZFS snapshot and backup process...'" ];
-          }
-          {
-            after = "everything";
-            run = [ "echo 'Backup and retention pruning complete.'" ];
-          }
-        ];
-      };
+    source_directories = map (b: b.mount) backups;
+
+    storage = {
+      repositories = [ { path = repoPath; } ];
+      ssh_command = "ssh";
+      archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
+      compression = "lz4";
     };
+
+    retention = {
+      keep_daily = 7;
+      keep_weekly = 4;
+      keep_monthly = 6;
+    };
+
+    # Keeping this empty avoids the path validation errors you saw earlier
+    zfs = {}; 
+
+    hooks = {
+      before_everything = [ "echo 'Starting Borgmatic backup using ZFS-hosted mount points...'" ];
+      after_everything = [ "echo 'Backup and retention pruning complete.'" ];
+    };
+  };
+
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
     
-    # Aggressive cleanup trap for Proxmox/ZFS
+    # 1. Aggressive Cleanup Trap
     cleanup() {
       echo "--- Post-execution cleanup ---"
       [[ -f "$TMP_KEY" ]] && rm -f "$TMP_KEY"
       
-      # Use the grep method to find and unmount anything borgmatic left behind
-      if grep -q "borgmatic" /proc/mounts; then
-          echo "Found lingering ZFS mounts. Force unmounting..."
-          grep "borgmatic" /proc/mounts | cut -d' ' -f2 | xargs -r umount -f || true
-      fi
+      # Unmount in reverse order
+      for item in ${builtins.concatStringsSep " " (map (b: "'${b.name}'") (builtins.reverseList backups))}; do
+         target_mnt="${mountRoot}/$item"
+         if mountpoint -q "$target_mnt"; then
+            echo "Unmounting $target_mnt..."
+            umount -l "$target_mnt" || true
+         fi
+      done
+
+      # Destroy snapshots
+      for ds in ${builtins.concatStringsSep " " (map (b: "'${b.dataset}'") backups)}; do
+         ${pkgs.zfs}/bin/zfs destroy -r "$ds@backup-snap" 2>/dev/null || true
+      done
+
+      # Remove the temporary mount root on the ZFS pool
+      rmdir "${mountRoot}" 2>/dev/null || true
     }
 
-    export TMP_KEY=$(mktemp)
     trap cleanup EXIT
-    
+
+    # 2. Setup Keys
+    export TMP_KEY=$(mktemp)
     chmod 600 "$TMP_KEY"
     ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > "$TMP_KEY"
     export SOPS_AGE_KEY_FILE="$TMP_KEY"
@@ -74,11 +75,22 @@ let
     echo "Decrypting BORG_PASSPHRASE..."
     export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
 
+    # 3. Create Snapshots and Mount on the ZFS Pool
+    echo "Creating snapshots and mounting to ${mountRoot}..."
+    mkdir -p "${mountRoot}"
+    
+    ${builtins.concatStringsSep "\n" (map (b: ''
+      echo "Snapshotting ${b.dataset}..."
+      ${pkgs.zfs}/bin/zfs snapshot "${b.dataset}@backup-snap"
+      mkdir -p "${b.mount}"
+      ${pkgs.zfs}/bin/mount -t zfs "${b.dataset}@backup-snap" "${b.mount}"
+    '') backups)}
+
+    # 4. Run Borgmatic
     echo "Executing Borgmatic..."
     ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} --verbosity 1 --stats "$@"
   '';
 
-  # Systemd definitions remain the same...
   serviceUnit = pkgs.writeText "pve-zfs-backup.service" ''
     [Unit]
     Description=Borgmatic ZFS Backup
@@ -89,7 +101,6 @@ let
     Environment="HOME=/root"
     ExecStart=${backupScript}/bin/pve-zfs-backup
     User=root
-    Group=root
   '';
 
   timerUnit = pkgs.writeText "pve-zfs-backup.timer" ''
