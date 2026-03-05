@@ -9,62 +9,62 @@ let
   ];
 
   repoPath = "ssh://backup-01/./pve2";
-  # Generate the Borgmatic YAML configuration
-  # Generate the Borgmatic YAML configuration
-    borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
-      # --- New Flat Layout (No more 'location:', 'storage:', etc.) ---
-      
-      source_directories = map (b: b.path) backups;
-      
-      # New repository format: list of attribute sets
-      repositories = [ 
-        { path = repoPath; } 
-      ];
-  
-      one_file_system = true;
-      ssh_command = "ssh";
-      archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
-      
-      # Retention
-      keep_daily = 7;
-      keep_weekly = 4;
-      keep_monthly = 6;
-  
-      # ZFS Magic
-      zfs = {};
-  
-      # --- THE FIX FOR THE OVERLAP ERROR ---
-      # Explicitly set the runtime directory to avoid the /run/user/0 conflict
-      # and disable the automatic exclusion that causes the crash.
-      extra_borg_options = {
-        create = "--exclude-caches";
-      };
-      exclude_runtime_directory = false;
-  
-      # Modern Hooks syntax
-      on_error = [ "echo 'Backup failed!'" ];
-      before_everything = [ "echo 'Starting ZFS snapshot and backup process...'" ];
-      after_everything = [ "echo 'Backup and retention pruning complete.'" ];
-    };
 
-  # Shell script that handles SOPS decryption and runs Borgmatic
+  # Generate the Borgmatic YAML configuration (Modernized Flat Schema)
+  borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
+    # --- Source and Repositories ---
+    source_directories = map (b: b.path) backups;
+    repositories = [ { path = repoPath; } ];
+
+    # --- Storage and Performance ---
+    one_file_system = true;
+    ssh_command = "ssh";
+    archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
+    
+    # --- Retention Policy ---
+    keep_daily = 7;
+    keep_weekly = 4;
+    keep_monthly = 6;
+
+    # --- ZFS Configuration ---
+    zfs = {};
+
+    # --- THE CRITICAL FIXES ---
+    # 1. Prevents the "Runtime directory overlaps" error
+    exclude_runtime_directory = false;
+    
+    # 2. Modern Hooks (using 'commands' scope)
+    before_everything = [ "echo 'Starting ZFS snapshot and backup process...'" ];
+    after_everything = [ "echo 'Backup and retention pruning complete.'" ];
+  };
+
+  # Shell script with SOPS decryption and aggressive cleanup
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
     
-    # 1. Setup temporary age key for SOPS decryption using host SSH key
+    # Define cleanup function to handle crashes/interrupts
+    cleanup() {
+      echo "--- Post-execution cleanup ---"
+      # Release SOPS key
+      [[ -f "$TMP_KEY" ]] && rm -f "$TMP_KEY"
+      
+      # Unmount any stubborn Borgmatic ZFS snapshots still in /proc/mounts
+      # This prevents the "Dataset is busy" error on subsequent runs
+      grep "borgmatic" /proc/mounts | cut -d' ' -f2 | xargs -r umount -f || true
+      echo "Cleanup complete."
+    }
+
+    # Set the trap
     export TMP_KEY=$(mktemp)
-    trap "rm -f $TMP_KEY" EXIT
+    trap cleanup EXIT
     
-    # Restrict permissions on the temp key immediately
     chmod 600 "$TMP_KEY"
     ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > "$TMP_KEY"
     export SOPS_AGE_KEY_FILE="$TMP_KEY"
 
-    # 2. Extract the Borg passphrase
     echo "Decrypting BORG_PASSPHRASE..."
     export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
 
-    # 3. Execute Borgmatic
     echo "Executing Borgmatic backup..."
     ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} --verbosity 1 --stats "$@"
   '';
@@ -84,7 +84,7 @@ let
     Group=root
   '';
 
-  # Systemd Timer Definition (Daily at 3:00 AM)
+  # Systemd Timer Definition
   timerUnit = pkgs.writeText "pve-zfs-backup.timer" ''
     [Unit]
     Description=Daily PVE ZFS Backup Timer
@@ -103,12 +103,10 @@ pkgs.symlinkJoin {
   name = "pve-zfs-backup-tool";
   paths = [ backupScript ];
   postBuild = ''
-    # Create the directory structure for systemd units
     mkdir -p $out/etc/systemd/system
     cp ${serviceUnit} $out/etc/systemd/system/pve-zfs-backup.service
     cp ${timerUnit} $out/etc/systemd/system/pve-zfs-backup.timer
 
-    # Create an easy installation script
     mkdir -p $out/bin
     cat <<EOF > $out/bin/pve-zfs-backup-install
 #!/bin/bash
@@ -117,16 +115,12 @@ if [[ \$EUID -ne 0 ]]; then
    exit 1
 fi
 
-echo "Linking systemd units from Nix store..."
 ln -sf $out/etc/systemd/system/pve-zfs-backup.service /etc/systemd/system/
 ln -sf $out/etc/systemd/system/pve-zfs-backup.timer /etc/systemd/system/
 
 systemctl daemon-reload
 systemctl enable --now pve-zfs-backup.timer
-
 echo "Installation complete."
-echo "Trigger manual backup: pve-zfs-backup"
-echo "Check timer status: systemctl list-timers | grep pve"
 EOF
     chmod +x $out/bin/pve-zfs-backup-install
   '';
