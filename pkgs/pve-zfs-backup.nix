@@ -5,61 +5,68 @@ let
     { name = "postgres";  path = "/threetbpool/postgres"; }
     { name = "immich";    path = "/threetbpool/subvol-113-disk-0"; }
     { name = "opencloud"; path = "/threetbpool/subvol-101-disk-0"; }
-    # { name = "proxmox-etc"; path = "/etc/pve"; }
   ];
 
+  # Define the repository path once to keep it DRY
+  repoPath = "ssh://backup-01:/home/pve2";
+
   borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
-      # 1. Location block: Handles WHERE and WHAT
-      location = {
-        source_directories = map (b: b.path) backups;
-        repositories = [ "ssh://backup-01:/home/pve2/" ]; # Must match what's in SOPS
-      };
-  
-      # 2. Storage block: Handles HOW
-      storage = {
-        # encryption_passphrase is not needed here as BORG_PASSPHRASE env var is used
-        ssh_command = "ssh backup-01";
-        archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
-      };
-  
-      # 3. Retention block: Handles HOW LONG
-      retention = {
-        keep_daily = 7;
-        keep_weekly = 4;
-        keep_monthly = 6;
-      };
-  
-      # 4. Hooks block: Handles SPECIAL ACTIONS (like ZFS)
-      hooks = {
-        # This must be under hooks, not at the top level
-        extra_backup_borders = [ "zfs" ];
-      };
+    location = {
+      source_directories = map (b: b.path) backups;
+      repositories = [ repoPath ];
+      # FIX: Moved from hooks to location
+      extra_backup_borders = [ "zfs" ];
     };
+
+    storage = {
+      ssh_command = "ssh backup-01";
+      archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
+    };
+
+    retention = {
+      keep_daily = 7;
+      keep_weekly = 4;
+      keep_monthly = 6;
+    };
+
+    hooks = {
+      # This runs before any backup starts
+      before_backup = [
+        "echo 'Starting ZFS snapshot and backup process...'"
+      ];
+      # This runs after everything is finished
+      after_backup = [
+        "echo 'Backup and retention pruning complete.'"
+      ];
+    };
+  };
 
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
     
-    # 1. Generate age key from SSH host key on the fly
-    # We use a temporary file to keep the decrypted age key out of the Nix store
+    # 1. Setup temporary age key for SOPS
     TMP_KEY=$(mktemp)
     trap "rm -f $TMP_KEY" EXIT
-    
-    # Convert private SSH key to age format
     ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > "$TMP_KEY"
     export SOPS_AGE_KEY_FILE="$TMP_KEY"
 
-    # 2. Extract secrets from SOPS
+    # 2. Extract secrets
     echo "Decrypting backup secrets..."
     export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
 
-    # 3. Verify ZFS paths
+    # 3. Define Repo Path (needed for the --repository flag below)
+    REPO_PATH="${repoPath}"
+
+    # 4. Verify ZFS paths
     for path in ${builtins.concatStringsSep " " (map (b: b.path) backups)}; do
       if [ ! -d "$path" ]; then
         echo "Warning: Path $path not found. Skipping validation..."
       fi
     done
 
-    # 4. Execute Borgmatic
+    # 5. Execute Borgmatic
+    # Note: With 'extra_backup_borders: [zfs]', Borgmatic will automatically 
+    # create, mount, and destroy snapshots for each source_directory.
     echo "Starting backup to Hetzner Storage Box..."
     ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} \
       --repository "$REPO_PATH" \
@@ -74,7 +81,6 @@ let
 
     [Service]
     Type=oneshot
-    # Run as root to access /etc/ssh/ssh_host_ed25519_key
     ExecStart=${backupScript}/bin/pve-zfs-backup
     User=root
     Group=root
