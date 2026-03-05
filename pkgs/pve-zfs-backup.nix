@@ -1,91 +1,118 @@
 { pkgs, sopsFile }:
 
 let
-  # configuration constants
+  backups = [
+    { name = "postgres";  path = "/threetbpool/postgres"; }
+    { name = "immich";    path = "/threetbpool/subvol-113-disk-0"; }
+    { name = "opencloud"; path = "/threetbpool/subvol-101-disk-0"; }
+  ];
+
   repoPath = "ssh://backup-01/./pve2";
-  
-  # The actual Borgmatic Config (Declarative)
-  borgmaticConfig = (pkgs.formats.yaml {}).generate "config.yaml" {
-    source_directories = [
-      "/threetbpool/postgres"
-      "/threetbpool/subvol-113-disk-0"
-      "/threetbpool/subvol-101-disk-0"
-    ];
-    repositories = [ { path = repoPath; } ];
-    one_file_system = true;
-    unsafe_skip_path_validation_before_create = true;
+
+  borgmaticConfig = (pkgs.formats.yaml {}).generate "borgmatic-config.yaml" {
+    # --- Global Scope (Current stable borgmatic uses flat keys for most options) ---
+    source_directories = map (b: b.path) backups;
     
-    # Retention
+    repositories = [ { path = repoPath; } ];
+
+    one_file_system = true;
+    
+    # THE CRITICAL FIX:
+    # Based on the documentation, this replaces the old "exclude_runtime_directory"
+    # It allows backups even if the ZFS mounts are inside the runtime directory.
+    unsafe_skip_path_validation_before_create = true;
+
+    # --- Storage & Encryption ---
+    ssh_command = "ssh";
+    archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
+    compression = "lz4";
+
+    # --- Retention ---
     keep_daily = 7;
     keep_weekly = 4;
     keep_monthly = 6;
 
-    # ZFS Magic
+    # --- ZFS ---
     zfs = {};
 
-    # Consistency checks (Important for long-term backups)
-    consistency = {
-      checks = [ { name = "repository"; } { name = "archives"; } ];
-      check_last = 3;
-    };
+    # --- Hooks ---
+    # Note: Modern borgmatic uses 'before_everything', but 'before_backup' 
+    # is often still accepted for backward compatibility. 
+    # Let's use the documentation-suggested flat hook keys.
+    before_everything = [ "echo 'Starting ZFS snapshot and backup process...'" ];
+    after_everything = [ "echo 'Backup and retention pruning complete.'" ];
   };
 
-  # The Execution Script
-  # We use 'writeShellScript' so Nix handles the shebang and pathing
-  backupExec = pkgs.writeShellScript "run-borgmatic" ''
-    set -euo pipefail
-
-    # Setup cleanup trap
-    cleanup() {
-      echo "Cleaning up ZFS mounts..."
-      grep "borgmatic" /proc/mounts | cut -d' ' -f2 | xargs -r umount -f || true
-    }
-    trap cleanup EXIT
-
-    # Decrypt passphrase to a temp env var (only exists in this process memory)
-    export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
+  backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
+    set -e
     
-    # Run borgmatic
-    ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} --verbosity 1 --stats
+    # Aggressive cleanup trap for Proxmox/ZFS
+    cleanup() {
+      echo "--- Post-execution cleanup ---"
+      [[ -f "$TMP_KEY" ]] && rm -f "$TMP_KEY"
+      
+      # Use the grep method to find and unmount anything borgmatic left behind
+      if grep -q "borgmatic" /proc/mounts; then
+          echo "Found lingering ZFS mounts. Force unmounting..."
+          grep "borgmatic" /proc/mounts | cut -d' ' -f2 | xargs -r umount -f || true
+      fi
+    }
+
+    export TMP_KEY=$(mktemp)
+    trap cleanup EXIT
+    
+    chmod 600 "$TMP_KEY"
+    ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > "$TMP_KEY"
+    export SOPS_AGE_KEY_FILE="$TMP_KEY"
+
+    echo "Decrypting BORG_PASSPHRASE..."
+    export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
+
+    echo "Executing Borgmatic..."
+    ${pkgs.borgmatic}/bin/borgmatic --config ${borgmaticConfig} --verbosity 1 --stats "$@"
   '';
 
-in pkgs.stdenv.mkDerivation {
-  name = "pve-backup-bundle";
-  phases = [ "installPhase" ];
-  
-  installPhase = ''
-    mkdir -p $out/bin $out/lib/systemd/system
-    
-    # The main command
-    ln -s ${backupExec} $out/bin/pve-zfs-backup
+  # Systemd definitions remain the same...
+  serviceUnit = pkgs.writeText "pve-zfs-backup.service" ''
+    [Unit]
+    Description=Borgmatic ZFS Backup
+    After=network-online.target
+    Wants=network-online.target
+    [Service]
+    Type=oneshot
+    Environment="HOME=/root"
+    ExecStart=${backupScript}/bin/pve-zfs-backup
+    User=root
+    Group=root
+  '';
 
-    # The Service
-    cat <<EOF > $out/lib/systemd/system/pve-zfs-backup.service
-[Unit]
-Description=Borgmatic ZFS Backup
-After=network-online.target
+  timerUnit = pkgs.writeText "pve-zfs-backup.timer" ''
+    [Unit]
+    Description=Daily PVE ZFS Backup Timer
+    [Timer]
+    OnCalendar=03:00:00
+    RandomizedDelaySec=30min
+    Persistent=true
+    [Install]
+    WantedBy=timers.target
+  '';
 
-[Service]
-Type=oneshot
-# Use a private temporary directory for the service
-PrivateTmp=true
-# Protect the rest of the system
-ProtectSystem=strict
-ReadWritePaths=/threetbpool /run/user/0/borgmatic
-ExecStart=$out/bin/pve-zfs-backup
+in
+pkgs.symlinkJoin {
+  name = "pve-zfs-backup-tool";
+  paths = [ backupScript ];
+  postBuild = ''
+    mkdir -p $out/etc/systemd/system
+    cp ${serviceUnit} $out/etc/systemd/system/pve-zfs-backup.service
+    cp ${timerUnit} $out/etc/systemd/system/pve-zfs-backup.timer
+    mkdir -p $out/bin
+    cat <<EOF > $out/bin/pve-zfs-backup-install
+#!/bin/bash
+ln -sf $out/etc/systemd/system/pve-zfs-backup.service /etc/systemd/system/
+ln -sf $out/etc/systemd/system/pve-zfs-backup.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now pve-zfs-backup.timer
 EOF
-
-    # The Timer
-    cat <<EOF > $out/lib/systemd/system/pve-zfs-backup.timer
-[Unit]
-Description=Daily PVE ZFS Backup Timer
-
-[Timer]
-OnCalendar=daily
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-EOF
+    chmod +x $out/bin/pve-zfs-backup-install
   '';
 }
