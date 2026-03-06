@@ -112,6 +112,13 @@
           inherit pkgs;
           sopsFile = pve2Secret;
       };
+      apps.${system} = {
+              pve-zfs-backup-install = {
+                type = "app";
+                program = "${self.packages.${system}.pve-zfs-backup}/bin/pve-zfs-backup-install";
+              };
+              default = self.apps.${system}.pve-zfs-backup-install;
+            };
       homeConfigurations = {
         "haa" = home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
