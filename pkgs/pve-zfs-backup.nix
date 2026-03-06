@@ -42,7 +42,7 @@ let
 
   backupScript = pkgs.writeShellScriptBin "pve-zfs-backup" ''
     set -e
-    
+    echo "Starting pve-zfs-backup...."
     cleanup() {
       echo "--- Post-execution cleanup ---"
       [[ -f "$TMP_KEY" ]] && rm -f "$TMP_KEY"
@@ -63,7 +63,7 @@ let
     }
 
     trap cleanup EXIT
-
+    echo "Generating private age key...."
     export TMP_KEY=$(mktemp)
     chmod 600 "$TMP_KEY"
     ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > "$TMP_KEY"
