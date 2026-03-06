@@ -68,6 +68,9 @@ let
     chmod 600 "$TMP_KEY"
     ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > "$TMP_KEY"
     export SOPS_AGE_KEY_FILE="$TMP_KEY"
+    
+    echo "Using Age Key File: $SOPS_AGE_KEY_FILE"
+    ls -l "$SOPS_AGE_KEY_FILE" || echo "Key file not found!"
 
     echo "Decrypting BORG_PASSPHRASE..."
     export BORG_PASSPHRASE=$(${pkgs.sops}/bin/sops -d --extract '["borg_passphrase"]' ${sopsFile})
