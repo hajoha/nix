@@ -20,7 +20,7 @@
   };
   imports = [
     inputs.nvf.homeManagerModules.default
-    ../../modules/browser/firefox.nix
+    ../../modules/browser/firefox.nix 
     ../../modules/com/thunderbird.nix
     ../../modules/editor/nvf.nix
     ../../modules/editor/zed.nix

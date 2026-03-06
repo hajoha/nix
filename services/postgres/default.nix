@@ -44,6 +44,7 @@ in
       "paperless"
       "immich"
       "keycloak"
+      "listmonk"
       "netbox" # Added NetBox as well
     ];
 
@@ -63,6 +64,10 @@ in
     ensureUsers = [
       {
         name = "zitadel";
+        ensureDBOwnership = true;
+      }
+      {
+        name = "listmonk";
         ensureDBOwnership = true;
       }
       {

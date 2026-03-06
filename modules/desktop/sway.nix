@@ -25,6 +25,8 @@
     swaynotificationcenter
     adwaita-icon-theme
     gnome-themes-extra
+    brightnessctl
+    wl-clipboard
   ];
   
   

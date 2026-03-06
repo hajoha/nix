@@ -16,6 +16,7 @@ keys:
   - &nixhomeassistant age1jj90rpvwju98ssmp4n2755fa6zmcyql489k8qh6hnnwfg4fmdcyscm4k3h
   - &nixkeycloak age1cphj25m2fa320yjy0mtt6l0u9k9v78g0s3x69msgx2gxhjdjz5jsu0ztu6
   - &niximmich age1y9ykrzglk2w9sj546awh4qr0pfhq7xlm8nnq4hvmg8gpqyc6md2qzyjap8
+  - &nixlistmonk age14ne78pjpeqhxaclldk5dhumc208z6gyeepecc6sm3aprmt5q3ssq7xml8l
   - &pve2 age1tsmms30cyluwl707nmkqaxp6qwmdsmxsf928l0mpnmauhay7nqes3f722s
 creation_rules:
   - path_regex: hosts/nixnas/secrets/[^/]+\.(yaml|json|env|ini)$
@@ -87,6 +88,10 @@ creation_rules:
   - path_regex: services/immich/secrets.enc.yaml$
     key_groups:
       - age: [*niximmich, *fokus, *private] # Adjust if netbox has its own key
+
+  - path_regex: services/listmonk/secrets.enc.yaml$
+    key_groups:
+      - age: [*nixlistmonk, *fokus, *private] # Adjust if netbox has its own key
 
 
   # Catch-all for any other services (Safety net for the NAS)

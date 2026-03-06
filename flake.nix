@@ -118,6 +118,7 @@
           extraSpecialArgs = {
             inherit inputs;
             inherit nixgl;
+            inherit baseDomain;
           };
           modules = [
             # Point this to your home.nix file
@@ -160,6 +161,7 @@
         nix-influx = mkLXC "nix-influx" ./services/influxv2/default.nix [ ];
         nix-grafana = mkLXC "nix-grafana" ./services/grafana/default.nix [ ];
         nix-keycloak = mkLXC "nix-keycloak" ./services/keycloak/default.nix [ ];
+        nix-listmonk = mkLXC "nix-listmonk" ./services/listmonk/default.nix [ ];
         nix-unifi-controller = mkLXC "nix-unifi-controller" ./services/unifi-controller/default.nix [ ];
 
         nix-opencloud = mkLXC "nix-opencloud" ./services/opencloud/default.nix [ ];

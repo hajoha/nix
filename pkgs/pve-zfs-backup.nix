@@ -87,16 +87,21 @@ let
   '';
 
   serviceUnit = pkgs.writeText "pve-zfs-backup.service" ''
-    [Unit]
-    Description=Borgmatic ZFS Backup
-    After=network-online.target
-    Wants=network-online.target
-    [Service]
-    Type=oneshot
-    Environment="HOME=/root"
-    ExecStart=${backupScript}/bin/pve-zfs-backup
-    User=root
-  '';
+      [Unit]
+      Description=Borgmatic ZFS Backup
+      After=network-online.target
+      Wants=network-online.target
+  
+      [Service]
+      Type=oneshot
+      # Ensure sops/borg can find their binaries
+      Environment="PATH=${pkgs.lib.makeBinPath [ pkgs.sops pkgs.ssh-to-age pkgs.coreutils pkgs.gnugrep ]}:/usr/bin:/bin"
+      Environment="HOME=/root"
+      # This ensures the script has a real /tmp if it needs it
+      PrivateTmp=false 
+      ExecStart=${backupScript}/bin/pve-zfs-backup
+      User=root
+    '';
 
   timerUnit = pkgs.writeText "pve-zfs-backup.timer" ''
     [Unit]

@@ -63,6 +63,25 @@ rec {
       ip = "10.60.1.35";
       port = 2283;
     };
+    
+    nix-listmonk = {
+          networking = {
+            interfaces.service.ipv4.addresses = [
+              {
+                address = "10.60.1.24";
+                prefixLength = 24;
+              }
+            ];
+            defaultGateway.address = "10.60.1.1";
+            defaultGateway.interface = "service";
+            nameservers = [ nodes.nix-adguard.ip ];
+            firewall.allowedTCPPorts = [ 9000 ];
+          };
+          hostname = "listmonk";
+          sub = "newsletter"; # Or "listmonk"
+          ip = "10.60.1.24";
+          port = 9000;
+        };
     # --- Identity Provider (Zitadel) ---
     nix-grafana = {
       networking = {

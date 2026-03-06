@@ -19,10 +19,12 @@ let
   };
 
   lanOnly = ''
-    if (''$remote_addr !~ ^(10\.60\.|100\.64\.)) {
-      return 444;
-    }
-  '';
+      allow 10.60.0.0/16;
+      allow 100.64.0.0/10;
+      allow 127.0.0.1;
+      deny all;
+      error_page 403 =444 /;
+    '';
 in
 {
 
@@ -130,6 +132,33 @@ in
         };
       };
 
+      "${nodes.nix-listmonk.sub}.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        http2 = false;
+        # Since this contains admin controls, you might want to wrap this in lanOnly
+        # if you only want to manage it via VPN, or leave it public for subscribers.
+        extraConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-Port $server_port;
+        '';
+
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-listmonk.ip}:${toString nodes.nix-listmonk.port}";
+        };
+
+        # Optimization for media/template uploads
+        locations."/uploads" = {
+          proxyPass = "http://${nodes.nix-listmonk.ip}:${toString nodes.nix-listmonk.port}";
+          extraConfig = ''
+            client_max_body_size 100M;
+          '';
+        };
+      };
       # --- Zitadel ---
       "${nodes.nix-zitadel.hostname}.${baseDomain}" = {
         useACMEHost = baseDomain;

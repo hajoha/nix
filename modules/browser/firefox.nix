@@ -2,6 +2,7 @@
   pkgs,
   inputs,
   config,
+  baseDomain,
   ...
 }:
 {
@@ -10,6 +11,7 @@
     package = config.lib.nixGL.wrap pkgs.firefox;
 
     policies = {
+
       AutofillAddressEnabled = false;
       AutofillCreditCardEnabled = false;
       Cookies.Behavior = "reject-tracker-and-partition-foreign";
@@ -23,7 +25,18 @@
       DisableTelemetry = true;
       DisplayBookmarksToolbar = "never";
       DisplayMenuBar = "default-off";
-      DNSOverHTTPS.Enabled = false;
+      DNSOverHTTPS = {
+              Enabled = true;
+              ProviderURL = "https://cloudflare-dns.com/dns-query"; # Or your preferred provider
+              
+              # 2. Add your Split-DNS Exceptions here
+              # These domains will bypass DoH and use your Tailscale/AdGuard DNS
+              Exemptions = [ 
+                baseDomain 
+                "*.${baseDomain}"
+              ];
+              Locked = true;
+            };
       EnableTrackingProtection = {
         Category = "strict";
         Cryptomining = true;

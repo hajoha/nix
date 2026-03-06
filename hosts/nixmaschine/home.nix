@@ -30,7 +30,7 @@ in
   programs.nvf = {
     enable = true;
     settings = {
-
+      vim.useSystemClipboard = true;
       vim.viAlias = false;
       vim.vimAlias = true;
       vim.languages = {
