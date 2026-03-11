@@ -82,8 +82,7 @@
           modules = [
             # Base profile for Proxmox LXC plumbing
             ./modules/profiles/lxc-base.nix
-            ./services/promtail/default.nix
-
+            ./services/alloy/default.nix
             # The service logic
             servicePath
 
@@ -169,6 +168,8 @@
         nix-grafana = mkLXC "nix-grafana" ./services/grafana/default.nix [ ];
         nix-keycloak = mkLXC "nix-keycloak" ./services/keycloak/default.nix [ ];
         nix-listmonk = mkLXC "nix-listmonk" ./services/listmonk/default.nix [ ];
+        nix-loki = mkLXC "nix-loki" ./services/loki/default.nix [ ];
+
         nix-unifi-controller = mkLXC "nix-unifi-controller" ./services/unifi-controller/default.nix [ ];
 
         nix-opencloud = mkLXC "nix-opencloud" ./services/opencloud/default.nix [ ];

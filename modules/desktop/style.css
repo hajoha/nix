@@ -1,7 +1,7 @@
 * {
     border: none;
     border-radius: 0;
-    font-family: "Fira Code", monospace; /* Using a font we know you have */
+    font-family: "FiraCode Nerd Font", "Symbols Nerd Font", sans-serif;
     font-weight: bold;
     font-size: 14px;
 }

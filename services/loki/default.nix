@@ -1,4 +1,4 @@
-{ config, nodes, ... }:
+{ config, nodes, lib, ... }:
 
 {
   # 1. User and Persistence Setup
@@ -66,9 +66,9 @@
   systemd.services.loki = {
     preStart = "mkdir -p /var/lib/loki && chown loki:loki /var/lib/loki";
     serviceConfig = {
-      PrivateTmp = false;
+      PrivateTmp = lib.mkForce false;
       ProtectSystem = "full";
-      ProtectHome = "read-only";
+      ProtectHome = lib.mkForce "read-only";
       # Ensure Loki can write its indices and chunks
       ReadWritePaths = [ "/var/lib/loki" ];
       # standard NixOS state management

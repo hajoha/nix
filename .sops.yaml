@@ -18,21 +18,21 @@ keys:
   - &niximmich age1y9ykrzglk2w9sj546awh4qr0pfhq7xlm8nnq4hvmg8gpqyc6md2qzyjap8
   - &nixlistmonk age14ne78pjpeqhxaclldk5dhumc208z6gyeepecc6sm3aprmt5q3ssq7xml8l
   - &pve2 age1tsmms30cyluwl707nmkqaxp6qwmdsmxsf928l0mpnmauhay7nqes3f722s
+  - &nixopencloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
 creation_rules:
   - path_regex: hosts/nixnas/secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
-    - age: [*nixnas, *fokus, *private]
+      - age: [*nixnas, *fokus, *private]
 
   # --- LXC Service Containers (Specific Isolation) ---
 
-
   - path_regex: services/hedgedoc/.*\.enc\.yaml$
     key_groups:
-    - age: [*nixhedgedoc, *fokus, *private]
+      - age: [*nixhedgedoc, *fokus, *private]
 
   - path_regex: services/adguard/.*\.enc\.yaml$
     key_groups:
-    - age: [*nixadguard, *fokus, *private]
+      - age: [*nixadguard, *fokus, *private]
 
   # Headscale & Headplane
   - path_regex: services/headscale/.*\.enc\.yaml$
@@ -93,6 +93,9 @@ creation_rules:
     key_groups:
       - age: [*nixlistmonk, *fokus, *private] # Adjust if netbox has its own key
 
+  - path_regex: services/opencloud/secrets.enc.yaml$
+    key_groups:
+      - age: [*nixopencloud, *fokus, *private] # Adjust if netbox has its own key
 
   # Catch-all for any other services (Safety net for the NAS)
   - path_regex: services/.*\.enc\.yaml$
@@ -101,7 +104,7 @@ creation_rules:
   - path_regex: secrets/.*\.enc\.toml$
     key_groups:
       - age: [*fokus, *private]
-        
+
   - path_regex: secrets/pve2.enc\.yaml$
     key_groups:
       - age: [*fokus, *private, *pve2]

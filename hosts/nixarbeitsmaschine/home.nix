@@ -20,7 +20,7 @@
   };
   imports = [
     inputs.nvf.homeManagerModules.default
-    ../../modules/browser/firefox.nix 
+    ../../modules/browser/firefox.nix
     ../../modules/com/thunderbird.nix
     ../../modules/editor/nvf.nix
     ../../modules/editor/zed.nix
@@ -35,7 +35,8 @@
     ../../modules/programs/networking.nix
     ../../modules/programs/3d.nix
     ../../modules/programs/terminal.nix
-    
+    ../../modules/programs/android.nix
+
   ];
   targets.genericLinux.enable = true;
 
@@ -67,14 +68,14 @@
     NIX_LD = "${pkgs.stdenv.cc.cc.lib}/lib/ld-linux-x86-64.so.2";
     LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.pcsclite}/lib:${config.home.profileDirectory}/lib";
     XDG_SESSION_TYPE = "wayland";
+    GDK_BACKEND = "wayland,x11";
     # Add this line to stop Waybar from hanging on portal timeouts
-    GTK_USE_PORTAL = "0";
+    GTK_USE_PORTAL = "1";
     MOZ_ENABLE_WAYLAND = "1";
     XDG_DATA_DIRS = lib.mkForce "$HOME/.nix-profile/share:$HOME/.local/share:$XDG_DATA_DIRS:/usr/local/share:/usr/share";
   };
 
   home.stateVersion = "23.11";
-
   # Let home Manager install and manage itself.
   programs.home-manager = {
     enable = true;

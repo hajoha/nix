@@ -14,8 +14,12 @@
     rustdesk
     anydesk
     nautilus
+    librepods
     vorta
+    opencloud-desktop
+    _1password-gui
     # ... etc
   ];
+
 
 }

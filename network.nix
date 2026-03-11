@@ -63,7 +63,33 @@ rec {
       ip = "10.60.1.35";
       port = 2283;
     };
-    
+    nix-loki = {
+          networking = {
+            interfaces.service.ipv4.addresses = [
+              {
+                address = "10.60.1.27";
+                prefixLength = 24;
+              }
+            ];
+            # defaultGateway = {
+            #   address = "10.60.1.1";
+            #   interface = "service";
+            # };
+            # Pointing to your existing AdGuard instance for DNS
+            # nameservers = [ "10.60.1.16" ]; 
+            
+            firewall = {
+              allowedTCPPorts = [ 
+                3100  # Loki HTTP (Alloy ingestion & Grafana queries)
+                9096  # Loki gRPC (Internal communication)
+                12345
+              ];
+            };
+          };
+          hostname = "loki";
+          ip = "10.60.1.27";
+          port = 3100;
+        };
     nix-listmonk = {
           networking = {
             interfaces.service.ipv4.addresses = [

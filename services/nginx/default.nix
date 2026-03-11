@@ -19,12 +19,12 @@ let
   };
 
   lanOnly = ''
-      allow 10.60.0.0/16;
-      allow 100.64.0.0/10;
-      allow 127.0.0.1;
-      deny all;
-      error_page 403 =444 /;
-    '';
+    allow 10.60.0.0/16;
+    allow 100.64.0.0/10;
+    allow 127.0.0.1;
+    deny all;
+    error_page 403 =444 /;
+  '';
 in
 {
 
@@ -131,7 +131,64 @@ in
           extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
         };
       };
+      # --- Collabora Online ---
+      "collabora.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
 
+        # Static files
+        locations."^~ /browser" = commonProxy // {
+          proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
+        };
+
+        # WOPI discovery URL
+        locations."^~ /hosting/discovery" = commonProxy // {
+          proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
+        };
+
+        # Capabilities
+        locations."^~ /hosting/capabilities" = commonProxy // {
+          proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
+        };
+
+        # Main websocket - This handles the wss:// connection you're seeing fail
+        locations."~ ^/cool/(.*)/ws$" = {
+            proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
+            proxyWebsockets = true;
+            extraConfig = ''
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection "Upgrade";
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto https;
+              proxy_read_timeout 36000s;
+            '';
+          };
+
+        # Download, presentation and image upload
+        locations."~ ^/cool" = commonProxy // {
+          proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
+        };
+
+        # Admin Console websocket
+        locations."^~ /cool/adminws" = commonProxy // {
+          proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
+          extraConfig = commonProxy.extraConfig + ''
+            proxy_set_header Upgrade ''$http_upgrade;
+            proxy_set_header Connection "Upgrade";
+            proxy_read_timeout 36000s;
+          '';
+        };
+
+        # Root fallback
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
+          extraConfig = commonProxy.extraConfig + ''
+            proxy_hide_header X-Frame-Options;
+          '';
+        };
+      };
       "${nodes.nix-listmonk.sub}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;

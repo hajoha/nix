@@ -1,5 +1,10 @@
 { pkgs, lib, ... }:
 {
+
+  home.packages = with pkgs; [
+    nixd
+    nixfmt
+  ];
   programs.zed-editor = {
     enable = true;
 
@@ -18,7 +23,6 @@
     # Everything inside of these brackets are Zed options
     userSettings = {
       autosave = {
-        # Options: "off", "on_focus_change", "on_window_change", or { "after_delay": { "milliseconds": 1000 } }
         after_delay = {
           milliseconds = 200;
         };
@@ -77,7 +81,27 @@
             path_lookup = true;
           };
         };
+        pyright = {
+          binary = {
+            path_lookup = true;
+          };
+        };
+        ruff = {
+          binary = {
+            path_lookup = true;
+          };
+          # Optional: tell Ruff to fix all auto-fixable rules on save
+          settings = {
+            fixAll = true;
+            organizeImports = true;
+          };
+        };
 
+        nil = {
+          binary = {
+            path_lookup = true; # Tells Zed to find the 'nil' you just installed
+          };
+        };
         nix = {
           binary = {
             path_lookup = true;
@@ -101,7 +125,8 @@
             "elixir-ls"
             "!next-ls"
           ];
-          format_on_save = {
+          format_on_save = "on"; # Fixed: simplified to "on"
+          formatter = {
             external = {
               command = "mix";
               arguments = [
@@ -120,7 +145,8 @@
             "elixir-ls"
             "!next-ls"
           ];
-          format_on_save = {
+          format_on_save = "on"; # Fixed: simplified to "on"
+          formatter = {
             external = {
               command = "mix";
               arguments = [
@@ -129,6 +155,31 @@
                 "{buffer_path}"
                 "-"
               ];
+            };
+          };
+        };
+        "Nix" = {
+          language_servers = [
+            "nixd"
+          ];
+          format_on_save = "on";
+          formatter = {
+            external = {
+              command = "nixfmt"; # Matches the package added above
+            };
+          };
+        };
+
+        "Python" = {
+          language_servers = [
+            "pyright"
+            "ruff"
+            "!pylsp"
+          ];
+          format_on_save = "on"; # Fixed: simplified to "on"
+          formatter = {
+            language_server = {
+              name = "ruff";
             };
           };
         };

@@ -18,11 +18,13 @@
     unzip
     p7zip
     xz
+    uv
     killall
     usbutils
     pciutils
     ethtool
     lm_sensors
     flatpak
+    openssh
   ];
 }

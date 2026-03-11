@@ -1,78 +1,40 @@
-{
-  config,
-  lib,
-  pkgs,
-  nodes,
-  baseDomain,
-  ...
-}:
+{ config, lib, pkgs, nodes, baseDomain, keycloakRealm, ... }:
 
+let
+  # Build the Keycloak URL dynamically from your nodes map
+  keycloakUrl = "https://${nodes.nix-keycloak.sub}.${baseDomain}";
+in
 {
-  # 1. SOPS Configuration
   sops.defaultSopsFile = ./secrets.enc.yaml;
-  sops.secrets."GRAFANA_ADMIN_PASSWORD" = {
-    owner = "grafana";
-  };
-  sops.secrets."GRAFANA_SECRET_KEY" = {
-    owner = "grafana";
-  };
-
-  sops.secrets."dsp25-ssh" = {
-    # This ensures the decrypted file is available for the autossh session
-    path = "/etc/ssh/dsp25_ssh_config";
+  # 1. SOPS Secrets
+  sops.secrets = {
+    "GRAFANA_ADMIN_PASSWORD" = { owner = "grafana"; };
+    "GRAFANA_SECRET_KEY" = { owner = "grafana"; };
+    "GRAFANA_KEYCLOAK_SECRET" = { owner = "grafana"; };
+    "dsp25-ssh" = { path = "/etc/ssh/dsp25_ssh_config"; };
   };
 
-  services.autossh.sessions = [
-    {
-      name = "dsp25-main-influx";
-      user = "root"; # Ensure root has access to the sops secret path
-      monitoringPort = 20000;
-      # We point to the path defined in sops.secrets above
-      extraArguments = "-N -T -F ${config.sops.secrets.dsp25-ssh.path} dsp25-main-influx";
-    }
-  ];
+  # 2. SSH Tunnel for Remote InfluxDB
+  services.autossh.sessions = [{
+    name = "dsp25-main-influx";
+    user = "root";
+    monitoringPort = 20000;
+    extraArguments = "-N -T -F ${config.sops.secrets.dsp25-ssh.path} dsp25-main-influx";
+  }];
 
-  services.loki = {
-    enable = true;
-    configuration = {
-      auth_enabled = false;
-      server.http_listen_port = 3100;
-
-      #    common.instance_addr = "127.0.0.1";
-      common.path_prefix = "/tmp/loki";
-      common.storage.filesystem = {
-        chunks_directory = "/tmp/loki/chunks";
-        rules_directory = "/tmp/loki/rules";
-      };
-
-      schema_config.configs = [
-        {
-          from = "2020-10-24";
-          store = "tsdb";
-          object_store = "filesystem";
-          schema = "v13";
-          index = {
-            prefix = "index_";
-            period = "24h";
-          };
-        }
-      ];
-    };
-  };
-
+  # 3. Grafana Service
   services.grafana = {
     enable = true;
 
     provision = {
       enable = true;
       datasources.settings.datasources = [
+        # Remote InfluxDB (via SSH Tunnel)
         {
           name = "InfluxDB_v2";
           type = "influxdb";
-          # Referenced from the central network.nix map
           url = "http://${nodes.nix-influx.ip}:${toString nodes.nix-influx.port}";
           isDefault = true;
-          editable = false;
           jsonData = {
             version = "Flux";
             organization = "main";
@@ -80,26 +42,49 @@
             tlsSkipVerify = true;
           };
         }
+        # Dedicated Loki Host
+        {
+          name = "Loki";
+          type = "loki";
+          url = "http://${nodes.nix-loki.ip}:3100";
+          access = "proxy"; # Important: Grafana fetches logs on behalf of the user
+        }
       ];
     };
 
     settings = {
       server = {
-        # Bind to 0.0.0.0 for the container eth0 interface
         http_addr = "0.0.0.0";
         http_port = nodes.nix-grafana.port;
-
-        # Use the node names as hostnames without baseDomain (as requested)
         domain = nodes.nix-grafana.hostname;
         root_url = "https://${nodes.nix-grafana.hostname}.${baseDomain}/";
-
         enforce_domain = false;
         enable_gzip = true;
       };
 
+      # --- Keycloak OIDC Integration ---
+      "auth.generic_oauth" = {
+        enabled = true;
+        name = "SSO";
+        allow_sign_up = true;
+        client_id = "grafana-oauth";
+        client_secret = "$__file{${config.sops.secrets."GRAFANA_KEYCLOAK_SECRET".path}}";
+        scopes = "openid profile email groups";
+        # Endpoints mapped to your Keycloak instance
+        auth_url = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/auth";
+        token_url = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/token";
+        api_url = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/userinfo";
+        
+        # RBAC: Map Keycloak groups to Grafana roles
+        role_attribute_path = "contains(groups, 'grafana-admin') && 'Admin' || contains(groups, 'grafana-editor') && 'Editor' || 'Viewer'";
+        login_attribute_path = "preferred_username";
+        email_attribute_path = "email";
+        name_attribute_path = "preferred_username";
+
+      };
+
       security = {
         secret_key = "$__file{${config.sops.secrets."GRAFANA_SECRET_KEY".path}}";
-        # Securely read password via sops-nix file path
         admin_password = "$__file{${config.sops.secrets."GRAFANA_ADMIN_PASSWORD".path}}";
         allow_embedding = true;
       };
@@ -108,6 +93,6 @@
     };
   };
 
-  # Port opening is now handled by the mkLXC generator merging network.nix
+
   system.stateVersion = "25.11";
 }

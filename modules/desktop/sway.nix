@@ -5,31 +5,48 @@
   ...
 }:
 {
-  xdg.portal = {
-    enable = true;
-    # Use gtk for file pickers and wlr for screen sharing
-    extraPortals = [ 
-      pkgs.xdg-desktop-portal-wlr 
-      pkgs.xdg-desktop-portal-gtk 
-    ];
-    config = {
-      common = {
-        default = [ "gtk" ];
-        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-        "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-      };
-    };
-  };
-  
+  # xdg.portal = {
+  #   enable = true;
+  #   # Use gtk for file pickers and wlr for screen sharing
+  #   extraPortals = [
+  #     pkgs.xdg-desktop-portal-wlr
+  #     pkgs.xdg-desktop-portal-gtk
+  #     pkgs.xdg-desktop-portal
+
+  #   ];
+  #   xdgOpenUsePortal = false;
+  #   config = {
+  #     common = {
+  #       default = [ "gtk" ];
+  #       "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+  #       "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+  #     };
+  #   };
+  # };
+  # systemd.user.enable = true;
+
+  # home.file.".config/systemd/user/xdg-desktop-portal-wlr.service".source =
+  #   "${pkgs.xdg-desktop-portal-wlr}/lib/systemd/user/xdg-desktop-portal-wlr.service";
+
+  # home.file.".config/systemd/user/xdg-desktop-portal.service".source =
+  #   "${pkgs.xdg-desktop-portal}/lib/systemd/user/xdg-desktop-portal.service";
+
+  # home.file.".config/systemd/user/xdg-desktop-portal-gtk.service".source =
+  #   "${pkgs.xdg-desktop-portal-gtk}/lib/systemd/user/xdg-desktop-portal-gtk.service";
+
   home.packages = with pkgs; [
     swaynotificationcenter
     adwaita-icon-theme
     gnome-themes-extra
     brightnessctl
     wl-clipboard
+    pipewire
+    cliphist
+    pavucontrol
+    nerd-fonts.fira-code # Modern way to include Fira Code Nerd Font
+    nerd-fonts.symbols-only # Great fallback for all icons
   ];
-  
-  
+
   services.swaync = {
     enable = true;
     settings = {
@@ -45,7 +62,7 @@
       notification-body-image-width = 200;
     };
   };
-  
+
   programs.waybar = {
     enable = true;
     systemd.enable = true;
@@ -162,18 +179,25 @@
             <big>{:%Y %B}</big>
             <tt><small>{calendar}</small></tt>'';
         };
-        pulseaudio = {
-          format = "{icon} {volume}%";
+        "pulseaudio" = {
+          # {format_source} pulls in the microphone status
+          format = "{icon} {volume}% | {format_source}";
+          format-bluetooth = "{icon} {volume}% | {format_source}";
+          format-muted = "󰝟 Muted | {format_source}";
+
+          # Microphone specific formatting
+          format-source = " {volume}%";
+          format-source-muted = "";
+
           tooltip = false;
-          format-muted = "🔇 Muted";
           on-click = "pavucontrol";
-          on-scroll-up = "pamixer -i 5";
-          on-scroll-down = "pamixer -d 5";
-          scroll-step = 5;
+          on-scroll-up = "wpctl set-volume @DEFAULT_SINK@ 5%+";
+          on-scroll-down = "wpctl set-volume @DEFAULT_SINK@ 5%-";
+
           format-icons = {
             headphone = "";
-            hands-free = "";
-            headset = "";
+            hands-free = "";
+            headset = "";
             phone = "";
             portable = "";
             car = "";
@@ -223,7 +247,18 @@
     wrapperFeatures.gtk = true;
     systemd.enable = true;
     extraConfig = ''
-      output DP-8 transform 90
+      # 1. Laptop Screen (eDP-1)
+        # Starting at the origin (0,0)
+        output eDP-1 pos 0 0 res 1920x1200
+
+        # 2. Main External Monitor (DP-8)
+        # Positioned exactly after the laptop width (1920)
+        output DP-8 pos 1920 0 res 1920x1200
+
+        # 3. Vertical Monitor (DP-9)
+        # Positioned after laptop + main width (1920 + 1920 = 3840)
+        # It is 1200 units wide logically because of the transform.
+        output DP-9 pos 3840 0 res 1920x1200 transform 90
       set $left h
       set $down j
       set $up k
@@ -271,7 +306,7 @@
         "${config.wayland.windowManager.sway.config.modifier}+j" = "focus down";
         "${config.wayland.windowManager.sway.config.modifier}+k" = "focus up";
         "${config.wayland.windowManager.sway.config.modifier}+l" = "focus right";
-        "${config.wayland.windowManager.sway.config.modifier}+f" = "fullscreenV toggle";
+        "${config.wayland.windowManager.sway.config.modifier}+f" = "fullscreen toggle";
 
         "${config.wayland.windowManager.sway.config.modifier}+Shift+v" = ''
           exec cliphist list | sed -E "s/^([0-9]+)\t/\1 /" | wofi --dmenu | sed -E "s/^([0-9]+) /\1\t/" | cliphist decode | wl-copy
@@ -323,9 +358,11 @@
 
         "${config.wayland.windowManager.sway.config.modifier}+a" = "focus parent";
 
-        "XF86AudioRaiseVolume" = "exec pactl set-sink-volume @DEFAULT_SINK@ +5%";
-        "XF86AudioLowerVolume" = "exec pactl set-sink-volume @DEFAULT_SINK@ -5%";
-        "XF86AudioMute" = "exec pactl set-sink-mute @DEFAULT_SINK@ toggle";
+        "XF86AudioRaiseVolume" = "exec wpctl set-volume -l 1.5 @DEFAULT_SINK@ 5%+";
+        "XF86AudioLowerVolume" = "exec wpctl set-volume @DEFAULT_SINK@ 5%-";
+        "XF86AudioMute" = "exec wpctl set-mute @DEFAULT_SINK@ toggle";
+        "XF86AudioMicMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle";
+
         "XF86MonBrightnessUp" = "exec brightnessctl set +5%";
         "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
         "XF86AudioPause" = "exec playerctl play-pause";
@@ -360,7 +397,10 @@
         };
       };
       fonts = {
-        names = [ "Fira Code" ];
+        names = [
+          "FiraCode Nerd Font"
+          "Font Awesome 6 Free"
+        ];
         size = 10.0;
 
       };
@@ -371,21 +411,24 @@
       };
       bars = [ ];
       startup = [
-        # 1. Clear previous environment hangs
-        { command = "systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"; }
+        # 1. Force the DBus session to pick up ALL Nix environment variables
+        { command = "dbus-update-activation-environment --systemd --all"; }
+        { command = "systemctl --user import-environment PATH"; }
+
+        # 2. Kill any existing portal processes (Ubuntu's or hung Nix ones)
+        { command = "pkill -f xdg-desktop-portal"; }
+
+        # 3. Start the Nix-managed portals explicitly
         {
-          command = "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway";
+          command = "systemctl --user start xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk";
         }
-        { command = "dbus-update-activation-environment --all"; }
 
-        { command = "systemctl --user restart pipewire wireplumber swaync"; }
-
+        # 4. Standard services
         { command = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"; }
+        { command = "systemctl --user restart pipewire wireplumber swaync"; }
+        { command = "systemctl --user stop waybar && systemctl --user start waybar"; }
         {
           command = "sh -c 'sleep 5; nm-applet --indicator & 1password --silent & opencloud & blueman-applet &'";
-        }
-        {
-          command = "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway DISPLAY";
         }
       ];
 
