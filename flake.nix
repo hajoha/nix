@@ -28,6 +28,14 @@
       url = "github:tale/headplane";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    disko = {
+      url = "github:nix-community/disko";
+      inputs = {
+        nixpkgs = {
+          follows = "nixpkgs";
+        };
+      };
+    };
     old-nixpkgs = {
       type = "github";
       owner = "NixOS";
@@ -107,17 +115,17 @@
 
     in
     {
-      packages.${system}.pve-zfs-backup = import ./pkgs/pve-zfs-backup.nix { 
-          inherit pkgs;
-          sopsFile = pve2Secret;
+      packages.${system}.pve-zfs-backup = import ./pkgs/pve-zfs-backup.nix {
+        inherit pkgs;
+        sopsFile = pve2Secret;
       };
       apps.${system} = {
-              pve-zfs-backup-install = {
-                type = "app";
-                program = "${self.packages.${system}.pve-zfs-backup}/bin/pve-zfs-backup-install";
-              };
-              default = self.apps.${system}.pve-zfs-backup-install;
-            };
+        pve-zfs-backup-install = {
+          type = "app";
+          program = "${self.packages.${system}.pve-zfs-backup}/bin/pve-zfs-backup-install";
+        };
+        default = self.apps.${system}.pve-zfs-backup-install;
+      };
       homeConfigurations = {
         "haa" = home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
@@ -140,6 +148,16 @@
       };
       nixosConfigurations = {
         # --- PHYSICAL HOSTS ---
+
+        hetzner-vps-01 = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+
+          modules = [
+            ./hosts/hetzner-vps-01/configuration.nix
+            inputs.disko.nixosModules.disko
+            sops-nix.nixosModules.sops
+          ];
+        };
 
         nixmaschine = lib.nixosSystem {
           inherit system;

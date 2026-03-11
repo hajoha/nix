@@ -46,9 +46,46 @@
     # Main System Settings
     settings = {
       server.externalDomain = "https://${nodes.nix-immich.sub}.${baseDomain}";
-      newVersionCheck.enabled = false;
+      newVersionCheck.enabled = true;
+      machineLearning = {
+        enabled = true;
+        # In NixOS, the ML service is local, so we use 127.0.0.1
+        urls = [ "http://127.0.0.1:3003" ];
+
+        clip = {
+          enabled = true;
+          modelName = "ViT-B-32__openai";
+        };
+
+        facialRecognition = {
+          enabled = true;
+          modelName = "buffalo_l";
+          minFaces = 3;
+          minScore = 0.7;
+          maxDistance = 0.5;
+        };
+
+        ocr = {
+          enabled = true;
+          modelName = "PP-OCRv5_mobile";
+          maxResolution = 736;
+          minDetectionScore = 0.5;
+          minRecognitionScore = 0.8;
+        };
+
+        duplicateDetection = {
+          enabled = true;
+          maxDistance = 0.01;
+        };
+
+        availabilityChecks = {
+          enabled = true;
+          interval = 30000;
+          timeout = 2000;
+        };
+      };
       # Immich OAuth2 (OIDC) Integration
-      # Note: Immich uses a specific schema for OIDC in its config
+      # Note: Immich uses a specific2 schema for OIDC in its config
       oauth = {
         enabled = true;
         autoRegister = true;

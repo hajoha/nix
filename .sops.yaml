@@ -19,6 +19,7 @@ keys:
   - &nixlistmonk age14ne78pjpeqhxaclldk5dhumc208z6gyeepecc6sm3aprmt5q3ssq7xml8l
   - &pve2 age1tsmms30cyluwl707nmkqaxp6qwmdsmxsf928l0mpnmauhay7nqes3f722s
   - &nixopencloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
+  - &hetzner-vps-01 age1vdphsnzygqqr233crr2v9gdh0wvktclnz0hrddhtgmzddy0tpplssvrc2r
 creation_rules:
   - path_regex: hosts/nixnas/secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
@@ -108,3 +109,7 @@ creation_rules:
   - path_regex: secrets/pve2.enc\.yaml$
     key_groups:
       - age: [*fokus, *private, *pve2]
+
+  - path_regex: hosts/hetzner-vps-01/secrets.enc.yaml$
+    key_groups:
+      - age: [*hetzner-vps-01, *fokus, *private]
