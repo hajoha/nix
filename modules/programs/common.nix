@@ -17,9 +17,10 @@
     librepods
     vorta
     opencloud-desktop
+    headscale
     _1password-gui
+    # mattermost-desktop
     # ... etc
   ];
-
 
 }

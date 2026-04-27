@@ -9,7 +9,7 @@
     enable = true;
     settings = {
 
-      vim.viAlias = false;
+      vim.viAlias = true;
       vim.vimAlias = true;
       vim.languages = {
         nix = {

@@ -1,13 +1,11 @@
 keys:
   - &fokus age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a
   - &private age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t
-  - &nixnas age1pcsgd5f5yefxk9667j40hsr8ereky6ufxhmda5dh0fzkajpzf5as9lcw36
   - &nixadguard age13xy8pp8z4snajjvxmuhgjzutrggerqafy7t48uxuperrgsa84c2scr3v8z
   - &nixcloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
   - &nixnginx age19a786mf6j8dd4p8knqz55j7hszaa8xx0u5sd738g2ws59ththu2qtnce6m
   - &nixbuild age1wnyjcxf6jjc60tdgaf4eaf3hcmpkvx25mjtc6tmhy8j9689tp9lq7nw262
   - &nixpostgres age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru
-  - &nixzitadel age1l2v88kf7xew0ud8z06hr23r36kzxm833l338u8ku44xrn7due96q27vgqy
   - &nixheadscale age1r8yfrag9k269xzvyjp8z2p9kl97v55xaruzhl5ylql7g5z0f0cssk2yn23
   - &nixhedgedoc age1s6mwpas3nql8ve3pvrna0ecpd5gve2cem7c0yvzg4fe8r4dnc9jqm7ug7f
   - &nixgrafana age1sj998jequkhv0qqrx8futqvemy75080guz7zna0v6kz5hvtfxv6qtacary
@@ -20,12 +18,55 @@ keys:
   - &pve2 age1tsmms30cyluwl707nmkqaxp6qwmdsmxsf928l0mpnmauhay7nqes3f722s
   - &nixopencloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
   - &hetzner-vps-01 age1vdphsnzygqqr233crr2v9gdh0wvktclnz0hrddhtgmzddy0tpplssvrc2r
+  - &nixttrss age10ewzse5566z4uz5dng54mqwr2cnqp579uzt99235nq5qj0ju2vnszqn945
 creation_rules:
-  - path_regex: hosts/nixnas/secrets/[^/]+\.(yaml|json|env|ini)$
+  - path_regex: services/listmonk/postgres.enc.yaml$
     key_groups:
-      - age: [*nixnas, *fokus, *private]
+      - age: [*nixpostgres, *nixlistmonk, *fokus, *private] # Adjust if netbox has its own key
 
-  # --- LXC Service Containers (Specific Isolation) ---
+  - path_regex: services/listmonk/.*\.enc\.yaml$
+    key_groups:
+      - age: [*nixlistmonk, *fokus, *private] # Adjust if netbox has its own key
+
+  - path_regex: services/immich/postgres.enc.yaml$
+    key_groups:
+      - age: [*nixpostgres, *niximmich, *fokus, *private]
+
+  - path_regex: services/immich/.*\.enc\.yaml$
+    key_groups:
+      - age: [*niximmich, *fokus, *private]
+
+  - path_regex: services/keycloak/postgres.enc.yaml$
+    key_groups:
+      - age: [*nixpostgres, *nixkeycloak, *fokus, *private]
+
+  - path_regex: services/keycloak/.*\.enc\.yaml$
+    key_groups:
+      - age: [*nixkeycloak, *fokus, *private]
+
+  - path_regex: services/hass/postgres.enc.yaml$
+    key_groups:
+      - age: [*nixpostgres, *nixhomeassistant, *fokus, *private]
+
+  - path_regex: services/hass/.*\.enc\.yaml$
+    key_groups:
+      - age: [*nixhomeassistant, *fokus, *private]
+
+  - path_regex: services/paperless/postgres.enc.yaml$
+    key_groups:
+      - age: [*nixpostgres, *nixpaperless, *fokus, *private]
+
+  - path_regex: services/paperless/.*\.enc\.yaml$
+    key_groups:
+      - age: [*nixpaperless, *fokus, *private]
+
+  - path_regex: services/headscale/.*\.enc\.yaml$
+    key_groups:
+      - age: [*nixheadscale, *fokus, *private]
+
+  - path_regex: services/hedgedoc/postgres.enc.yaml$
+    key_groups:
+      - age: [*nixpostgres, *nixhedgedoc, *fokus, *private]
 
   - path_regex: services/hedgedoc/.*\.enc\.yaml$
     key_groups:
@@ -34,36 +75,15 @@ creation_rules:
   - path_regex: services/adguard/.*\.enc\.yaml$
     key_groups:
       - age: [*nixadguard, *fokus, *private]
-
-  # Headscale & Headplane
-  - path_regex: services/headscale/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixheadscale, *fokus, *private]
-
   # Adguard (LXC version)
   - path_regex: services/adguardhome/.*\.enc\.yaml$
     key_groups:
       - age: [*nixadguard, *fokus, *private]
 
-  # Postgres & Zitadel (Shared group because Zitadel needs Postgres credentials)
-  - path_regex: services/(postgres|zitadel)/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixpostgres, *nixzitadel, *fokus, *private]
-
-  # Paperless
-  - path_regex: services/paperless/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixpaperless, *fokus, *private]
-
   # Monitoring Stack
   - path_regex: services/(influxv2|grafana)/.*\.enc\.yaml$
     key_groups:
       - age: [*nixinflux, *nixgrafana, *fokus, *private]
-
-  # Home Automation
-  - path_regex: services/homeassistant/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixhomeassistant, *fokus, *private]
 
   # Networking & Others
   - path_regex: services/nginx/.*\.enc\.yaml$
@@ -74,30 +94,17 @@ creation_rules:
     key_groups:
       - age: [*nixheadscale, *fokus, *private] # Adjust if netbox has its own key
 
-  - path_regex: services/keycloak/secrets.enc.yaml$
-    key_groups:
-      - age: [*nixkeycloak, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/keycloak/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixkeycloak, *nixpostgres, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/immich/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixpostgres, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/immich/secrets.enc.yaml$
-    key_groups:
-      - age: [*niximmich, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/listmonk/secrets.enc.yaml$
-    key_groups:
-      - age: [*nixlistmonk, *fokus, *private] # Adjust if netbox has its own key
-
   - path_regex: services/opencloud/secrets.enc.yaml$
     key_groups:
       - age: [*nixopencloud, *fokus, *private] # Adjust if netbox has its own key
 
+  - path_regex: services/.*\/postgres\.enc\.yaml$
+    key_groups:
+      - age: [*nixpostgres, *fokus, *private]
+
+  - path_regex: services/([^/]+)/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - age: [*fokus, *private]
   # Catch-all for any other services (Safety net for the NAS)
   - path_regex: services/.*\.enc\.yaml$
     key_groups:
@@ -113,3 +120,7 @@ creation_rules:
   - path_regex: hosts/hetzner-vps-01/secrets.enc.yaml$
     key_groups:
       - age: [*hetzner-vps-01, *fokus, *private]
+
+  - path_regex: secrets/router.enc.yaml$
+    key_groups:
+      - age: [*fokus, *private]

@@ -7,7 +7,15 @@
     ffmpeg
     papers
     poppler-utils
-    signal-desktop
-    chromium
+    # signal-desktop
+    (pkgs.chromium.override {
+      commandLineArgs = [
+        "--enable-features=UseOzonePlatform,WebRTCPipeWireCapturer,WebRTCPipeWireCamera"
+        "--ozone-platform=wayland"
+        "--enable-wayland-ime"
+        "--use-gl=angle"
+      ];
+    })
+
   ];
 }

@@ -8,21 +8,28 @@
   ...
 }:
 {
-  # 1. Secrets & SOPS
-  sops.defaultSopsFile = ./secrets.enc.yaml;
-  sops.secrets."hass_db_url" = {
+  sops.secrets."hass_db_user" = {
     owner = "hass";
+    sopsFile = ./secrets.enc.yaml;
   };
   sops.secrets."client_id" = {
     owner = "hass";
+    sopsFile = ./secrets.enc.yaml;
+  };
+
+  sops.secrets."pg-password" = {
+    owner = "hass";
+    key = "password";
+    sopsFile = ./postgres.enc.yaml;
   };
 
   # 2. Create the actual secrets.yaml file for Home Assistant
   sops.templates."hass-secrets.yaml" = {
     owner = "hass";
     path = "/var/lib/hass/secrets.yaml"; # This is the file HA reads
+
     content = ''
-      hass_db_url: "${config.sops.placeholder.hass_db_url}"
+      hass_db_url: "postgresql://${config.sops.placeholder.hass_db_user}:${config.sops.placeholder.pg-password}@${nodes.nix-postgres.ip}/${config.sops.placeholder.hass_db_user}"
       client_id: "${config.sops.placeholder.client_id}"
     '';
   };
@@ -34,21 +41,20 @@
     enable = true;
     logLevel = "debug";
     openFirewall = true;
-    extraArgs = [
-      "--primary-interface"
-      "service"
-    ];
+    extraArgs = {
+      primary-interface = "iot";
+    };
   };
 
   services.openthread-border-router = {
     enable = true;
-    backboneInterface = "service";
+    backboneInterfaces = [ "iot" ];
     logLevel = "info";
     radio = {
       device = "/dev/serial/by-id/usb-Itead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_V2_90837c5304f4ef11aa21c61b6d9880ab-if00-port0";
       baudRate = 460800;
       flowControl = false;
-      extraDevices = [ "treel://service" ];
+      # extraDevices = [ "treel://service" ];
     };
     web = {
       enable = true;
@@ -119,6 +125,7 @@
           "::1"
           nodes.nix-nginx.ip
           "10.60.1.0/24"
+          "10.60.60.0/24"
           "100.64.0.0/10"
           "fd00:60:0::/64"
           "fd00:60:1::/64"
@@ -158,6 +165,7 @@
     };
     allowInterfaces = [
       "service"
+      "iot"
       "wpan0"
     ];
   };

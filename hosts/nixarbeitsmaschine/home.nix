@@ -6,9 +6,7 @@
   inputs,
   nixgl,
   ...
-}:
-{
-
+}: {
   nixpkgs = {
     overlays = [
       inputs.nur.overlays.default
@@ -16,15 +14,17 @@
     config = {
       allowUnfree = true;
     };
-
   };
   imports = [
+    inputs.noctalia.homeModules.default
     inputs.nvf.homeManagerModules.default
+    inputs.niri.homeModules.niri
     ../../modules/browser/firefox.nix
     ../../modules/com/thunderbird.nix
     ../../modules/editor/nvf.nix
     ../../modules/editor/zed.nix
-    ../../modules/desktop/sway.nix
+    #../../modules/desktop/sway.nix
+    ../../modules/desktop/noctalia.nix
 
     ../../modules/programs/common.nix
     ../../modules/profiles/security.nix
@@ -36,43 +36,43 @@
     ../../modules/programs/3d.nix
     ../../modules/programs/terminal.nix
     ../../modules/programs/android.nix
-
   ];
   targets.genericLinux.enable = true;
 
   systemd.user.startServices = "sd-switch";
   services.gnome-keyring = {
-    enable = false;
+    enable = lib.mkForce false;
     components = [
-      "secrets"
-      "ssh"
+      # "secrets"
+      # "ssh"
     ];
   };
 
-  targets.genericLinux.nixGL.packages = import nixgl { inherit pkgs; };
+  targets.genericLinux.nixGL.packages = import nixgl {inherit pkgs;};
   targets.genericLinux.nixGL.defaultWrapper = "mesa";
-  targets.genericLinux.nixGL.installScripts = [ "mesa" ];
+  targets.genericLinux.nixGL.installScripts = ["mesa"];
 
   home.packages = with pkgs; [
-    (pkgs.callPackage ../../pkgs/scinterface/default.nix { })
+    (pkgs.callPackage ../../pkgs/scinterface/default.nix {})
   ];
-
   home.sessionVariables = {
-    GTK_THEME = "Adwaita:dark";
-    QT_QPA_PLATFORM = "wayland;xcb";
-    QT_QPA_PLATFORMTHEME = "qt5ct";
     QT_STYLE_OVERRIDE = "kvantum";
-    XDG_CURRENT_DESKTOP = "sway";
+    XDG_SESSION_DESKTOP = "niri";
+    XDG_CURRENT_DESKTOP = "niri";
     OPENSC_CONF = "$HOME/.config/opensc/opensc.conf";
     NIX_LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:${pkgs.stdenv.cc.cc.lib}/lib";
     NIX_LD = "${pkgs.stdenv.cc.cc.lib}/lib/ld-linux-x86-64.so.2";
     LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.pcsclite}/lib:${config.home.profileDirectory}/lib";
     XDG_SESSION_TYPE = "wayland";
     GDK_BACKEND = "wayland,x11";
-    # Add this line to stop Waybar from hanging on portal timeouts
-    GTK_USE_PORTAL = "1";
-    MOZ_ENABLE_WAYLAND = "1";
-    XDG_DATA_DIRS = lib.mkForce "$HOME/.nix-profile/share:$HOME/.local/share:$XDG_DATA_DIRS:/usr/local/share:/usr/share";
+
+    TERMINFO_DIRS = "${pkgs.ghostty.terminfo}/share/terminfo:${config.home.profileDirectory}/share/terminfo:/usr/share/terminfo";
+    XDG_DATA_DIRS = lib.mkForce "$HOME/.nix-profile/share:$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS:/usr/local/share:/usr/share";
+
+    #XDG_DATA_DIRS = lib.mkForce "${config.home.profileDirectory}/share:$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share";
+
+    # Forces GTK apps to use the portal for file pickers
+    #GTK_USE_PORTAL = "1";
   };
 
   home.stateVersion = "23.11";
@@ -80,5 +80,4 @@
   programs.home-manager = {
     enable = true;
   };
-
 }

@@ -176,10 +176,13 @@
 
         # --- 2. FONT HARDENING (Fixes the 1033 font leak) ---
         # This is likely why you are still "Unique"
-        "layout.css.font-visibility.standard" = 1;
+        "layout.css.font-visibility.standard" = 2;
+        "layout.css.font-visibility.level" = 2;
         "layout.css.font-visibility.trackingprotection" = 1;
         "layout.css.font-visibility.private" = 1;
 
+        "gfx.webrender.quality.force-subpixel-aa-where-possible" = true;
+        
         "dom.webaudio.enabled" = true;
         # --- 3. UI & COMPACT MODE ---
         "browser.compactmode.show" = true;

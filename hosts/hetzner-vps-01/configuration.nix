@@ -14,11 +14,16 @@
 
   boot.loader.grub.enable = true;
 
-  sops.defaultSopsFile = ./serets.enc.yaml;
-  sops.secrets."wg.privat" = {
-    # Optional: set owner if wireguard needs specific access,
-    # though usually root-read is fine for networking.wireguard.
-    owner = "root";
+  sops.defaultSopsFile = ./secrets.enc.yaml;
+  sops.secrets = {
+    "wg.privat" = {
+      # Optional: set owner if wireguard needs specific access,
+      # though usually root-read is fine for networking.wireguard.
+      owner = "root";
+    };
+    "cudy-lt300/psk" = {
+      owner = "root";
+    };
   };
   users.users.mng = {
     isNormalUser = true;
@@ -34,14 +39,15 @@
     wg0 = {
       ips = [ "10.100.0.1/24" ];
       listenPort = 51820;
-
+    1½1
       # Path to your private key file on the server
       privateKeyFile = config.sops.secrets."wg.privat".path;
 
       peers = [
         {
           # The single peer you want to connect
-          publicKey = "";
+          publicKey = "SkqSN2q0aFfDz4d8MmCJU+S83m4oV/3QtgbuCn9q0Fc=";
+          presharedKeyFile = config.sops.secrets."cudy-lt300/psk".path;
           # Only allow traffic to/from this specific internal tunnel IP
           allowedIPs = [ "10.100.0.2/32" ];
         }

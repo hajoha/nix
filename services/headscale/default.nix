@@ -99,7 +99,7 @@ in
         client_id = "headplane";
         client_secret_path = config.sops.secrets."headplane/OIDC_CLIENT_SECRET".path;
         headscale_api_key_path = config.sops.secrets."headplane/oidcHeadscaleApiKey".path;
-        redirect_uri = "https://${nodes.nix-headscale.hostname}.${baseDomain}/admin/oidc/callback";
+        # redirect_uri = "https://${nodes.nix-headscale.hostname}.${baseDomain}/admin/oidc/callback";
         disable_api_key_login = true;
         token_endpoint_auth_method = "client_secret_basic";
         #        role_map = {

@@ -151,10 +151,6 @@ in
       ];
     };
   };
-  wayland.windowManager.sway = {
-    enable = true;
-    wrapperFeatures.gtk = true;
-    extraConfig = ''
 
       set $left h
       set $down j
@@ -305,11 +301,7 @@ in
         }
         {
           command = "exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway";
-        }
-        {
-          command = "exec systemctl --user restart pipewire-media-session xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk swaync";
-        }
-        { command = "sh -c 'swaymsg workspace 1; swaymsg layout tabbed'"; }
+
 
       ];
 
@@ -329,11 +321,7 @@ in
     libqmi
     tmux
     zsh
-    inkscape
-    ausweisapp
-    spice-gtk
-    poppler-utils
-    solaar
+
     pdfpc
     gcc
     inetutils
@@ -411,10 +399,6 @@ in
     ollama
     wdisplays
     alacritty
-    #    xdg-desktop-portal
-    #    xdg-desktop-portal-wlr
-    #    xdg-desktop-portal-gtk
-    #    xdg-desktop-portal-hyprland
 
     socat
 
@@ -532,11 +516,7 @@ in
         bizarre_retry = 5;
       };
     };
-  };
 
-  gtk = {
-    enable = true;
-    theme = {
       name = "Adwaita-dark"; # or "Catppuccin-Mocha", "Gruvbox-Dark", etc.
       package = pkgs.gnome-themes-extra;
     };
@@ -546,10 +526,6 @@ in
     };
   };
 
-  home.sessionVariables = {
-    GTK_THEME = "Adwaita:dark";
-    QT_QPA_PLATFORMTHEME = "qt5ct";
-    QT_STYLE_OVERRIDE = "kvantum";
   };
 
   programs.waybar = {
@@ -560,11 +536,7 @@ in
         layer = "top";
         position = "top";
         mod = "dock";
-        exclusive = true;
-        passtrough = false;
-        #        gtk-layer-shell = true;
-        height = 10;
-        modules-left = [
+
           "sway/workspaces"
           "custom/divider"
           "cpu"

@@ -1,28 +1,48 @@
-{ config, pkgs, nodes, baseDomain, ... }:
+{
+  config,
+  pkgs,
+  nodes,
+  baseDomain,
+  ...
+}:
 
 {
-  
 
   users.users.listmonk = {
     isSystemUser = true;
     group = "listmonk";
   };
-  users.groups.listmonk = {};
-  
+  users.groups.listmonk = { };
+
   # Update your sops config to ensure the group matches
   sops.secrets."listmonk-env" = {
-    format = "yaml";
     sopsFile = ./secrets.enc.yaml;
     owner = "listmonk";
     group = "listmonk";
     mode = "0440";
   };
-  
-  
+
+  sops.secrets."env" = {
+    sopsFile = ./postgres.enc.yaml;
+    owner = "listmonk";
+    group = "listmonk";
+    mode = "0440";
+    key = "password";
+  };
+
+  sops.templates.".env" = {
+    owner = "listmonk";
+
+    content = ''
+      ${config.sops.placeholder."listmonk-env"}
+      LISTMONK_db__password=${config.sops.placeholder."env"}
+    '';
+  };
+
   services.listmonk.database.mutableSettings = true;
   services.listmonk = {
     enable = true;
-    
+
     # Static settings (config.toml)
     settings = {
       app.address = "0.0.0.0:9000";
@@ -37,20 +57,20 @@
       };
     };
 
-    secretFile = config.sops.secrets."listmonk-env".path;
+    secretFile = config.sops.templates.".env".path;
 
     database.settings = {
       "auth.enabled" = true;
       "auth.method" = "oidc";
       smtp = [
-                    ];
+      ];
     };
   };
-  
+
   systemd.services.listmonk.serviceConfig.Environment = [
-      "PGHOST=${nodes.nix-postgres.ip}"
-      "PGPORT=${toString nodes.nix-postgres.port}"
-      "PGUSER=listmonk"
-      "PGDATABASE=listmonk"
-    ];
+    "PGHOST=${nodes.nix-postgres.ip}"
+    "PGPORT=${toString nodes.nix-postgres.port}"
+    "PGUSER=listmonk"
+    "PGDATABASE=listmonk"
+  ];
 }

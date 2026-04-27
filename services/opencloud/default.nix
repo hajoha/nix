@@ -8,7 +8,7 @@
   ...
 }:
 {
-  
+
   sops.secrets."opencloud-env" = {
     format = "yaml";
     sopsFile = ./secrets.enc.yaml;
@@ -18,40 +18,42 @@
   };
   services.collabora-online = {
     enable = true;
-        port = 9980;
+    port = 9980;
     settings = {
-      
+      wopi = {
+        url = "https://collabora.${baseDomain}";
+      };
       ssl = {
         enable = false;
         termination = true;
       };
-    # This allows your domain to request documents
-    # Note the double-backslash: Nix requires it to pass a single backslash to Nginx/Collabora
-    storage.wopi.host = [
-      "^collabora\\.johann-hackler\\.com$"
-      "^opencloud\\.johann-hackler\\.com$"
-    ];
-    net = {
-      listen = "any";
-      # Frame ancestors tells the browser which sites are allowed to iframe Collabora
-      frame_ancestors = [
-        "opencloud.${baseDomain}"
-        "collabora.${baseDomain}"
+      # This allows your domain to request documents
+      # Note the double-backslash: Nix requires it to pass a single backslash to Nginx/Collabora
+      storage.wopi.host = [
+        "^opencloud\\.johann-hackler\\.com$"
+        "^collabora\\.johann-hackler\\.com$"
       ];
+      net = {
+        listen = "any";
+        # Frame ancestors tells the browser which sites are allowed to iframe Collabora
+        frame_ancestors = [
+          "opencloud.${baseDomain}"
+          "collabora.${baseDomain}"
+        ];
+      };
+
+      storage.wopi.alias_groups = {
+        mode = "groups";
+        group = [
+          {
+            # This covers the primary domain and any port variation
+            host = [ "https://opencloud\\.johann-hackler\\.com(:[0-9]+)?" ];
+            allow = true;
+          }
+        ];
+      };
     };
 
-    # Modern Collabora versions (COOL) often prefer alias_groups
-    storage.wopi.alias_groups = {
-      mode = "groups"; # Add this to ensure it uses the group logic
-      group = [
-        {
-          host = [ "https://opencloud\\.johann-hackler\\.com" ];
-          allow = true;
-        }
-      ];
-    };
-    };
-    
   };
 
   services.opencloud = {
@@ -62,34 +64,81 @@
 
     # The module maps each key here to /etc/opencloud/<key>.yaml
     settings = {
-      # app_registry = {
-      #   driver = "static";
-      #   static = {
-      #     apps = [
-      #       {
-      #         id = "collabora";
-      #         name = "Collabora Online";
-      #         description = "Collabora Online integration";
-      #         icon = "image-edit";
-      #         address = "https://collabora.${baseDomain}";
-      #         wopi_src = "https://collabora.${baseDomain}";
-      #         extensions = [
-      #           "odt"
-      #           "ods"
-      #           "odp"
-      #           "doc"
-      #           "docx"
-      #           "xls"
-      #           "xlsx"
-      #           "ppt"
-      #           "pptx"
-      #           "pdf"
-      #         ];
-      #       }
-      #     ];
-      #   };
-      # };
+      app_registry = {
+        driver = "static";
+        static = {
+          apps = [
+            {
+              id = "calendar";
+              name = "Calendar";
+              icon = "calendar";
+              address = "https://opencloud.${baseDomain}/calendar/";
+            }
+            {
+              id = "contacts";
+              name = "Contacts";
+              icon = "contacts";
+              address = "https://opencloud.${baseDomain}/contacts/";
+            }
+            {
+              id = "collabora";
+              name = "Collabora Online";
+              description = "Collabora Online integration";
+              icon = "image-edit";
+              address = "https://collabora.${baseDomain}";
+              wopi_src = "https://collabora.${baseDomain}";
+              extensions = [
+                "odt"
+                "ods"
+                "odp"
+                "doc"
+                "docx"
+                "xls"
+                "xlsx"
+                "ppt"
+                "pptx"
+                "pdf"
+              ];
+            }
+          ];
+        };
+      };
       proxy = {
+        additional_policies = [
+          {
+            name = "default";
+            routes = [
+              {
+                endpoint = "/caldav/";
+                backend = "http://127.0.0.1:5232";
+                remote_user_header = "X-Remote-User";
+                skip_x_access_token = true;
+                additional_headers = [ { "X-Script-Name" = "/caldav"; } ];
+              }
+              {
+                endpoint = "/.well-known/caldav";
+                backend = "http://127.0.0.1:5232";
+                remote_user_header = "X-Remote-User";
+                skip_x_access_token = true;
+                additional_headers = [ { "X-Script-Name" = "/caldav"; } ];
+              }
+              {
+                endpoint = "/carddav/";
+                backend = "http://127.0.0.1:5232";
+                remote_user_header = "X-Remote-User";
+                skip_x_access_token = true;
+                additional_headers = [ { "X-Script-Name" = "/carddav"; } ];
+              }
+              {
+                endpoint = "/.well-known/carddav";
+                backend = "http://127.0.0.1:5232";
+                remote_user_header = "X-Remote-User";
+                skip_x_access_token = true;
+                additional_headers = [ { "X-Script-Name" = "/carddav"; } ];
+              }
+            ];
+          }
+        ];
         role_quotas = {
           # 'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11' is the hardcoded ID for the 'User' role
           "d7beeea8-8ff4-406b-8fb6-ab2dd81e6b11" = 274877906944; # 256 GB in bytes
@@ -125,12 +174,13 @@
           child-src = [ "'self'" ];
           connect-src = [
             "'self'"
-            "'blob:'"
+            "blob:"
             "https://raw.githubusercontent.com/opencloud-eu/awesome-apps/"
             "https://update.opencloud.eu/"
             "https://sso.${baseDomain}"
             "https://opencloud-eu.github.io/"
             "https://collabora.${baseDomain}"
+            "wss://collabora.${baseDomain}"
           ];
           font-src = [ "'self'" ];
           frame-ancestors = [
@@ -140,17 +190,18 @@
           ];
           frame-src = [
             "'self'"
-            "'blob:'"
+            "data:"
+            "blob:"
             "https://embed.diagrams.net/"
             "https://docs.opencloud.eu"
             "https://sso.${baseDomain}"
             "https://opencloud-eu.github.io/"
-            "https://collabora.${baseDomain}"
+            "https://collabora.${baseDomain}" # <--- This allows the iframe to load
           ];
           img-src = [
             "'self'"
-            "'data:'"
-            "'blob:'"
+            "data:"
+            "blob:"
             "https://tile.openstreetmap.org/"
             "https://raw.githubusercontent.com/opencloud-eu/awesome-apps/"
             "https://sso.${baseDomain}"
@@ -159,10 +210,11 @@
           media-src = [ "'self'" ];
           object-src = [
             "'self'"
-            "'blob:'"
           ];
           script-src = [
             "'self'"
+            "data:"
+            "blob:"
             "'unsafe-inline'"
             "'unsafe-hashes'"
             "'unsafe-eval'"
@@ -189,7 +241,11 @@
       EXTERNAL_OIDC_DOMAIN = "sso.${baseDomain}";
       PROXY_OIDC_REWRITE_WELLKNOWN = "true";
       OC_INSECURE = "true";
-      # OC_ADD_RUN_SERVICES = "collaboration,app-registry,gateway";
+      OC_ADD_RUN_SERVICES = "collaboration,app-registry,gateway,calendar,contacts";
+      CALENDAR_BACKEND_URL = "https://opencloud.${baseDomain}/caldav/";
+      CONTACTS_BACKEND_URL = "https://opencloud.${baseDomain}/carddav/";
+      PROXY_ENABLE_CALDAV = "true";
+      PROXY_ENABLE_CARDDAV = "true";
       PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD = "none";
       PROXY_AUTOPROVISION_ACCOUNTS = "true";
       OC_SHARING_PUBLIC_SHARE_MUST_HAVE_PASSWORD = "false";
@@ -214,14 +270,41 @@
       COLLABORATION_APP_INSECURE = "true";
       APP_REGISTRY_EXTERNAL_ADDR = "https://collabora.${baseDomain}";
       COLLABORATION_HTTP_INSECURE = "true";
-      
-      COLLABORATION_WOPI_SRC = "https://collabora.${baseDomain}";
-        
-        
-            
-      
+      COLLABORATION_WOPI_SRC = "https://opencloud.${baseDomain}";
+
+      COLLABORATION_APP_PROOF_DISABLE = "true";
     };
     environmentFile = config.sops.secrets."opencloud-env".path;
+  };
+
+  services.radicale = {
+    enable = true;
+    settings = {
+      server = {
+        hosts = [ "127.0.0.1:5232" ];
+        ssl = false;
+      };
+      auth = {
+        # Trust the header passed by the OpenCloud proxy
+        type = "http_x_remote_user";
+      };
+      web.type = "none";
+      storage = {
+        filesystem_folder = "/var/lib/radicale/collections";
+        # Pre-creating these makes them show up immediately in OpenCloud
+        predefined_collections = builtins.toJSON {
+          def-addressbook = {
+            "D:displayname" = "OpenCloud Address Book";
+            tag = "VADDRESSBOOK";
+          };
+          def-calendar = {
+            "C:supported-calendar-component-set" = "VEVENT,VJOURNAL,VTODO";
+            "D:displayname" = "OpenCloud Calendar";
+            tag = "VCALENDAR";
+          };
+        };
+      };
+    };
   };
 
   networking.firewall.allowedTCPPorts = [

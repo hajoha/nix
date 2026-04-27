@@ -35,14 +35,13 @@
   #   "${pkgs.xdg-desktop-portal-gtk}/lib/systemd/user/xdg-desktop-portal-gtk.service";
 
   home.packages = with pkgs; [
-    swaynotificationcenter
     adwaita-icon-theme
     gnome-themes-extra
     brightnessctl
     wl-clipboard
-    pipewire
+    # pipewire
     cliphist
-    pavucontrol
+    #   pavucontrol
     nerd-fonts.fira-code # Modern way to include Fira Code Nerd Font
     nerd-fonts.symbols-only # Great fallback for all icons
   ];
@@ -87,7 +86,8 @@
         ];
         modules-center = [ "sway/window" ];
         modules-right = [
-
+          "idle_inhibitor"
+          "custom/divider"
           "network"
           "custom/divider"
           "backlight"
@@ -102,6 +102,13 @@
           "custom/divider"
           "tray"
         ];
+        "idle_inhibitor" = {
+          format = "{icon}";
+          format-icons = {
+            activated = ""; # Eye open icon
+            deactivated = ""; # Eye closed icon
+          };
+        };
         "sway/window" = {
           format = "{}";
         };
@@ -246,6 +253,7 @@
     enable = true;
     wrapperFeatures.gtk = true;
     systemd.enable = true;
+    package = config.lib.nixGL.wrap pkgs.sway;
     extraConfig = ''
       # 1. Laptop Screen (eDP-1)
         # Starting at the origin (0,0)
@@ -280,20 +288,24 @@
       exec firefox
 
       exec swayidle -w \
-        timeout 600 'swaylock -f -c 000000' \
-        timeout 630 'swaymsg "output * dpms off"' \
-        resume 'swaymsg "output * dpms on"' \
-        before-sleep 'swaylock -f -c 000000'
+              timeout 600 'swaylock -f -c 000000' \
+              timeout 630 'swaymsg "output * dpms off"' \
+              resume 'swaymsg "output * dpms on"' \
+              before-sleep 'swaylock -f -c 000000' \
+              timeout 5 'if pgrep -x swaylock; then swaymsg "output * dpms off"; fi' \
+              resume 'swaymsg "output * dpms on"' \
+              switch:on:Lid\ Input 'swaylock -f -c 000000'
       exec cliphist wipe
       exec wl-paste --watch cliphist store
+      exec gnome-keyring-daemon --start --components=ssh
 
 
     '';
     config = {
       modifier = "Mod4"; # Super/Windows key
-      terminal = "ghostty";
+      terminal = "nixGLMesa ghostty";
       defaultWorkspace = "workspace number 1";
-      menu = "wofi --show drun"; # You can replace this with bemenu, fuzzel, etc.
+      menu = "nixGLMesa wofi --show drun"; # You can replace this with bemenu, fuzzel, etc.
       keybindings = {
         "${config.wayland.windowManager.sway.config.modifier}+Return" =
           "exec ${config.wayland.windowManager.sway.config.terminal}";
@@ -309,7 +321,7 @@
         "${config.wayland.windowManager.sway.config.modifier}+f" = "fullscreen toggle";
 
         "${config.wayland.windowManager.sway.config.modifier}+Shift+v" = ''
-          exec cliphist list | sed -E "s/^([0-9]+)\t/\1 /" | wofi --dmenu | sed -E "s/^([0-9]+) /\1\t/" | cliphist decode | wl-copy
+          exec nixGLMesa cliphist list | sed -E "s/^([0-9]+)\t/\1 /" | wofi --dmenu | sed -E "s/^([0-9]+) /\1\t/" | cliphist decode | wl-copy
         '';
 
         "${config.wayland.windowManager.sway.config.modifier}+1" = "workspace 1";
@@ -379,7 +391,6 @@
           "move workspace to output down";
         "${config.wayland.windowManager.sway.config.modifier}+Control+Shift+Up" =
           "move workspace to output up";
-
       };
 
       input = {
@@ -402,7 +413,6 @@
           "Font Awesome 6 Free"
         ];
         size = 10.0;
-
       };
 
       gaps = {
@@ -413,7 +423,7 @@
       startup = [
         # 1. Force the DBus session to pick up ALL Nix environment variables
         { command = "dbus-update-activation-environment --systemd --all"; }
-        { command = "systemctl --user import-environment PATH"; }
+        { command = "systemctl --user import-environment PATH SSH_AUTH_SOCK"; }
 
         # 2. Kill any existing portal processes (Ubuntu's or hung Nix ones)
         { command = "pkill -f xdg-desktop-portal"; }
@@ -431,23 +441,7 @@
           command = "sh -c 'sleep 5; nm-applet --indicator & 1password --silent & opencloud & blueman-applet &'";
         }
       ];
-
     };
   };
 
-  xdg.desktopEntries."signal-desktop" = {
-    name = "Signal";
-    genericName = "Messaging and Video Chat";
-    exec = "signal-desktop --password-store=gnome-libsecret --enable-features=UseOzonePlatform --ozone-platform=wayland %U";
-    icon = "signal";
-    terminal = false;
-    categories = [
-      "Network"
-      "InstantMessaging"
-    ];
-    # Adding this ensures it takes precedence
-    settings = {
-      Keywords = "chat;messaging;talk;";
-    };
-  };
 }

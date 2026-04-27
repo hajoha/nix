@@ -6,23 +6,25 @@
   ...
 }:
 let
+  # Single source of truth for services requiring a DB and a Secret
   servicesWithDB = [
+    "hass"
+    "hedgedoc"
+    "paperless"
+    "immich"
     "keycloak"
+    "listmonk"
   ];
 
   # Helper: Maps a service name to its specific sops secret configuration
   mkSopsSecret = name: {
-    # The physical file on disk
     sopsFile = ../${name}/postgres.enc.yaml;
-
-    # The KEY inside the encrypted YAML file
     key = "password";
-
     owner = "postgres";
   };
 in
 {
-
+  # 1. SOPS Configuration
   sops.secrets = lib.genAttrs (map (svc: "users/${svc}") servicesWithDB) (
     path:
     let
@@ -31,152 +33,132 @@ in
     mkSopsSecret svc
   );
 
+  # 2. PostgreSQL Configuration
   services.postgresql = {
     enable = true;
     package = pkgs.postgresql_17;
     enableTCPIP = true;
 
-    # Automated database creation
-    ensureDatabases = [
-      "zitadel"
-      "hass"
-      "hedgedoc"
-      "paperless"
-      "immich"
-      "keycloak"
-      "listmonk"
-      "netbox" # Added NetBox as well
-    ];
+    # Automatically create all databases defined in our list
+    ensureDatabases = servicesWithDB;
 
-    #    ensureDatabases = servicesWithDB;
-    #    ensureUsers = map (svc: {
-    #      name = svc;
-    #      ensureDBOwnership = true;
-    #    }) servicesWithDB ++ [
-    #      { name = "admin"; ensureClauses.superuser = true; }
-    #    ];
+    # Automatically create all users and assign ownership
+    ensureUsers =
+      (map (svc: {
+        name = svc;
+        ensureDBOwnership = true;
+      }) servicesWithDB)
+      ++ [
+        {
+          name = "admin";
+          ensureClauses.superuser = true;
+        }
+      ];
+
     extensions =
       ps: with ps; [
         pgvector
         vectorchord
       ];
-    # Automated user creation
-    ensureUsers = [
-      {
-        name = "zitadel";
-        ensureDBOwnership = true;
-      }
-      {
-        name = "listmonk";
-        ensureDBOwnership = true;
-      }
-      {
-        name = "hass";
-        ensureDBOwnership = true;
-      }
-      {
-        name = "hedgedoc";
-        ensureDBOwnership = true;
-      }
-      {
-        name = "immich";
-        ensureDBOwnership = true;
-      }
-      {
-        name = "paperless";
-        ensureDBOwnership = true;
-      }
-      {
-        name = "keycloak";
-        ensureDBOwnership = true;
-      }
-      {
-        name = "netbox";
-        ensureDBOwnership = true;
-      }
-      {
-        name = "admin";
-        ensureClauses.superuser = true;
-      }
-    ];
 
-    # Security: Subnet-based access control
     authentication = lib.mkOverride 10 ''
-      # Type  Database        User            Address                 Method
-
-      # 1. Local connections
-      local   all             all                                     trust
-
-      # 2. Unified LAN Subnet (All LXCs and Management)
-      # Allows your other containers (Hass, Paperless, etc.) to connect
-      host    all             all             10.60.1.0/24            scram-sha-256
-
-      # Allow local loopback for the container itself
-      host    all             all             127.0.0.1/32            scram-sha-256
+      # Type  Database        User            Address                Method
+      local   all             all                                    trust
+      host    all             all             10.60.1.0/24           scram-sha-256
+      host    all             all             127.0.0.1/32           scram-sha-256
     '';
 
     settings = {
       max_connections = 100;
       shared_buffers = "256MB";
-      # Ensure it listens on the eth0 interface
       listen_addresses = "*";
       shared_preload_libraries = "vchord.so";
     };
   };
+
+  # 3. Password Sync Service
+  # This service waits for Postgres to start, then applies passwords from SOPS
   systemd.services.postgresql-password-sync = {
     description = "Sync Postgres passwords from per-service SOPS files";
     after = [
       "postgresql.service"
       "sops-nix.service"
     ];
+    requires = [ "postgresql.service" ];
     wantedBy = [ "multi-user.target" ];
+
     serviceConfig = {
       Type = "oneshot";
       User = "postgres";
+      ExecStartPre = "${config.services.postgresql.package}/bin/pg_isready";
       RemainAfterExit = true;
     };
+
     script = lib.concatMapStringsSep "\n" (svc: ''
             SECRET_PATH="${config.sops.secrets."users/${svc}".path}"
             if [ -f "$SECRET_PATH" ]; then
               PASSWORD=$(cat "$SECRET_PATH")
-
-              # Removed 'c' from -tAc. -tA makes it quiet/unaligned.
-              ${config.services.postgresql.package}/bin/psql -tA <<EOF
-                ALTER USER ${svc} WITH PASSWORD '$PASSWORD';
+              # Use a DO block to safely update password only if user exists
+              ${config.services.postgresql.package}/bin/psql -d postgres -tA <<EOF
+                DO \$$
+                BEGIN
+                  IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${svc}') THEN
+                    EXECUTE format('ALTER USER %I WITH PASSWORD %L', '${svc}', '$PASSWORD');
+                  END IF;
+                END
+                \$$;
       EOF
             fi
     '') servicesWithDB;
   };
 
+  # 4. Immich Specific Extensions
   systemd.services.postgresql-immich-setup = {
     description = "Setup Immich extensions";
-    partOf = [ "postgresql.service" ];
-    after = [ "postgresql.service" ];
+    after = [
+      "postgresql.service"
+      "postgresql-password-sync.service"
+    ];
+    requires = [ "postgresql.service" ];
     wantedBy = [ "multi-user.target" ];
 
     serviceConfig = {
       Type = "oneshot";
       User = "postgres";
-      ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
+      ExecStartPre = "${config.services.postgresql.package}/bin/pg_isready";
       RemainAfterExit = true;
     };
 
     script = ''
-          # Wait for the DB to be ready
-          ${config.services.postgresql.package}/bin/psql -d immich <<EOF
-            -- These must be created by a superuser (which this script runs as)
-            CREATE EXTENSION IF NOT EXISTS "unaccent";
-            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-            CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-            CREATE EXTENSION IF NOT EXISTS "cube";          -- Missing earlier
-            CREATE EXTENSION IF NOT EXISTS "earthdistance"; -- The one causing the crash
-            CREATE EXTENSION IF NOT EXISTS "vector";
-            CREATE EXTENSION IF NOT EXISTS "vchord";
+            ${config.services.postgresql.package}/bin/psql -d postgres <<EOF
+              -- Give immich temporary superuser to manage its own extensions
+              ALTER USER immich WITH SUPERUSER;
+      EOF
 
-            -- Ensure the immich user owns the schema to manage tables
-            ALTER SCHEMA public OWNER TO immich;
+            ${config.services.postgresql.package}/bin/psql -d immich -U immich <<EOF
+              -- These will now be OWNED by immich because immich is running them
+              CREATE EXTENSION IF NOT EXISTS "unaccent";
+              CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+              CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+              CREATE EXTENSION IF NOT EXISTS "cube";
+              CREATE EXTENSION IF NOT EXISTS "earthdistance";
+              CREATE EXTENSION IF NOT EXISTS "vector";
+              CREATE EXTENSION IF NOT EXISTS "vchord";
+
+              -- If they already existed, we force an update to make sure
+              ALTER EXTENSION vchord UPDATE;
+              ALTER EXTENSION vector UPDATE;
+      EOF
+
+            ${config.services.postgresql.package}/bin/psql -d postgres <<EOF
+              -- Revoke superuser now that setup is done (Security First!)
+              ALTER USER immich WITH NOSUPERUSER;
+              -- Ensure schema ownership is correct
+              \c immich
+              ALTER SCHEMA public OWNER TO immich;
       EOF
     '';
   };
+
   system.stateVersion = "25.11";
 }

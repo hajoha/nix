@@ -1,11 +1,15 @@
 {
   config,
-  pkgs,
   lib,
+  pkgs,
   nodes,
   baseDomain,
+  keycloakRealm,
   ...
 }:
+let
+  keycloakUrl = "https://${nodes.nix-keycloak.sub}.${baseDomain}";
+in
 
 {
   # 1. SOPS Configuration
@@ -17,6 +21,21 @@
     "paperless-creds/oidcSecret" = {
       owner = "paperless";
     };
+    "env" = {
+      sopsFile = ./postgres.enc.yaml;
+      key = "password";
+    };
+  };
+  sops.templates.".env" = {
+    owner = "paperless";
+
+    content = ''
+      ${config.sops.placeholder."paperless-creds/env"}
+      PAPERLESS_DBPASS=${config.sops.placeholder."env"}
+      PAPERLESS_SOCIALACCOUNT_PROVIDERS='{"openid_connect": {"OAUTH_PKCE_ENABLED": "True", "APPS": [{"provider_id": "keycloak", "name": "SSO", "client_id": "paperless", "secret": "${
+        config.sops.placeholder."paperless-creds/oidcSecret"
+      }", "settings": {"server_url": "${keycloakUrl}/realms/${keycloakRealm}/.well-known/openid-configuration"}}]}}'
+    '';
   };
 
   services.paperless = {
@@ -26,7 +45,7 @@
     consumptionDirIsPublic = true;
 
     # Environment file for DB_PASS and other standard secrets
-    environmentFile = config.sops.secrets."paperless-creds/env".path;
+    environmentFile = config.sops.templates.".env".path;
 
     settings = {
       PAPERLESS_URL = "https://${nodes.nix-paperless.hostname}.${baseDomain}";
@@ -52,23 +71,11 @@
         pdfa_image_compression = "lossless";
       };
 
-      # SSO / Zitadel Logic
       PAPERLESS_DISABLE_REGULAR_LOGIN = "True";
       PAPERLESS_REDIRECT_LOGIN_TO_SSO = "True";
       PAPERLESS_APPS = "allauth.socialaccount.providers.openid_connect";
-      PAPERLESS_SOCIALACCOUNT_PROVIDERS = builtins.toJSON {
-        openid_connect = {
-          OAUTH_PKCE_ENABLED = "True";
-          APPS = [
-            {
-              provider_id = "zitadel";
-              name = "Zitadel";
-              client_id = "351648507242807573";
-              settings.server_url = "https://${nodes.nix-zitadel.hostname}.${baseDomain}/.well-known/openid-configuration";
-            }
-          ];
-        };
-      };
+      PAPERLESS_SOCIALACCOUNT_ADAPTER = "allauth.socialaccount.adapter.DefaultSocialAccountAdapter";
+
     };
   };
 
@@ -78,18 +85,6 @@
     enable = true;
     timeout = "300s";
   };
-
-  # Runtime Secret Injection for OIDC
-  systemd.services.paperless-web.script = lib.mkBefore ''
-    oidcSecret=$(< ${config.sops.secrets."paperless-creds/oidcSecret".path})
-
-    export PAPERLESS_SOCIALACCOUNT_PROVIDERS=$(
-      ${pkgs.jq}/bin/jq <<< "$PAPERLESS_SOCIALACCOUNT_PROVIDERS" \
-        --compact-output \
-        --arg oidcSecret "$oidcSecret" \
-        '.openid_connect.APPS[0].secret = $oidcSecret'
-    )
-  '';
 
   # Systemd hardening for Gotenberg
   systemd.services.gotenberg.environment.HOME = "/run/gotenberg";

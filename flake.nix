@@ -1,10 +1,16 @@
 {
   description = "Homelab NixOS LXC Infrastructure";
-
+  nixConfig = {
+    extra-substituters = [
+      "https://noctalia.cachix.org"
+      "https://cache.nixos.org"
+    ];
+    extra-trusted-public-keys = [
+      "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
+      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+    ];
+  };
   inputs = {
-    otbr-pr = {
-      url = "github:mrene/nixpkgs/openthread-border-router";
-    };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nur = {
       url = "github:nix-community/NUR";
@@ -36,12 +42,19 @@
         };
       };
     };
+    openwrt-imagebuilder.url = "github:astro/nix-openwrt-imagebuilder";
     old-nixpkgs = {
       type = "github";
       owner = "NixOS";
       repo = "nixpkgs";
       rev = "f294325aed382b66c7a188482101b0f336d1d7db";
     };
+    noctalia = {
+      url = "github:noctalia-dev/noctalia-shell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    niri.url = "github:sodiboo/niri-flake";
+    niri.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -51,8 +64,11 @@
       home-manager,
       sops-nix,
       headplane,
-      otbr-pr,
+      openwrt-imagebuilder,
+      # otbr-pr,
       nixgl,
+      noctalia,
+      niri,
       old-nixpkgs,
       ...
     }@inputs:
@@ -115,10 +131,87 @@
 
     in
     {
-      packages.${system}.pve-zfs-backup = import ./pkgs/pve-zfs-backup.nix {
-        inherit pkgs;
-        sopsFile = pve2Secret;
+      packages.${system} = {
+        pve-zfs-backup = import ./pkgs/pve-zfs-backup.nix {
+          inherit pkgs;
+          sopsFile = pve2Secret;
+        };
+        fritz7530-image =
+          let
+            # 1. Define 'profiles' here so 'config' can see it
+            profiles = openwrt-imagebuilder.lib.profiles { inherit pkgs; };
+
+            # 3. Define the config using the profiles we just initialized
+            config = profiles.identifyProfile "avm_fritzbox-7530" // {
+              release = "25.12.2";
+              packages = [
+                "apk-mbedtls"
+                "ath10k-board-qca4019"
+                "ath10k-firmware-qca4019-ct"
+                "base-files"
+                "ca-bundle"
+                "dnsmasq"
+                "dropbear"
+                "firewall4"
+                "fstools"
+                "ddns-scripts"
+                "kmod-ath10k-ct"
+                "kmod-gpio-button-hotplug"
+                "kmod-leds-gpio"
+                "kmod-nft-offload"
+                "kmod-usb-dwc3"
+                "kmod-usb-dwc3-qcom"
+                "kmod-usb3"
+                "libc"
+                "libgcc"
+                "libustream-mbedtls"
+                "logd"
+                "mtd"
+                "netifd"
+                "nftables"
+                "odhcp6c"
+                "odhcpd-ipv6only"
+                "ppp"
+                "ppp-mod-pppoe"
+                "procd-ujail"
+                "uboot-envtools"
+                "uci"
+                "uclient-fetch"
+                "tcpdump"
+                "urandom-seed"
+                "urngd"
+                "wpad-basic-mbedtls"
+                "fritz-caldata"
+                "fritz-tffs-nand"
+                "ltq-vdsl-vr11-app"
+                "luci"
+                "luci-app-attendedsysupgrade"
+                "tailscale"
+                "kmod-wireguard"
+                "wireguard-tools"
+                "luci-proto-wireguard"
+                "iperf3"
+                "curl"
+                "luci-app-ddns"
+              ];
+              extraImageNames = [ "initramfs-fit-uImage.itb" ];
+              # 4. Inject secrets via uci-defaults
+              files = pkgs.runCommand "image-files" { } ''
+                mkdir -p $out/etc/uci-defaults
+                cat > $out/etc/uci-defaults/99-custom <<EOF
+                uci -q batch << EOI
+                set system.@system[0].hostname='testap'
+                commit
+                EOI
+                EOF
+              '';
+            };
+          in
+          # 5. Call the builder with our defined config
+          openwrt-imagebuilder.lib.build config;
+
       };
+
       apps.${system} = {
         pve-zfs-backup-install = {
           type = "app";
@@ -137,11 +230,13 @@
           modules = [
             # Point this to your home.nix file
             ./hosts/nixarbeitsmaschine/home.nix
+
             {
               # Required for Ubuntu/Non-NixOS
               targets.genericLinux.enable = true;
               home.username = "haa";
               home.homeDirectory = "/home/haa";
+
             }
           ];
         };
@@ -178,7 +273,6 @@
 
         nix-adguard = mkLXC "nix-adguard" ./services/adguardhome/default.nix [ ];
         nix-postgres = mkLXC "nix-postgres" ./services/postgres/default.nix [ ];
-        nix-zitadel = mkLXC "nix-zitadel" ./services/zitadel/default.nix [ ];
         nix-paperless = mkLXC "nix-paperless" ./services/paperless/default.nix [ ];
         nix-hedgedoc = mkLXC "nix-hedgedoc" ./services/hedgedoc/default.nix [ ];
         nix-immich = mkLXC "nix-immich" ./services/immich/default.nix [ ];
@@ -191,18 +285,7 @@
         nix-unifi-controller = mkLXC "nix-unifi-controller" ./services/unifi-controller/default.nix [ ];
 
         nix-opencloud = mkLXC "nix-opencloud" ./services/opencloud/default.nix [ ];
-        nix-homeassistant = mkLXC "nix-homeassistant" ./services/homeassistant/default.nix [
-          # This pulls the actual .nix file from the PR branch
-          "${inputs.otbr-pr}/nixos/modules/services/home-automation/openthread-border-router.nix"
-          {
-            nixpkgs.overlays = [
-              (final: prev: {
-                # This maps the package from the PR branch into the current pkgs
-                openthread-border-router = inputs.otbr-pr.legacyPackages.${system}.openthread-border-router;
-              })
-            ];
-          }
-        ];
+        nix-homeassistant = mkLXC "nix-homeassistant" ./services/hass/default.nix [ ];
         nix-nginx = mkLXC "nix-nginx" ./services/nginx/default.nix [ ];
         nix-netbox = mkLXC "nix-netbox" ./services/netbox/default.nix [ ];
 
@@ -236,4 +319,5 @@
         ];
       };
     };
+
 }

@@ -37,6 +37,11 @@
     tcpdump
     dnsutils
   ];
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than +3";
+  };
 
   system.stateVersion = "25.11";
 }

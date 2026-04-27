@@ -114,6 +114,21 @@ in
         extraConfig = lanOnly;
         locations."/".proxyPass = "http://10.60.1.1";
       };
+      "${nodes.nix-tt-rss.sub}.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-tt-rss.ip}:${toString nodes.nix-tt-rss.port}";
+          extraConfig = commonProxy.extraConfig + ''
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Port 443;
+
+            # Standard optimization for RSS feed content
+            client_max_body_size 20M;
+          '';
+        };
+      };
 
       # --- AdGuard ---
       "${nodes.nix-adguard.hostname}.${baseDomain}" = {
@@ -131,61 +146,31 @@ in
           extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
         };
       };
-      # --- Collabora Online ---
       "collabora.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
 
-        # Static files
-        locations."^~ /browser" = commonProxy // {
+        locations."/" = {
           proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
-        };
-
-        # WOPI discovery URL
-        locations."^~ /hosting/discovery" = commonProxy // {
-          proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
-        };
-
-        # Capabilities
-        locations."^~ /hosting/capabilities" = commonProxy // {
-          proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
-        };
-
-        # Main websocket - This handles the wss:// connection you're seeing fail
-        locations."~ ^/cool/(.*)/ws$" = {
-            proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
-            proxyWebsockets = true;
-            extraConfig = ''
-              proxy_set_header Upgrade $http_upgrade;
-              proxy_set_header Connection "Upgrade";
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto https;
-              proxy_read_timeout 36000s;
-            '';
-          };
-
-        # Download, presentation and image upload
-        locations."~ ^/cool" = commonProxy // {
-          proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
-        };
-
-        # Admin Console websocket
-        locations."^~ /cool/adminws" = commonProxy // {
-          proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
-          extraConfig = commonProxy.extraConfig + ''
-            proxy_set_header Upgrade ''$http_upgrade;
-            proxy_set_header Connection "Upgrade";
-            proxy_read_timeout 36000s;
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https; # Force https here
+            proxy_hide_header X-Frame-Options;
           '';
         };
 
-        # Root fallback
-        locations."/" = commonProxy // {
+        # This regex handles both COOL and Admin WebSockets
+        locations."~ ^/(cool|browser)/.*ws$" = {
           proxyPass = "http://${nodes.nix-opencloud.ip}:9980";
-          extraConfig = commonProxy.extraConfig + ''
-            proxy_hide_header X-Frame-Options;
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+            proxy_set_header Host $host;
+            proxy_read_timeout 36000s;
           '';
         };
       };
@@ -251,16 +236,34 @@ in
       "${nodes.nix-immich.sub}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
-        # Immich can handle large photo/video uploads, so we must raise the limit
-        globalRedirect = null;
-        locations."/" = commonProxy // {
+
+        # These match the "top level" settings in the Immich Doc
+        extraConfig = ''
+          client_max_body_size 50000M;
+          proxy_request_buffering off;
+          client_body_buffer_size 1024k;
+        '';
+
+        locations."/" = {
           proxyPass = "http://${nodes.nix-immich.ip}:${toString nodes.nix-immich.port}";
+
+          # This is the "enable websockets" part of the doc
           proxyWebsockets = true;
-          extraConfig = commonProxy.extraConfig + ''
-            client_max_body_size 50000M;
+
+          extraConfig = ''
+            # These are the 4 headers the doc says MUST be forwarded
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Timeouts from the doc
             proxy_read_timeout 600s;
             proxy_send_timeout 600s;
             send_timeout 600s;
+
+            # The doc uses proxy_redirect off
+            proxy_redirect off;
           '';
         };
       };
@@ -362,7 +365,7 @@ in
 
         # These settings apply to the entire Virtual Host (Server block)
         extraConfig = ''
-          client_max_body_size 10M;
+          client_max_body_size 50000M;
           proxy_buffering off;
           proxy_request_buffering off;
           proxy_read_timeout 3600s;
@@ -370,6 +373,7 @@ in
           keepalive_requests 100000;
           keepalive_timeout 5m;
           http2_max_concurrent_streams 512;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_next_upstream off;
         '';
 

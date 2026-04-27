@@ -14,11 +14,25 @@
     # File should contain: CMD_DB_PASSWORD, CMD_OAUTH2_CLIENT_ID, CMD_OAUTH2_CLIENT_SECRET
     owner = "hedgedoc";
   };
+  sops.secrets."pg-password" = {
+    owner = "hedgedoc";
+    key = "password";
+    sopsFile = ./postgres.enc.yaml;
+  };
+
+  sops.templates.".env" = {
+    owner = "hedgedoc";
+    # Use .placeholder to reference the actual decrypted values
+    content = ''
+      ${config.sops.placeholder.env}
+      CMD_DB_PASSWORD=${config.sops.placeholder."pg-password"}
+    '';
+  };
 
   services.hedgedoc = {
     enable = true;
     # Decrypted environment file containing secrets
-    environmentFile = config.sops.secrets."env".path;
+    environmentFile = config.sops.templates.".env".path;
 
     settings = {
       # Networking & Branding
