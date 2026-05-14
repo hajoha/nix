@@ -108,6 +108,73 @@ in
           return 444; # "Connection Closed Without Response"
         '';
       };
+      # --- Nixarr User Facing (Public + OIDC Plugin) ---
+      "stream.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        locations."/" = commonProxy // {
+          proxyPass = "http://10.60.1.31:8096";
+          # Jellyfin is sensitive to these for OIDC and streaming
+          extraConfig = commonProxy.extraConfig + ''
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_buffering off;
+          '';
+        };
+      };
+
+      # --- Nixarr Management (LAN/VPN Only) ---
+      "radarr.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "http://10.60.1.31:7878";
+      };
+
+      "sonarr.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "http://10.60.1.31:8989";
+      };
+
+      "lidarr.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "http://10.60.1.31:8686";
+      };
+
+      "prowlarr.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "http://10.60.1.31:9696";
+      };
+
+      "transmission.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "http://10.60.1.31:9091";
+        };
+      };
+
+      # Optional: Subtitle management
+      "bazarr.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "http://10.60.1.31:6767";
+      };
+      "requests.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        # NO lanOnly here - we want this accessible!
+        locations."/" = commonProxy // {
+          proxyPass = "http://10.60.1.31:5055";
+        };
+      };
       "openwrt.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;

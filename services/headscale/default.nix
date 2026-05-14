@@ -78,19 +78,21 @@ in
   services.headplane = {
     enable = true;
     debug = true;
+
     settings = {
       server = {
         host = "0.0.0.0";
         port = 3000;
         cookie_secure = true;
         cookie_secret_path = config.sops.secrets."headplane/serverCookieSecret".path;
+        base_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
       };
       headscale = {
         url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
       };
       integration.agent = {
         enabled = true;
-        pre_authkey_path = config.sops.secrets."headplane/integrationAgentPreAuthkeyPath".path;
+        # pre_authkey_path = config.sops.secrets."headplane/integrationAgentPreAuthkeyPath".path;
       };
       oidc = {
         issuer = keycloakIssuer;

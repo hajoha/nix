@@ -29,8 +29,8 @@
     path = "/var/lib/hass/secrets.yaml"; # This is the file HA reads
 
     content = ''
-      hass_db_url: "postgresql://${config.sops.placeholder.hass_db_user}:${config.sops.placeholder.pg-password}@${nodes.nix-postgres.ip}/${config.sops.placeholder.hass_db_user}"
-      client_id: "${config.sops.placeholder.client_id}"
+      hass_db_url: postgresql://${config.sops.placeholder.hass_db_user}:${config.sops.placeholder.pg-password}@${nodes.nix-postgres.ip}/${config.sops.placeholder.hass_db_user}
+      client_id: ${config.sops.placeholder.client_id}
     '';
   };
   # 2. Kernel & Networking Adjustments
@@ -61,6 +61,10 @@
       listenAddress = "0.0.0.0";
     };
   };
+  systemd.services.otbr-web.serviceConfig = {
+    User = lib.mkForce "root";
+    Group = lib.mkForce "root";
+  };
 
   services.dbus.enable = true;
 
@@ -68,6 +72,7 @@
   # This links the fetched GitHub source into the HA custom_components directory
 
   # 5. Home Assistant Configuration
+
   services.home-assistant = {
     enable = true;
     extraPackages =
@@ -102,12 +107,14 @@
     ];
 
     config = {
+      logger = {
+        default = "info";
+      };
       default_config = { };
       homeassistant = {
         name = "XHain";
         unit_system = "metric";
         time_zone = "Europe/Berlin";
-
       };
 
       auth_oidc = {

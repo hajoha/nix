@@ -1,6 +1,7 @@
-{ pkgs, ... }:
+{ pkgs, config, ... }:
 {
-  home.packages = with pkgs; [
-    android-studio
+  home.packages = [
+    (config.lib.nixGL.wrap pkgs.android-studio)
+    pkgs.android-tools
   ];
 }

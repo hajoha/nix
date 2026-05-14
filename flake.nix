@@ -55,6 +55,7 @@
     };
     niri.url = "github:sodiboo/niri-flake";
     niri.inputs.nixpkgs.follows = "nixpkgs";
+    nixarr.url = "github:nix-media-server/nixarr";
   };
 
   outputs =
@@ -69,6 +70,7 @@
       nixgl,
       noctalia,
       niri,
+      nixarr,
       old-nixpkgs,
       ...
     }@inputs:
@@ -283,6 +285,9 @@
         nix-loki = mkLXC "nix-loki" ./services/loki/default.nix [ ];
 
         nix-unifi-controller = mkLXC "nix-unifi-controller" ./services/unifi-controller/default.nix [ ];
+        nix-arr = mkLXC "nix-arr" ./services/nixarr/default.nix [
+          nixarr.nixosModules.default
+        ];
 
         nix-opencloud = mkLXC "nix-opencloud" ./services/opencloud/default.nix [ ];
         nix-homeassistant = mkLXC "nix-homeassistant" ./services/hass/default.nix [ ];

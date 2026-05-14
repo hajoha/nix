@@ -2,6 +2,40 @@ rec {
   baseDomain = "johann-hackler.com";
 
   nodes = {
+    nix-arr = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.31";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+
+        # Consistent with your other nodes
+        nameservers = [ nodes.nix-adguard.ip ];
+
+        firewall = {
+          allowedTCPPorts = [
+            8096 # Jellyfin
+            8989 # Sonarr
+            7878 # Radarr
+            8686
+            5055
+            9696 # Prowlarr
+            9091 # Transmission/RPC
+          ];
+          allowedUDPPorts = [
+            51820 # Typical Wireguard port if using Nixarr VPN
+          ];
+        };
+      };
+      hostname = "nixarr";
+      ip = "10.60.1.31";
+      # Nixarr doesn't have one single port, but Jellyfin is usually the primary UI
+      port = 8096;
+    };
     # --- Edge Proxy ---
     nix-nginx = {
       networking = {

@@ -11,8 +11,6 @@
       #  pkgs.jetbrains.plugins.github-copilot
       #  pkgs.jetbrains.plugins.nixidea
     ])
-    android-studio
-    android-tools
-    # ... other heavy dev apps ...
+
   ];
 }

@@ -11,157 +11,42 @@
     package = config.lib.nixGL.wrap pkgs.firefox;
 
     policies = {
-
-      AutofillAddressEnabled = false;
-      AutofillCreditCardEnabled = false;
-      Cookies.Behavior = "reject-tracker-and-partition-foreign";
-      DisableBuiltinPDFViewer = false;
-      DisableFirefoxAccounts = true;
-      DisableFirefoxStudies = true;
-      DisableFormHistory = true;
-      DisableMasterPasswordCreation = true;
-      DisableProfileImport = true;
-      DisableSetDesktopBackground = true;
-      DisableTelemetry = true;
-      DisplayBookmarksToolbar = "never";
-      DisplayMenuBar = "default-off";
-      DNSOverHTTPS = {
-              Enabled = true;
-              ProviderURL = "https://cloudflare-dns.com/dns-query"; # Or your preferred provider
-              
-              # 2. Add your Split-DNS Exceptions here
-              # These domains will bypass DoH and use your Tailscale/AdGuard DNS
-              Exemptions = [ 
-                baseDomain 
-                "*.${baseDomain}"
-              ];
-              Locked = true;
-            };
-      EnableTrackingProtection = {
-        Category = "strict";
-        Cryptomining = true;
-        EmailTracking = true;
-        Fingerprinting = true;
-        SuspectedFingerprinting = true;
-        Value = true;
+      Cookies = {
+        Allow = [
+          "https://teams.microsoft.com"
+          "https://login.microsoftonline.com"
+          "https://login.live.com"
+          "https://teams.live.com"
+          "https://skype.com"
+          "https://teams.skype.com"
+          "https://microsoft.com"
+          "https://soundcloud.com"
+        ];
       };
-      EncryptedMediaExtensions.Enabled = true;
-      FirefoxHome = {
-        Highlights = false;
-        Search = false;
-        SponsoredStories = false;
-        SponsoredTopSites = false;
-        Stories = false;
-        TopSites = true;
-      };
-      FirefoxSuggest = {
-        ImproveSuggest = false;
-        SponsoredSuggestions = false;
-        WebSuggestions = false;
-      };
-      GenerativeAI.Enabled = false;
-      HardwareAcceleration = true;
-      HttpsOnlyMode = "enabled";
-      NoDefaultBookmarks = true;
-      OfferToSaveLogins = false;
-      OverrideFirstRunPage = "";
-      OverridePostUpdatePage = "";
-      PasswordManagerEnabled = false;
       Permissions = {
         Autoplay.Default = "block-audio";
-        Camera.BlockNewRequests = true;
-        Location.BlockNewRequests = true;
-        Microphone.BlockNewRequests = true;
-        Notifications.BlockNewRequests = true;
-        ScreenShare.BlockNewRequests = true;
+        Camera.BlockNewRequests = false;
+        Microphone.BlockNewRequests = false;
+        Location.BlockNewRequests = false;
+        Notifications.BlockNewRequests = false;
+        ScreenShare.BlockNewRequests = false;
         VirtualReality.BlockNewRequests = true;
       };
-      PictureInPicture.Enabled = true;
-      PopupBlocking.Default = true;
-      PrimaryPassword = false;
-      RequestedLocales = "en-US";
-      SearchBar = "unified";
-      SearchSuggestEnabled = false;
-      ShowHomeButton = true;
-      SkipTermsOfUse = true;
-      TranslateEnabled = true;
-
-      # Search Engine Declarations
-      SearchEngines = {
-        Add = [
-          
-          {
-            Name = "GitHub";
-            Alias = "@gh";
-            URLTemplate = "https://github.com/search?q={searchTerms}";
-            IconURL = "https://github.com/favicon.ico";
-          }
-          {
-            Name = "GitHub Nix";
-            Alias = "@gn";
-            URLTemplate = "https://github.com/search?q=language%3ANix+NOT+is%3Afork+{searchTerms}&type=code";
-            IconURL = "https://github.com/favicon.ico";
-          }
-          {
-            Name = "Home Manager";
-            Alias = "@hm";
-            URLTemplate = "https://home-manager-options.extranix.com/?query={searchTerms}&release=release-25.11";
-            IconURL = "https://home-manager-options.extranix.com/images/favicon.png";
-          }
-          {
-            Name = "NixOS Options";
-            Alias = "@no";
-            URLTemplate = "https://search.nixos.org/options?channel=25.11&query={searchTerms}";
-            IconURL = "https://search.nixos.org/favicon.png";
-          }
-          {
-            Name = "NixOS Packages";
-            Alias = "@np";
-            URLTemplate = "https://search.nixos.org/packages?channel=25.11&query={searchTerms}";
-            IconURL = "https://search.nixos.org/favicon.png";
-          }
-          {
-            Name = "NixOS Wiki";
-            Alias = "@nw";
-            URLTemplate = "https://wiki.nixos.org/w/index.php?search={searchTerms}";
-            IconURL = "https://wiki.nixos.org/favicon.ico";
-          }
-          
-          {
-            Name = "Stack Overflow";
-            Alias = "@so";
-            URLTemplate = "https://stackoverflow.com/search?q={searchTerms}";
-            IconURL = "https://stackoverflow.com/favicon.ico";
-          }
-          {
-            Name = "Wikipedia";
-            Alias = "@wk";
-            URLTemplate = "https://en.wikipedia.org/wiki/Special:Search?search={searchTerms}";
-            IconURL = "https://en.wikipedia.org/static/favicon/wikipedia.ico";
-          }
-          {
-            Name = "YouTube";
-            Alias = "@yt";
-            URLTemplate = "https://www.youtube.com/results?search_query={searchTerms}";
-            IconURL = "https://www.youtube.com/favicon.ico";
-          }
-        ];
-        Remove = [
-          "Amazon.com"
-          "Bing"
-          "eBay"
-          "Perplexity"
-          "Wikipedia (en)"
-        ];
+      EnableTrackingProtection = {
+        Category = "standard";
+        Cryptomining = true;
+        Fingerprinting = false;
+        Value = true;
       };
+      HardwareAcceleration = true;
+      DisableTelemetry = true;
+      DisableFirefoxAccounts = true;
     };
 
-    # 2. USER PROFILE
     profiles.haa = {
       isDefault = true;
       id = 0;
 
-      # Keep your existing extensions
       extensions.packages = with pkgs.nur.repos.rycee.firefox-addons; [
         ublock-origin
         sponsorblock
@@ -170,51 +55,51 @@
       ];
 
       settings = {
-        # --- 1. THE "CROWD" LOGIC (Resist Fingerprinting) ---
-        "privacy.resistFingerprinting" = true;
-        "privacy.resistFingerprinting.letterboxing" = false;
+        # --- 1. NATIVE VERTICAL TABS FIX ---
+        # Note: These require Firefox 131+ or Nightly to function correctly.
+        #"sidebar.revamp" = true; # Enable new sidebar system
+        #"sidebar.verticalTabs" = true; # Enable native vertical tabs
+        "sidebar.position_start" = true; # Sidebar on the LEFT
+        "sidebar.visible" = true; # Force visibility so tabs don't "disappear"
+        "sidebar.verticalTabs.collapsed" = true; # Icons-only mode
+        "sidebar.expandOnHover" = true; # Set to true initially to ensure you can see titles
+        "sidebar.main.tools" = "tabs"; # Focus sidebar on tabs
 
-        # --- 2. FONT HARDENING (Fixes the 1033 font leak) ---
-        # This is likely why you are still "Unique"
+        # --- 2. STORAGE & COOKIE FIXES (Teams/SoundCloud) ---
+        "dom.storage_access.enabled" = true;
+        "dom.storage.enabled" = true;
+        "network.cookie.cookieBehavior" = 0;
+        "network.cookie.cookieBehavior.optInPartitioning" = false;
+        "network.cookie.CHIPS.enabled" = false;
+        "network.cookie.same-site.laxByDefault" = false;
+        "privacy.firstparty.isolate" = false;
+
+        # --- 3. PERSIST SESSIONS ---
+        "privacy.clearOnShutdown.cookies" = false;
+        "privacy.clearOnShutdown.sessions" = false;
+        "privacy.clearOnShutdown.cache" = false;
+        "privacy.sanitize.sanitizeOnShutdown" = false;
+
+        # --- 4. AUTH & WEBRTC (Teams Calls) ---
+        "media.peerconnection.enabled" = true;
+        "media.navigator.enabled" = true;
+        "dom.webaudio.enabled" = true;
+        "privacy.resistFingerprinting" = false;
+        "network.http.referer.XOriginTrimmingPolicy" = 0;
+        "browser.tabs.remote.allowLinkedWebInFileUri" = true;
+
+        # --- 5. PERFORMANCE & UI ---
+        "webgl.disabled" = false;
+        "webgl.override-unmasked-renderer" = "Intel Iris OpenGL Engine";
+        "webgl.override-unmasked-vendor" = "Intel Inc.";
         "layout.css.font-visibility.standard" = 2;
         "layout.css.font-visibility.level" = 2;
-        "layout.css.font-visibility.trackingprotection" = 1;
-        "layout.css.font-visibility.private" = 1;
-
         "gfx.webrender.quality.force-subpixel-aa-where-possible" = true;
-        
-        "dom.webaudio.enabled" = true;
-        # --- 3. UI & COMPACT MODE ---
         "browser.compactmode.show" = true;
         "browser.uidensity" = 1;
-        "browser.tabs.firefox-view" = false;
-        "browser.tabs.tabmanager.enabled" = false;
-
-        # --- 4. PERFORMANCE & HW ---
-        "layers.acceleration.force-enabled" = true;
-        "webgl.disabled" = false; # RFP will spoof the vendor to "Mozilla" automatically
-        "media.hardware-video-decoding.force-enabled" = true;
         "general.autoScroll" = true;
 
-        # --- 5. NETWORK & PRIVACY ---
-        "privacy.trackingprotection.fingerprinting.enabled" = true;
-        "privacy.resistFingerprinting.reduceTimerPrecision" = true;
-        "network.http.referer.XOriginPolicy" = 2;
-
-        # --- 6. PINNED SITES & UI STATE ---
-        "browser.newtabpage.activity-stream.system.showWeather" = false;
-        "browser.newtabpage.activity-stream.topSitesRows" = 2;
-        "browser.newtabpage.pinned" = builtins.toJSON [
-          {
-            label = "YouTube";
-            url = "https://youtube.com/feed/subscriptions";
-          }
-          {
-            label = "GitHub";
-            url = "https://github.com";
-          }
-        ];
-
+        # --- 6. PINNED 1PASSWORD & TOOLBAR ---
         "browser.uiCustomization.state" = builtins.toJSON {
           placements = {
             nav-bar = [
@@ -224,6 +109,7 @@
               "home-button"
               "urlbar-container"
               "downloads-button"
+              "onepassword-password-manager_agilebits_com-browser-action"
               "unified-extensions-button"
             ];
             TabsToolbar = [

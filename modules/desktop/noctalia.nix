@@ -5,13 +5,31 @@
   ...
 }:
 {
+  systemd.user.services.xdg-desktop-portal = {
+    Service.ExecStart = [
+      "" # clear the ubuntu default
+      "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal"
+    ];
+  };
 
+  systemd.user.services.xdg-desktop-portal-gtk = {
+    Service.ExecStart = [
+      ""
+      "${pkgs.xdg-desktop-portal-gtk}/libexec/xdg-desktop-portal-gtk"
+    ];
+  };
+
+  systemd.user.services.xdg-desktop-portal-wlr = {
+    Service.ExecStart = [
+      ""
+      "${pkgs.xdg-desktop-portal-wlr}/libexec/xdg-desktop-portal-wlr"
+    ];
+  };
   xdg.portal = {
     enable = true;
     extraPortals = [
       pkgs.xdg-desktop-portal-gtk
       pkgs.xdg-desktop-portal-wlr
-      pkgs.xdg-desktop-portal-gnome
     ];
     config = {
       common.default = [ "gtk" ];
@@ -19,13 +37,22 @@
         default = [ "gtk" ];
         "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
         "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-        "org.freedesktop.impl.portal.Camera" = [ "gnome" ];
       };
     };
   };
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
+      "x-scheme-handler/http" = [ "firefox.desktop" ];
+      "x-scheme-handler/https" = [ "firefox.desktop" ];
+      "x-scheme-handler/chrome" = [ "firefox.desktop" ];
+      "text/html" = [ "firefox.desktop" ];
+      "application/x-extension-htm" = [ "firefox.desktop" ];
+      "application/x-extension-html" = [ "firefox.desktop" ];
+      "application/x-extension-shtml" = [ "firefox.desktop" ];
+      "application/xhtml+xml" = [ "firefox.desktop" ];
+      "application/x-extension-xhtml" = [ "firefox.desktop" ];
+      "application/x-extension-xht" = [ "firefox.desktop" ];
       "x-scheme-handler/mattermost" = [ "mattermost-desktop.desktop" ];
     };
   };
@@ -66,22 +93,35 @@
     brightnessctl
     xdg-utils
     libsecret
+    libcamera
+    libgtop
+    playerctl
+    cliphist
+
     awww # Added for high-performance wallpaper management
     # ... other packages
   ];
   programs.hyprlock = {
     enable = true;
+    # Keeping your existing "empty" package hack if you are installing via apt/outside Nix
     package = pkgs.runCommand "empty" { } "mkdir -p $out";
+
     settings = {
       general = {
         disable_loading = true;
         grace = 0;
         hide_cursor = true;
+        no_fade_in = false;
       };
 
+      # Background - Matching your swww wallpaper or a solid dark theme
       background = [
         {
-          blur_passes = 2;
+          path = "screenshot"; # Update this to your actual path
+          color = "rgba(25, 20, 20, 1.0)";
+          blur_passes = 5; # 0 disables blurring
+          blur_size = 4;
+          noise = 0.02;
           contrast = 0.8916;
           brightness = 0.8172;
           vibrancy = 0.1696;
@@ -89,20 +129,46 @@
         }
       ];
 
+      label = [
+        {
+          text = "$TIME"; # Hyprlock native variable is more efficient than a cmd
+          color = "rgba(255, 255, 255, 1.0)";
+          font_size = 90;
+          font_family = "Inter Bold"; # Or your preferred font
+          position = "-30, 0";
+          halign = "right";
+          valign = "top";
+        }
+        # Date (Sub-label)
+        {
+          text = "cmd[update:43200000] echo \"$(date +'%A, %d %B')\"";
+          color = "rgba(255, 255, 255, 0.7)";
+          font_size = 24;
+          position = "-35, -120";
+          halign = "right";
+          valign = "top";
+        }
+      ];
       input-field = [
         {
-          size = "200, 50";
-          outline_thickness = 3;
-          dots_size = 0.33;
-          dots_spacing = 0.15;
+          size = "250, 50";
+          outline_thickness = 2;
+          dots_size = 0.2;
+          dots_spacing = 0.6;
           dots_center = true;
-          outer_color = "rgb(151, 151, 151)";
-          inner_color = "rgb(200, 200, 200)";
-          font_color = "rgb(10, 10, 10)";
-          fade_on_empty = true;
-          placeholder_text = "<i>Input Password...</i>";
+          outer_color = "rgba(136, 192, 208, 0.6)"; # Your Niri Frost color
+          inner_color = "rgba(0, 0, 0, 0)"; # Completely transparent
+          font_color = "rgb(255, 255, 255)";
+          fade_on_empty = false;
+          placeholder_text = "Password";
           hide_input = false;
-          position = "0, -20";
+          rounding = -1; # Circle
+
+          # Feedback colors (optional but helpful since inner is transparent)
+          check_color = "rgba(136, 192, 208, 1.0)";
+          fail_color = "rgba(191, 97, 106, 1.0)"; # Nord Red for errors
+
+          position = "0, -100";
           halign = "center";
           valign = "center";
         }
@@ -143,9 +209,33 @@
     enable = true;
     settings = {
       # --- Visuals & Aesthetics ---
+      input = {
+        keyboard.repeat-delay = 300;
+        keyboard.repeat-rate = 25;
+
+        # Ensures your mouse behaves like a modern desktop
+        touchpad = {
+          tap = true;
+          dwt = true; # disable-while-typing
+          natural-scroll = true;
+        };
+
+        mouse.natural-scroll = false;
+
+        # Allows focus to change as you move the mouse
+        focus-follows-mouse = {
+          enable = true;
+          # This prevents the 'focus' from jumping monitors just because
+          # the mouse is at the edge.
+          max-scroll-amount = "0%";
+        };
+        warp-mouse-to-focus = true;
+        workspace-auto-back-and-forth = false;
+      };
       layout = {
         # Gaps: The secret sauce of a clean desktop
-        gaps = 12;
+        gaps = 20;
+        center-focused-column = "never";
 
         # Focused window styling
         focus-ring = {
@@ -192,7 +282,7 @@
           height = 1200;
         };
         position = {
-          x = 1920;
+          x = 1536;
           y = 0;
         };
       };
@@ -202,10 +292,10 @@
           height = 1200;
         };
         position = {
-          x = 3840;
+          x = 3456;
           y = 0;
         };
-        transform.rotation = 90;
+        transform.rotation = 270;
       };
 
       # --- Autostart ---
@@ -242,6 +332,7 @@
           ];
         }
         { command = [ "tailscale-systray" ]; }
+        { command = [ "nm-applet" ]; }
         { command = [ "opencloud" ]; }
         {
           command = [
@@ -258,6 +349,13 @@
             "gnome-keyring-daemon"
             "--start"
             "--components=ssh"
+          ];
+        }
+        {
+          command = [
+            "sh"
+            "-c"
+            "eval $(ssh-agent -s) && ssh-add ~/.ssh/id_ed25519"
           ];
         }
         {
@@ -374,6 +472,17 @@
               "5%+";
           "XF86AudioLowerVolume".action = actions.spawn "wpctl" "set-volume" "@DEFAULT_SINK@" "5%-";
           "XF86AudioMute".action = actions.spawn "wpctl" "set-mute" "@DEFAULT_SINK@" "toggle";
+          "Mod+WheelScrollDown" = {
+            action = actions.focus-workspace-down;
+            cooldown-ms = 250;
+          };
+          "Mod+WheelScrollUp" = {
+            action = actions.focus-workspace-up;
+            cooldown-ms = 250;
+          };
+          "Mod+Alt+WheelScrollDown".action = actions.focus-column-right;
+          "Mod+Alt+WheelScrollUp".action = actions.focus-column-left;
+          "Mod+V".action = actions.spawn "qs" "-c" "noctalia-shell ipc call 'plugin:clipboard' toggle";
         };
     };
   };
@@ -381,46 +490,134 @@
   # Noctalia Shell styling to match the Monochrome theme
   programs.noctalia-shell = {
     enable = true;
+
+    # --- Plugin Configuration ---
+    plugins = {
+      version = 2;
+      sources = [
+        {
+          enabled = true;
+          name = "Official Noctalia Plugins";
+          url = "https://github.com/noctalia-dev/noctalia-plugins";
+        }
+      ];
+      states = {
+        # This tells the shell to download and enable the tailscale plugin
+        #
+        tailscale = {
+          enabled = true;
+          sourceUrl = "https://github.com/noctalia-dev/noctalia-plugins";
+        };
+        privacy-indicator = {
+          enabled = true;
+          sourceUrl = "https://github.com/noctalia-dev/noctalia-plugins";
+        };
+        clipboard = {
+          enabled = true;
+          sourceUrl = "https://github.com/noctalia-dev/noctalia-plugins";
+        };
+        latency-monitor = {
+          enabled = true;
+          sourceUrl = "https://github.com/noctalia-dev/noctalia-plugins";
+        };
+        network-manager-vpn = {
+          enabled = true;
+          sourceUrl = "https://github.com/noctalia-dev/noctalia-plugins";
+        };
+      };
+    };
+
+    # If the tailscale plugin has specific settings, they go here
+    pluginSettings = {
+      tailscale = {
+        # Add any plugin-specific options here if needed
+      };
+      clipboard = {
+        maxHistorySize = 100;
+        showImagePreviews = true;
+        density = "comfortable";
+      };
+      privacy-indicator = {
+        hideInactive = false;
+        enableToast = true;
+        removeMargins = false;
+        iconSpacing = 4;
+        activeColor = "primary";
+        inactiveColor = "none";
+        micFilterRegex = "";
+        camFilterRegex = "";
+      };
+      latency-monitor = {
+        hosts = [
+          {
+            name = "xhain";
+            address = "johann-hackler.com";
+          }
+        ];
+        intervalSeconds = 5;
+        thresholdGood = 20;
+        thresholdWarning = 70;
+        showHostName = true;
+        barHost = "worst";
+        colorGood = "#00ff7f";
+        colorWarning = "#f1fa8c";
+        colorCritical = "#ff5555";
+        animations = true;
+      };
+    };
+
+    # --- Shell Settings ---
     settings = {
       bar = {
-        density = "compact";
+        density = "default";
         position = "top";
-        showCapsule = true; # Enabled capsule for a more "pill" like modern look
+        showCapsule = true;
         widgets = {
           left = [
             {
               id = "ControlCenter";
-              useDistroLogo = true;
+              useDistroLogo = false;
             }
-            { id = "Network"; }
+            {
+              id = "Network";
+              showLabel = true;
+            }
+            { id = "plugin:network-manager-vpn"; }
+            { id = "SystemMonitor"; }
+            # Add the Tailscale widget to the bar
+            { id = "plugin:tailscale"; }
+            { id = "plugin:latency-monitor"; }
           ];
           center = [
             {
               id = "Workspace";
-              hideUnoccupied = false;
               labelMode = "none";
+              showApplications = true;
+              showWorkspaceBadge = false;
+              hideUnoccupied = false;
+              showLabelsOnlyWhenOccupied = false;
+              iconScaling = 80;
+              unfocusedIconsOpacity = 100;
             }
           ];
           right = [
-            {
-              id = "Tray";
-              # This will display Nextcloud, Tailscale, and OpenCloud
-              # icons as they register themselves with the shell.
-            }
-            {
-              id = "Battery";
-              warningThreshold = 30;
-            }
+            { id = "plugin:clipboard"; }
+            { id = "AudioVisualizer"; }
+            { id = "Tray"; }
+            { id = "Battery"; }
             {
               id = "Clock";
-              formatHorizontal = "HH:mm";
-              useMonospacedFont = true;
+              formatHorizontal = "HH:mm:ss - dd.MM.yyyy";
             }
+            { id = "Bluetooth"; }
+            { id = "KeepAwake"; }
+            { id = "plugin:privacy-indicator"; }
+            { id = "NotificationHistory"; }
           ];
         };
       };
       colorSchemes.predefinedScheme = "Monochrome";
-      general.radiusRatio = 0.4; # Increased roundness for a softer look
+      general.radiusRatio = 0.4;
     };
   };
 }

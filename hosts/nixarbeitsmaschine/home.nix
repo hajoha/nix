@@ -51,24 +51,47 @@
   targets.genericLinux.nixGL.packages = import nixgl {inherit pkgs;};
   targets.genericLinux.nixGL.defaultWrapper = "mesa";
   targets.genericLinux.nixGL.installScripts = ["mesa"];
-
   home.packages = with pkgs; [
     (pkgs.callPackage ../../pkgs/scinterface/default.nix {})
+    pkgs.xwayland-satellite
+    libxcursor
+    libxext
+    libx11
+    libxrender
   ];
+
+  systemd.user.services.xwayland-satellite = {
+    Unit = {
+      Description = "Xwayland outside your Wayland";
+      BindsTo = ["graphical-session.target"];
+      PartOf = ["graphical-session.target"];
+      After = ["graphical-session.target"];
+      Requisite = ["graphical-session.target"];
+    };
+    Service = {
+      Type = "notify";
+      NotifyAccess = "all";
+      ExecStart = "${pkgs.xwayland-satellite}/bin/xwayland-satellite";
+      StandardOutput = "journal";
+    };
+    Install = {
+      WantedBy = ["graphical-session.target"];
+    };
+  };
   home.sessionVariables = {
     QT_STYLE_OVERRIDE = "kvantum";
     XDG_SESSION_DESKTOP = "niri";
     XDG_CURRENT_DESKTOP = "niri";
     OPENSC_CONF = "$HOME/.config/opensc/opensc.conf";
     NIX_LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:${pkgs.stdenv.cc.cc.lib}/lib";
+    
     NIX_LD = "${pkgs.stdenv.cc.cc.lib}/lib/ld-linux-x86-64.so.2";
     LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.pcsclite}/lib:${config.home.profileDirectory}/lib";
     XDG_SESSION_TYPE = "wayland";
     GDK_BACKEND = "wayland,x11";
-
     TERMINFO_DIRS = "${pkgs.ghostty.terminfo}/share/terminfo:${config.home.profileDirectory}/share/terminfo:/usr/share/terminfo";
     XDG_DATA_DIRS = lib.mkForce "$HOME/.nix-profile/share:$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS:/usr/local/share:/usr/share";
-
+    # DISPLAY = ":0";
     #XDG_DATA_DIRS = lib.mkForce "${config.home.profileDirectory}/share:$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share";
 
     # Forces GTK apps to use the portal for file pickers
