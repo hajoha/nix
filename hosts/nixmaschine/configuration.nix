@@ -30,6 +30,11 @@
     description = "hajoha";
   };
 
+  environment.pathsToLink = [
+    /share/applications
+    /share/xdg-desktop-portal
+  ];
+
   services.fwupd.enable = true;
   programs.git.enable = true;
   nix.settings.experimental-features = [
