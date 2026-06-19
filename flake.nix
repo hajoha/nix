@@ -162,7 +162,7 @@
             inputs.home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
+              home-manager.useUserPackages = false;
 
               # FORCE inputs to be passed explicitly to Home Manager submodules
               home-manager.extraSpecialArgs = { inherit inputs nixgl baseDomain; };
