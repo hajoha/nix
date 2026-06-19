@@ -154,7 +154,14 @@
 
         # ── Managed with nixos-rebuild (not deploy-rs) ─────────────────────
         # nixos-rebuild switch --flake .#<name> --build-host ... --target-host ...
-
+        nixmaschine = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = {inherit inputs;};
+          modules = [
+            ./hosts/nixmaschine/configuration.nix
+            
+          ];
+        };
         hetzner-vps-01 = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
@@ -260,9 +267,16 @@
             }
           ];
         };
+        "hajoha" = home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          extraSpecialArgs = { inherit inputs nixgl baseDomain; };
+          modules = [
+            ./hosts/nixmaschine/home.nix
+          ];
+        };
       };
 
-      formatter.${system} = pkgs.nixfmt-rfc-style;
+      formatter.${system} = pkgs.nixfmt;
 
       devShells.${system}.default = pkgs.mkShell {
         packages = with pkgs; [

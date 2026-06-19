@@ -1,4 +1,9 @@
-{ config, nodes, lib, ... }:
+{
+  config,
+  nodes,
+  lib,
+  ...
+}:
 
 {
   # 1. User and Persistence Setup
@@ -39,16 +44,18 @@
         };
       };
 
-      schema_config.configs = [{
-        from = "2024-01-01";
-        store = "tsdb";
-        object_store = "filesystem";
-        schema = "v13";
-        index = {
-          prefix = "index_";
-          period = "24h";
-        };
-      }];
+      schema_config.configs = [
+        {
+          from = "2024-01-01";
+          store = "tsdb";
+          object_store = "filesystem";
+          schema = "v13";
+          index = {
+            prefix = "index_";
+            period = "24h";
+          };
+        }
+      ];
 
       limits_config = {
         reject_old_samples = true;

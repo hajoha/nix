@@ -28,45 +28,10 @@
   users.users.hajoha = {
     isNormalUser = true;
     description = "hajoha";
-    extraGroups = [
-      "networkmanager"
-      "wheel"
-      "kvm"
-      "adbusers"
-      "libvirtd"
-    ];
-    shell = pkgs.zsh;
-    packages = with pkgs; [
-      home-manager
-      fwupd-efi
-      nixd
-    ];
   };
 
   services.fwupd.enable = true;
-  services.flatpak.enable = true;
-  xdg = {
-    autostart.enable = true;
-    portal = {
-      enable = true;
-      xdgOpenUsePortal = false;
-      wlr.enable = true;
-
-    };
-  };
-
-  programs.virt-manager.enable = true;
-  programs.zsh.enable = true;
-
-  programs._1password = {
-    enable = true;
-  };
-
-  # Enables the 1Password desktop app
-  programs._1password-gui = {
-    enable = true;
-    polkitPolicyOwners = [ "hajoha" ];
-  };
+  programs.git.enable = true;
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"
@@ -100,12 +65,6 @@
     };
   };
 
-  system.activationScripts = {
-    script.text = ''
-      install -d -m 755 /home/hajoha/open-webui/data -o root -g root
-    '';
-  };
-
   networking.hostName = "nixmaschine";
 
   networking.networkmanager.enable = true;
@@ -123,7 +82,6 @@
     nerd-fonts.fira-code # patched Fira Code
     fira-code # monospaced font
   ];
-  security.pam.services.swaylock = { };
 
   i18n.extraLocaleSettings = {
     LC_ADDRESS = "de_DE.UTF-8";
@@ -137,14 +95,9 @@
     LC_TIME = "de_DE.UTF-8";
   };
 
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "intl";
-  };
-
   console.keyMap = "us-acentos";
   services.printing.enable = true;
-
+  programs.zsh.enable = true;
   services.pulseaudio.enable = false;
   hardware.logitech.wireless.enable = true;
   security.rtkit.enable = true;
@@ -156,7 +109,6 @@
     alsa.support32Bit = true;
     pulse.enable = true;
   };
-  services.tailscale.enable = true;
   services.greetd = {
     enable = true;
     settings = {
@@ -171,11 +123,6 @@
 
   nixpkgs.config.allowUnfree = true;
   nixpkgs.config.allowUnfreePredicate = pkg: true;
-  environment.systemPackages = with pkgs; [
-    vim
-    glib
-    xdg-utils
-  ];
 
   system.stateVersion = "24.05"; # Did you read the comment?
 }

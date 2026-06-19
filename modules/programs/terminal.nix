@@ -2,7 +2,8 @@
   pkgs,
   config,
   ...
-}: {
+}:
+{
   # Essential packages for the visual upgrades
   home.packages = with pkgs; [
     fzf # Fuzzy finder for history/files

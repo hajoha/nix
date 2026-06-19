@@ -6,7 +6,8 @@
   inputs,
   nixgl,
   ...
-}: {
+}:
+{
   nixpkgs = {
     overlays = [
       inputs.nur.overlays.default
@@ -48,11 +49,11 @@
     ];
   };
 
-  targets.genericLinux.nixGL.packages = import nixgl {inherit pkgs;};
+  targets.genericLinux.nixGL.packages = import nixgl { inherit pkgs; };
   targets.genericLinux.nixGL.defaultWrapper = "mesa";
-  targets.genericLinux.nixGL.installScripts = ["mesa"];
+  targets.genericLinux.nixGL.installScripts = [ "mesa" ];
   home.packages = with pkgs; [
-    (pkgs.callPackage ../../pkgs/scinterface/default.nix {})
+    (pkgs.callPackage ../../pkgs/scinterface/default.nix { })
     pkgs.xwayland-satellite
     libxcursor
     libxext
@@ -63,10 +64,10 @@
   systemd.user.services.xwayland-satellite = {
     Unit = {
       Description = "Xwayland outside your Wayland";
-      BindsTo = ["graphical-session.target"];
-      PartOf = ["graphical-session.target"];
-      After = ["graphical-session.target"];
-      Requisite = ["graphical-session.target"];
+      BindsTo = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+      Requisite = [ "graphical-session.target" ];
     };
     Service = {
       Type = "notify";
@@ -75,7 +76,7 @@
       StandardOutput = "journal";
     };
     Install = {
-      WantedBy = ["graphical-session.target"];
+      WantedBy = [ "graphical-session.target" ];
     };
   };
   home.sessionVariables = {
@@ -84,7 +85,7 @@
     XDG_CURRENT_DESKTOP = "niri";
     OPENSC_CONF = "$HOME/.config/opensc/opensc.conf";
     NIX_LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:${pkgs.stdenv.cc.cc.lib}/lib";
-    
+
     NIX_LD = "${pkgs.stdenv.cc.cc.lib}/lib/ld-linux-x86-64.so.2";
     LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.pcsclite}/lib:${config.home.profileDirectory}/lib";
     XDG_SESSION_TYPE = "wayland";

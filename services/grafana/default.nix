@@ -1,4 +1,12 @@
-{ config, lib, pkgs, nodes, baseDomain, keycloakRealm, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  nodes,
+  baseDomain,
+  keycloakRealm,
+  ...
+}:
 
 let
   # Build the Keycloak URL dynamically from your nodes map
@@ -8,19 +16,29 @@ in
   sops.defaultSopsFile = ./secrets.enc.yaml;
   # 1. SOPS Secrets
   sops.secrets = {
-    "GRAFANA_ADMIN_PASSWORD" = { owner = "grafana"; };
-    "GRAFANA_SECRET_KEY" = { owner = "grafana"; };
-    "GRAFANA_KEYCLOAK_SECRET" = { owner = "grafana"; };
-    "dsp25-ssh" = { path = "/etc/ssh/dsp25_ssh_config"; };
+    "GRAFANA_ADMIN_PASSWORD" = {
+      owner = "grafana";
+    };
+    "GRAFANA_SECRET_KEY" = {
+      owner = "grafana";
+    };
+    "GRAFANA_KEYCLOAK_SECRET" = {
+      owner = "grafana";
+    };
+    "dsp25-ssh" = {
+      path = "/etc/ssh/dsp25_ssh_config";
+    };
   };
 
   # 2. SSH Tunnel for Remote InfluxDB
-  services.autossh.sessions = [{
-    name = "dsp25-main-influx";
-    user = "root";
-    monitoringPort = 20000;
-    extraArguments = "-N -T -F ${config.sops.secrets.dsp25-ssh.path} dsp25-main-influx";
-  }];
+  services.autossh.sessions = [
+    {
+      name = "dsp25-main-influx";
+      user = "root";
+      monitoringPort = 20000;
+      extraArguments = "-N -T -F ${config.sops.secrets.dsp25-ssh.path} dsp25-main-influx";
+    }
+  ];
 
   # 3. Grafana Service
   services.grafana = {
@@ -74,7 +92,7 @@ in
         auth_url = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/auth";
         token_url = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/token";
         api_url = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/userinfo";
-        
+
         # RBAC: Map Keycloak groups to Grafana roles
         role_attribute_path = "contains(groups, 'grafana-admin') && 'Admin' || contains(groups, 'grafana-editor') && 'Editor' || 'Viewer'";
         login_attribute_path = "preferred_username";
@@ -92,7 +110,6 @@ in
       analytics.reporting_enabled = false;
     };
   };
-
 
   system.stateVersion = "25.11";
 }
