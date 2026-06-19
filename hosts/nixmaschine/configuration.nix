@@ -30,10 +30,10 @@
     description = "hajoha";
   };
 
-  environment.pathsToLink = [
-    /share/applications
-    /share/xdg-desktop-portal
-  ];
+  # environment.pathsToLink = [
+  #   /share/applications
+  #   /share/xdg-desktop-portal
+  # ];
 
   services.fwupd.enable = true;
   programs.git.enable = true;
