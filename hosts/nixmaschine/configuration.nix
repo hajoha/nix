@@ -24,7 +24,7 @@
 
   users.defaultUserShell = pkgs.zsh;
   environment.shells = with pkgs; [ zsh ];
-
+  nixpkgs.overlays = [ inputs.nur.overlays.default ];
   users.users.hajoha = {
     isNormalUser = true;
     description = "hajoha";

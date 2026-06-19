@@ -156,10 +156,18 @@
         # nixos-rebuild switch --flake .#<name> --build-host ... --target-host ...
         nixmaschine = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
-          specialArgs = {inherit inputs;};
+          specialArgs = { inherit inputs nixgl baseDomain; }; # Added missing specialArgs your home config needs
           modules = [
             ./hosts/nixmaschine/configuration.nix
-            
+            inputs.home-manager.nixosModules.home-manager # 1. Import the Home Manager NixOS module
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.extraSpecialArgs = { inherit inputs nixgl baseDomain; }; # Passes flake inputs to home.nix
+
+              # 2. Point it directly to your home.nix file
+              home-manager.users.hajoha = import ./hosts/nixmaschine/home.nix;
+            }
           ];
         };
         hetzner-vps-01 = nixpkgs.lib.nixosSystem {
@@ -267,13 +275,7 @@
             }
           ];
         };
-        "hajoha" = home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
-          extraSpecialArgs = { inherit inputs nixgl baseDomain; };
-          modules = [
-            ./hosts/nixmaschine/home.nix
-          ];
-        };
+
       };
 
       formatter.${system} = pkgs.nixfmt;
