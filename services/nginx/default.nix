@@ -81,7 +81,7 @@ in
     recommendedGzipSettings = true;
     recommendedOptimisation = true;
     recommendedTlsSettings = true;
-
+    package = pkgs.nginxMainline;
     appendHttpConfig = ''
       map ''$http_upgrade ''$connection_upgrade {
           default upgrade;
@@ -137,11 +137,25 @@ in
         locations."/".proxyPass = "http://10.60.1.31:8989";
       };
 
+      "sabnzbd.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "http://10.60.1.31:6336";
+      };
+
       "lidarr.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
         extraConfig = lanOnly;
         locations."/".proxyPass = "http://10.60.1.31:8686";
+      };
+
+      "aurral.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "http://10.60.1.31:3001";
       };
 
       "prowlarr.${baseDomain}" = {
@@ -173,6 +187,14 @@ in
         # NO lanOnly here - we want this accessible!
         locations."/" = commonProxy // {
           proxyPass = "http://10.60.1.31:5055";
+        };
+      };
+      "musicrequests.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        # extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "http://10.60.1.31:8688";
         };
       };
       "openwrt.${baseDomain}" = {

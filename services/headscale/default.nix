@@ -90,10 +90,10 @@ in
       headscale = {
         url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
       };
-      integration.agent = {
-        enabled = true;
-        # pre_authkey_path = config.sops.secrets."headplane/integrationAgentPreAuthkeyPath".path;
-      };
+      # integration.agent = {
+      #   enabled = true;
+      #   pre_authkey_path = config.sops.secrets."headplane/integrationAgentPreAuthkeyPath".path;
+      # };
       oidc = {
         issuer = keycloakIssuer;
         # Often Headplane and Headscale share a client,

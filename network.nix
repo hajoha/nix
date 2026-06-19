@@ -23,6 +23,7 @@ rec {
             7878 # Radarr
             8686
             5055
+            8688
             9696 # Prowlarr
             9091 # Transmission/RPC
           ];
@@ -96,7 +97,23 @@ rec {
       ip = "10.60.1.36";
       port = 8080;
     };
-
+    nix-build = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.15";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        nameservers = [ nodes.nix-adguard.ip ];
+      };
+      hostname = "build";
+      sub = "";
+      ip = "10.60.1.15";
+      port = 0;
+    };
     nix-immich = {
       networking = {
         interfaces.service.ipv4.addresses = [

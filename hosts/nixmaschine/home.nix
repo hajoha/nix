@@ -149,36 +149,10 @@ in
           action = "lua vim.lsp.buf.hover()<CR>";
         }
       ];
-    };
-  };
-
-      set $left h
-      set $down j
-      set $up k
-      set $right l
-
-      for_window [title="nmtui-floating"] floating enable, move position center, focus
-      for_window [title="btop-floating"] floating enable, move position center, focus
-
-      assign [class="Signal"] workspace 1
-      assign [app_id="thunderbird"] workspace 1
-      assign [app_id="firefox"] workspace 2
 
 
-      exec firefox
-      exec thunderbird
-      exec signal-desktop
-
-      exec swayidle -w \
-        timeout 600 'swaylock -f -c 000000' \
-        timeout 630 'swaymsg "output * dpms off"' \
-        resume 'swaymsg "output * dpms on"' \
-        before-sleep 'swaylock -f -c 000000'
-      exec cliphist wipe
-      exec wl-paste --watch cliphist store
 
 
-    '';
     config = {
       modifier = "Mod4"; # Super/Windows key
       terminal = "alacritty";

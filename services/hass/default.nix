@@ -155,6 +155,7 @@
       "hass"
       "dlna"
       "sendspin"
+      "chromecast"
     ];
   };
 

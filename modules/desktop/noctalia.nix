@@ -97,6 +97,7 @@
     libgtop
     playerctl
     cliphist
+    sqlite
 
     awww # Added for high-performance wallpaper management
     # ... other packages
@@ -276,27 +277,27 @@
           y = 0;
         };
       };
-      outputs."DP-8" = {
-        mode = {
-          width = 1920;
-          height = 1200;
-        };
-        position = {
-          x = 1536;
-          y = 0;
-        };
-      };
-      outputs."DP-9" = {
-        mode = {
-          width = 1920;
-          height = 1200;
-        };
-        position = {
-          x = 3456;
-          y = 0;
-        };
-        transform.rotation = 270;
-      };
+      # outputs."DP-8" = {
+      #   mode = {
+      #     width = 1920;
+      #     height = 1200;
+      #   };
+      #   position = {
+      #     x = 1536;
+      #     y = 0;
+      #   };
+      # };
+      # outputs."DP-9" = {
+      #   mode = {
+      #     width = 1920;
+      #     height = 1200;
+      #   };
+      #   position = {
+      #     x = 3456;
+      #     y = 0;
+      #   };
+      #   transform.rotation = 270;
+      # };
 
       # --- Autostart ---
       spawn-at-startup = [
@@ -317,6 +318,7 @@
               systemctl --user restart xdg-desktop-portal-wlr
               sleep 0.5
               systemctl --user restart xdg-desktop-portal
+              sleep 0.5
             ''
           ];
         }
@@ -331,7 +333,7 @@
             "--background"
           ];
         }
-        { command = [ "tailscale-systray" ]; }
+        { command = [ "tailscalnm-ae systray" ]; }
         { command = [ "nm-applet" ]; }
         { command = [ "opencloud" ]; }
         {
@@ -341,21 +343,6 @@
             "/path/to/your/wallpaper.jpg"
             "--transition-type"
             "outer"
-          ];
-        }
-
-        {
-          command = [
-            "gnome-keyring-daemon"
-            "--start"
-            "--components=ssh"
-          ];
-        }
-        {
-          command = [
-            "sh"
-            "-c"
-            "eval $(ssh-agent -s) && ssh-add ~/.ssh/id_ed25519"
           ];
         }
         {
@@ -419,13 +406,13 @@
         in
         {
           "Mod+Return".action = actions.spawn "nixGLMesa" "ghostty";
-          "Mod+D".action = actions.spawn "nixGLMesa" "wofi" "--show" "drun";
+          # "Mod+D".action = actions.spawn "nixGLMesa" "wofi" "--show" "drun";
+          "Mod+D".action = actions.spawn "noctalia-shell" "ipc" "call" "launcher" "toggle";
           "Mod+Shift+Q".action = actions."close-window";
 
           # Navigation (Focus)
           "Mod+H".action = actions."focus-column-left";
           "Mod+L".action = actions."focus-column-right";
-
           # --- THE NIRI WAY (Dynamic Movement) ---
           # Focus workspaces up/down (since they are stacked vertically)
           "Mod+K".action = actions."focus-workspace-up";
@@ -482,7 +469,22 @@
           };
           "Mod+Alt+WheelScrollDown".action = actions.focus-column-right;
           "Mod+Alt+WheelScrollUp".action = actions.focus-column-left;
-          "Mod+V".action = actions.spawn "qs" "-c" "noctalia-shell ipc call 'plugin:clipboard' toggle";
+          # Keybindings written exactly how the Niri module expects them
+          "Mod+V".action.spawn = [
+            "noctalia-shell"
+            "ipc"
+            "call"
+            "plugin:clipboard"
+            "toggle"
+          ];
+
+          "Mod+Z".action.spawn = [
+            "noctalia-shell"
+            "ipc"
+            "call"
+            "plugin:zed-provider"
+            "toggle"
+          ];
         };
     };
   };
@@ -505,6 +507,10 @@
         # This tells the shell to download and enable the tailscale plugin
         #
         tailscale = {
+          enabled = true;
+          sourceUrl = "https://github.com/noctalia-dev/noctalia-plugins";
+        };
+        zed-provider = {
           enabled = true;
           sourceUrl = "https://github.com/noctalia-dev/noctalia-plugins";
         };
@@ -562,7 +568,7 @@
         colorGood = "#00ff7f";
         colorWarning = "#f1fa8c";
         colorCritical = "#ff5555";
-        animations = true;
+        animations = false;
       };
     };
 
@@ -578,15 +584,15 @@
               id = "ControlCenter";
               useDistroLogo = false;
             }
-            {
-              id = "Network";
-              showLabel = true;
-            }
+            # {
+            #   id = "Network";
+            #   showLabel = true;
+            # }
             { id = "plugin:network-manager-vpn"; }
             { id = "SystemMonitor"; }
             # Add the Tailscale widget to the bar
-            { id = "plugin:tailscale"; }
-            { id = "plugin:latency-monitor"; }
+            # { id = "plugin:tailscale"; }
+            # { id = "plugin:latency-monitor"; }
           ];
           center = [
             {
@@ -602,12 +608,18 @@
           ];
           right = [
             { id = "plugin:clipboard"; }
-            { id = "AudioVisualizer"; }
-            { id = "Tray"; }
+            # { id = "AudioVisualizer"; }
+            {
+              id = "Tray";
+              pinned = [
+                "nm-applet"
+                "tailscale"
+              ];
+            }
             { id = "Battery"; }
             {
               id = "Clock";
-              formatHorizontal = "HH:mm:ss - dd.MM.yyyy";
+              formatHorizontal = "HH:mm - dd.MM.yyyy";
             }
             { id = "Bluetooth"; }
             { id = "KeepAwake"; }
@@ -617,7 +629,7 @@
         };
       };
       colorSchemes.predefinedScheme = "Monochrome";
-      general.radiusRatio = 0.4;
+      general.radiusRatio = 0.2;
     };
   };
 }

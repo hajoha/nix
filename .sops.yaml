@@ -19,6 +19,7 @@ keys:
   - &nixopencloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
   - &hetzner-vps-01 age1vdphsnzygqqr233crr2v9gdh0wvktclnz0hrddhtgmzddy0tpplssvrc2r
   - &nixttrss age10ewzse5566z4uz5dng54mqwr2cnqp579uzt99235nq5qj0ju2vnszqn945
+  - &nixarr age1278lr6sh049xr4t5e9gw6mv5qlnkkmag32cem9ffd2fvf7eu3axq8hdpx6
 creation_rules:
   - path_regex: services/listmonk/postgres.enc.yaml$
     key_groups:
@@ -67,6 +68,10 @@ creation_rules:
   - path_regex: services/hedgedoc/postgres.enc.yaml$
     key_groups:
       - age: [*nixpostgres, *nixhedgedoc, *fokus, *private]
+
+  - path_regex: services/nixarr/.*\.enc\.yaml$
+    key_groups:
+      - age: [*nixarr, *fokus, *private] # Adjust if netbox has its own key
 
   - path_regex: services/hedgedoc/.*\.enc\.yaml$
     key_groups:

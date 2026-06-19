@@ -40,8 +40,10 @@
   nix.gc = {
     automatic = true;
     dates = "weekly";
-    options = "--delete-older-than +3";
+    options = "--delete-older-than 3d";
   };
+
+  nix.settings.auto-optimise-store = true;
 
   system.stateVersion = "25.11";
 }
