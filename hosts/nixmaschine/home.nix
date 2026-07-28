@@ -1,7 +1,6 @@
 {
   lib,
   config,
-  system,
   pkgs,
   inputs,
   nixgl,
@@ -20,7 +19,6 @@
   imports = [
     inputs.noctalia.homeModules.default
     inputs.nvf.homeManagerModules.default
-    inputs.niri.homeModules.niri
     ../../modules/browser/firefox.nix
     ../../modules/com/thunderbird.nix
     ../../modules/editor/nvf.nix
@@ -40,8 +38,27 @@
     ../../modules/programs/android.nix
   ];
 
+  gtk = {
+    enable = true;
+    font = {
+      name = "DejaVu Sans";
+      size = 10;
+    };
+  };
+
   home.stateVersion = "23.11";
   programs.home-manager = {
     enable = true;
   };
+
+  programs.niri.settings.environment = {
+    ELECTRON_OZONE_PLATFORM_HINT = "wayland";
+  };
+
+  home.packages = with pkgs; [
+    signal-desktop
+    networkmanagerapplet
+  ];
+
+
 }

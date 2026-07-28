@@ -4,7 +4,6 @@
   pkgs,
   ...
 }:
-
 {
   nixpkgs.config = {
     packageOverrides = pkgs: {
@@ -19,6 +18,7 @@
 
   imports = [
     ./hardware-configuration.nix
+    inputs.niri.nixosModules.niri
     #    ./../../modules/virt/vm.nix
   ];
 
@@ -28,13 +28,26 @@
   users.users.hajoha = {
     isNormalUser = true;
     description = "hajoha";
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+      "kvm"
+      "adbusers"
+      "librepods"
+      "libvirtd"
+    ];
   };
 
-  # environment.pathsToLink = [
-  #   /share/applications
-  #   /share/xdg-desktop-portal
-  # ];
-
+  services.flatpak.enable = true;
+  hardware.bluetooth.enable = true;
+  services.power-profiles-daemon.enable = true;
+  programs.dconf.enable = true;
+  services.upower.enable = true;
+  environment.pathsToLink = [
+    "/share/applications"
+    "/share/xdg-desktop-portal"
+  ];
+  programs.niri.enable = true;
   services.fwupd.enable = true;
   programs.git.enable = true;
   nix.settings.experimental-features = [
@@ -42,9 +55,10 @@
     "flakes"
   ];
 
+  environment.sessionVariables.NIXOS_OZONE_WL = "1";
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelParams = [ "acpi.ec_no_wakeup=1̈́" ];
+  boot.kernelParams = [ "acpi.ec_no_wakeup=1" ];
   networking.networkmanager.ensureProfiles.profiles = {
     eduroam = {
       connection = {
@@ -69,13 +83,46 @@
       };
     };
   };
+  environment.systemPackages = [
+    pkgs.ghostty.terminfo
 
+  ];
+
+  services.printing = {
+    enable = true;
+    drivers = with pkgs; [ hplipWithPlugin ];
+  };
+
+  programs.librepods.enable = true;
+
+  # Enable hardware scanning (for the scanner portion of the MFP)
+  hardware.sane = {
+    enable = true;
+    extraBackends = [ pkgs.hplipWithPlugin ];
+  };
   networking.hostName = "nixmaschine";
-
+  xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Berlin";
   i18n.defaultLocale = "en_US.UTF-8";
   fonts.fontconfig.enable = true;
+
+  fonts.fontconfig.defaultFonts = {
+    sansSerif = [
+      "DejaVu Sans"
+      "Noto Sans"
+    ];
+    serif = [
+      "Noto Serif"
+      "DejaVu Serif"
+    ];
+    monospace = [
+      "Fira Code"
+      "DejaVu Sans Mono"
+    ];
+    emoji = [ "Noto Color Emoji" ];
+  };
+
   fonts.packages = with pkgs; [
     dejavu_fonts # fallback sans-serif
     liberation_ttf # fallback sans-serif / monospace
@@ -100,8 +147,6 @@
     LC_TIME = "de_DE.UTF-8";
   };
 
-  console.keyMap = "us-acentos";
-  services.printing.enable = true;
   programs.zsh.enable = true;
   services.pulseaudio.enable = false;
   hardware.logitech.wireless.enable = true;
@@ -118,16 +163,26 @@
     enable = true;
     settings = {
       default_session = {
-        command = ''
-          tuigreet --time --cmd sway
-        '';
-        user = "hajoha";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd niri-session";
+        user = "greeter";
       };
     };
   };
 
+  services.dbus.implementation = "dbus";
   nixpkgs.config.allowUnfree = true;
   nixpkgs.config.allowUnfreePredicate = pkg: true;
 
   system.stateVersion = "24.05"; # Did you read the comment?
+  services.xserver.xkb = {
+    layout = "us";
+    variant = "altgr-intl";
+  };
+  console.useXkbConfig = true;
+
+  services.tailscale = {
+    enable = true;
+    extraUpFlags = [ "--operator=hajoha" ];
+  };
+
 }

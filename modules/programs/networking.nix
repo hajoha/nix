@@ -12,5 +12,7 @@
     mtr
     libqmi
     tie
+    tailscale
+    tailscale-systray
   ];
 }

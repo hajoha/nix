@@ -16,6 +16,88 @@
       allowUnfree = true;
     };
   };
+
+  xdg.desktopEntries = {
+    # The key here MUST match the original filename (signal-desktop) to override properly
+    signal-desktop = {
+      name = "Signal";
+      # This points directly to the binary in the nix store
+      exec = "nixGLMesa ${pkgs.signal-desktop}/bin/signal-desktop --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland %u";
+      icon = "signal-desktop";
+      terminal = false;
+      categories = [
+        "Network"
+        "InstantMessaging"
+      ];
+    };
+
+    mattermost-desktop = {
+      name = "Mattermost";
+      # This points directly to the binary in the nix store
+      exec = "nixGLMesa ${pkgs.mattermost-desktop}/bin/mattermost-desktop --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland %U";
+      icon = "mattermost-desktop";
+      terminal = false;
+      categories = [
+        "Network"
+        "InstantMessaging"
+      ];
+      mimeType = [
+        "x-scheme-handler/mattermost"
+      ];
+    };
+  };
+
+  programs.firefox = {
+    package = config.lib.nixGL.wrap pkgs.firefox;
+  };
+
+  programs.ghostty = {
+    package = config.lib.nixGL.wrap pkgs.ghostty;
+  };
+  programs.niri.enable = true;
+  systemd.user.services.xdg-desktop-portal-gtk = {
+    Service.ExecStart = [
+      ""
+      "${pkgs.xdg-desktop-portal-gtk}/libexec/xdg-desktop-portal-gtk"
+    ];
+  };
+
+  systemd.user.services.xdg-desktop-portal = {
+    Service.ExecStart = [
+      "" # clear the ubuntu default
+      "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal"
+    ];
+  };
+
+  systemd.user.services.xdg-desktop-portal-wlr = {
+    Service.ExecStart = [
+      ""
+      "${pkgs.xdg-desktop-portal-wlr}/libexec/xdg-desktop-portal-wlr"
+    ];
+  };
+  xdg.portal = {
+    enable = true;
+    extraPortals = [
+      pkgs.xdg-desktop-portal-gtk
+      pkgs.xdg-desktop-portal-wlr
+    ];
+    config = {
+      common.default = [ "gtk" ];
+      niri = {
+        default = [ "gtk" ];
+        "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+      };
+    };
+  };
+
+  programs.hyprlock = {
+    package = pkgs.runCommand "empty" { } "mkdir -p $out";
+  };
+
+  services.hypridle = {
+    package = pkgs.runCommand "empty-hypridle" { } "mkdir -p $out";
+  };
   imports = [
     inputs.noctalia.homeModules.default
     inputs.nvf.homeManagerModules.default

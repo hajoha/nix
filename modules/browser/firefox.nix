@@ -8,7 +8,6 @@
 {
   programs.firefox = {
     enable = true;
-    package = config.lib.nixGL.wrap pkgs.firefox;
 
     policies = {
       Cookies = {
@@ -56,17 +55,14 @@
       ];
 
       settings = {
-        # --- 1. NATIVE VERTICAL TABS FIX ---
-        # Note: These require Firefox 131+ or Nightly to function correctly.
-        #"sidebar.revamp" = true; # Enable new sidebar system
-        #"sidebar.verticalTabs" = true; # Enable native vertical tabs
-        "sidebar.position_start" = true; # Sidebar on the LEFT
-        "sidebar.visible" = true; # Force visibility so tabs don't "disappear"
-        "sidebar.verticalTabs.collapsed" = true; # Icons-only mode
-        "sidebar.expandOnHover" = true; # Set to true initially to ensure you can see titles
-        "sidebar.main.tools" = "tabs"; # Focus sidebar on tabs
+        "sidebar.position_start" = true;
+        "sidebar.visible" = true;
+        "sidebar.visibility" = "always"; # or "expand-on-hover", or "hide-sidebar"
+        "sidebar.verticalTabs.collapsed" = true;
+        "sidebar.main.tools" = "tabs,bookmarks";
+        "sidebar.revamp" = true;
+        "sidebar.verticalTabs" = true;
 
-        # --- 2. STORAGE & COOKIE FIXES (Teams/SoundCloud) ---
         "dom.storage_access.enabled" = true;
         "dom.storage.enabled" = true;
         "network.cookie.cookieBehavior" = 0;
@@ -75,21 +71,18 @@
         "network.cookie.same-site.laxByDefault" = false;
         "privacy.firstparty.isolate" = false;
 
-        # --- 3. PERSIST SESSIONS ---
         "privacy.clearOnShutdown.cookies" = false;
         "privacy.clearOnShutdown.sessions" = false;
         "privacy.clearOnShutdown.cache" = false;
         "privacy.sanitize.sanitizeOnShutdown" = false;
 
-        # --- 4. AUTH & WEBRTC (Teams Calls) ---
         "media.peerconnection.enabled" = true;
         "media.navigator.enabled" = true;
         "dom.webaudio.enabled" = true;
         "privacy.resistFingerprinting" = false;
         "network.http.referer.XOriginTrimmingPolicy" = 0;
         "browser.tabs.remote.allowLinkedWebInFileUri" = true;
-
-        # --- 5. PERFORMANCE & UI ---
+        "browser.toolbars.bookmarks.visibility" = "always";
         "webgl.disabled" = false;
         "webgl.override-unmasked-renderer" = "Intel Iris OpenGL Engine";
         "webgl.override-unmasked-vendor" = "Intel Inc.";
@@ -100,10 +93,10 @@
         "browser.uidensity" = 1;
         "general.autoScroll" = true;
 
-        # --- 6. PINNED 1PASSWORD & TOOLBAR ---
         "browser.uiCustomization.state" = builtins.toJSON {
           placements = {
             nav-bar = [
+              "sidebar-button"
               "back-button"
               "forward-button"
               "stop-reload-button"

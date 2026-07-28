@@ -1,45 +1,16 @@
 {
   pkgs,
   inputs,
+  lib,
   config,
+  osConfig ? null,
   ...
 }:
+let
+  isNixOS = osConfig != null;
+in
 {
-  systemd.user.services.xdg-desktop-portal = {
-    Service.ExecStart = [
-      "" # clear the ubuntu default
-      "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal"
-    ];
-  };
 
-  systemd.user.services.xdg-desktop-portal-gtk = {
-    Service.ExecStart = [
-      ""
-      "${pkgs.xdg-desktop-portal-gtk}/libexec/xdg-desktop-portal-gtk"
-    ];
-  };
-
-  systemd.user.services.xdg-desktop-portal-wlr = {
-    Service.ExecStart = [
-      ""
-      "${pkgs.xdg-desktop-portal-wlr}/libexec/xdg-desktop-portal-wlr"
-    ];
-  };
-  xdg.portal = {
-    enable = true;
-    extraPortals = [
-      pkgs.xdg-desktop-portal-gtk
-      pkgs.xdg-desktop-portal-wlr
-    ];
-    config = {
-      common.default = [ "gtk" ];
-      niri = {
-        default = [ "gtk" ];
-        "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-      };
-    };
-  };
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
@@ -57,35 +28,6 @@
     };
   };
 
-  xdg.desktopEntries = {
-    # The key here MUST match the original filename (signal-desktop) to override properly
-    signal-desktop = {
-      name = "Signal";
-      # This points directly to the binary in the nix store
-      exec = "nixGLMesa ${pkgs.signal-desktop}/bin/signal-desktop --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland %u";
-      icon = "signal-desktop";
-      terminal = false;
-      categories = [
-        "Network"
-        "InstantMessaging"
-      ];
-    };
-
-    mattermost-desktop = {
-      name = "Mattermost";
-      # This points directly to the binary in the nix store
-      exec = "nixGLMesa ${pkgs.mattermost-desktop}/bin/mattermost-desktop --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland %U";
-      icon = "mattermost-desktop";
-      terminal = false;
-      categories = [
-        "Network"
-        "InstantMessaging"
-      ];
-      mimeType = [
-        "x-scheme-handler/mattermost"
-      ];
-    };
-  };
   home.packages = with pkgs; [
     grim
     slurp
@@ -104,8 +46,6 @@
   ];
   programs.hyprlock = {
     enable = true;
-    # Keeping your existing "empty" package hack if you are installing via apt/outside Nix
-    package = pkgs.runCommand "empty" { } "mkdir -p $out";
 
     settings = {
       general = {
@@ -113,6 +53,39 @@
         grace = 0;
         hide_cursor = true;
         no_fade_in = false;
+        location = {
+          name = "";
+          weatherEnabled = true;
+          weatherShowEffects = true;
+          weatherTaliaMascotAlways = false;
+          useFahrenheit = false;
+          use12hourFormat = false;
+          showWeekNumberInCalendar = true;
+          showCalendarEvents = true;
+          showCalendarWeather = true;
+          analogClockInCalendar = false;
+          firstDayOfWeek = 0;
+          hideWeatherTimezone = false;
+          hideWeatherCityName = false;
+          autoLocate = true;
+        };
+        calendar = {
+          cards = [
+            {
+              enabled = true;
+              id = "calendar-header-card";
+            }
+            {
+              enabled = true;
+              id = "calendar-month-card";
+            }
+            {
+              enabled = true;
+              id = "weather-card";
+            }
+          ];
+        };
+
       };
 
       # Background - Matching your swww wallpaper or a solid dark theme
@@ -178,8 +151,6 @@
   };
   services.hypridle = {
     enable = true;
-    # Again, we tell HM to manage the config but not install the binary
-    package = pkgs.runCommand "empty-hypridle" { } "mkdir -p $out";
 
     settings = {
       general = {
@@ -207,7 +178,7 @@
   };
 
   programs.niri = {
-    enable = true;
+
     settings = {
       # --- Visuals & Aesthetics ---
       input = {
@@ -233,6 +204,7 @@
         warp-mouse-to-focus = true;
         workspace-auto-back-and-forth = false;
       };
+
       layout = {
         # Gaps: The secret sauce of a clean desktop
         gaps = 20;
@@ -300,78 +272,75 @@
       # };
 
       # --- Autostart ---
-      spawn-at-startup = [
-        {
-          command = [
-            "sh"
-            "-c"
-            ''
-              sleep 1
-              dbus-update-activation-environment --systemd \
-                PATH XDG_DATA_DIRS XDG_CURRENT_DESKTOP \
-                XDG_SESSION_TYPE XDG_SESSION_DESKTOP \
-                WAYLAND_DISPLAY
-              systemctl --user import-environment \
-                PATH XDG_DATA_DIRS XDG_CURRENT_DESKTOP \
-                XDG_SESSION_TYPE XDG_SESSION_DESKTOP \
-                WAYLAND_DISPLAY
-              systemctl --user restart xdg-desktop-portal-wlr
-              sleep 0.5
-              systemctl --user restart xdg-desktop-portal
-              sleep 0.5
-            ''
-          ];
-        }
-        { command = [ "hypridle" ]; }
-        { command = [ "noctalia-shell" ]; }
-        # 1. Initialize wallpaper daemon
-        # 2. Set the background (Replace path with your actual image)
-        { command = [ "swww-daemon" ]; }
-        {
-          command = [
-            "nextcloud"
-            "--background"
-          ];
-        }
-        { command = [ "tailscalnm-ae systray" ]; }
-        { command = [ "nm-applet" ]; }
-        { command = [ "opencloud" ]; }
-        {
-          command = [
-            "swww"
-            "img"
-            "/path/to/your/wallpaper.jpg"
-            "--transition-type"
-            "outer"
-          ];
-        }
-        {
-          command = [
-            "wl-paste"
-            "--watch"
-            "cliphist"
-            "store"
-          ];
-        }
+      spawn-at-startup =
+        (lib.optionals (!isNixOS) [
+          {
+            command = [
+              "sh"
+              "-c"
+              ''
+                sleep 1
+                dbus-update-activation-environment --systemd PATH XDG_DATA_DIRS XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP WAYLAND_DISPLAY
+                systemctl --user import-environment PATH XDG_DATA_DIRS XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP WAYLAND_DISPLAY
+                systemctl --user restart xdg-desktop-portal-gnome
+                sleep 0.5
+                systemctl --user restart xdg-desktop-portal
+                sleep 0.5
+              ''
+            ];
+          }
+        ])
+        ++ [
+          { command = [ "hypridle" ]; }
+          { command = [ "noctalia-shell" ]; }
+          # 1. Initialize wallpaper daemon
+          # 2. Set the background (Replace path with your actual image)
+          { command = [ "swww-daemon" ]; }
+          {
+            command = [
+              "nextcloud"
+              "--background"
+            ];
+          }
+          { command = [ "tailscale-systray" ]; }
+          { command = [ "nm-applet" ]; }
+          { command = [ "opencloud" ]; }
+          {
+            command = [
+              "swww"
+              "img"
+              "/path/to/your/wallpaper.jpg"
+              "--transition-type"
+              "outer"
+            ];
+          }
+          {
+            command = [
+              "wl-paste"
+              "--watch"
+              "cliphist"
+              "store"
+            ];
+          }
 
-        # Browser & Messaging
-        {
-          command = [
-            "signal-desktop --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland "
-          ];
-        }
-        {
-          command = [
-            "mattermost-desktop --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland "
-          ];
-        }
-        {
-          command = [
-            "thunderbird"
-          ];
-        }
-        { command = [ "MOZ_ENABLE_WAYLAND=1 firefox" ]; }
-      ];
+          # Browser & Messaging
+          {
+            command = [
+              "signal-desktop --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland "
+            ];
+          }
+          {
+            command = [
+              "mattermost-desktop --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland "
+            ];
+          }
+          {
+            command = [
+              "thunderbird"
+            ];
+          }
+          { command = [ "MOZ_ENABLE_WAYLAND=1 firefox" ]; }
+        ];
 
       # --- Window Rules ---
       window-rules = [
@@ -403,9 +372,10 @@
       binds =
         let
           actions = config.lib.niri.actions;
+          spawnGL = cmd: if isNixOS then actions.spawn cmd else actions.spawn "nixGLMesa" cmd;
         in
         {
-          "Mod+Return".action = actions.spawn "nixGLMesa" "ghostty";
+          "Mod+Return".action = spawnGL "ghostty";
           # "Mod+D".action = actions.spawn "nixGLMesa" "wofi" "--show" "drun";
           "Mod+D".action = actions.spawn "noctalia-shell" "ipc" "call" "launcher" "toggle";
           "Mod+Shift+Q".action = actions."close-window";
@@ -609,8 +579,9 @@
             }
           ];
           right = [
-            { id = "plugin:clipboard"; }
+            # { id = "plugin:clipboard"; }
             # { id = "AudioVisualizer"; }
+
             {
               id = "Tray";
               pinned = [
@@ -618,7 +589,6 @@
                 "tailscale"
               ];
             }
-            { id = "Battery"; }
             {
               id = "Clock";
               formatHorizontal = "HH:mm - dd.MM.yyyy";
@@ -626,6 +596,11 @@
             { id = "Bluetooth"; }
             { id = "KeepAwake"; }
             { id = "plugin:privacy-indicator"; }
+            {
+              alwaysShowPercentage = false;
+              id = "Battery";
+              warningThreshold = 30;
+            }
             { id = "NotificationHistory"; }
           ];
         };

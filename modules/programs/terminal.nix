@@ -6,19 +6,17 @@
 {
   # Essential packages for the visual upgrades
   home.packages = with pkgs; [
-    fzf # Fuzzy finder for history/files
-    zoxide # Smarter 'cd' (jump to directories)
-    eza # Modern 'ls' with icons
-    ghostty.terminfo
+    fzf
+    zoxide
+    eza
   ];
 
   # --- Terminal: Ghostty ---
   programs.ghostty = {
     enable = true;
     enableZshIntegration = true;
-    package = config.lib.nixGL.wrap pkgs.ghostty;
     settings = {
-      theme = "Catppuccin Mocha"; # One of the cleanest themes available
+      theme = "Catppuccin Mocha";
       font-family = "JetBrainsMono Nerd Font";
       font-size = 11;
       window-padding-x = 10;
@@ -27,19 +25,17 @@
     };
   };
 
-  # --- Prompt: Starship (The "Beautiful" Part) ---
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
-    # Customizing the look to be minimal yet informative
     settings = {
-      add_newline = true;
+      add_newline = false;
       character = {
         success_symbol = "[➜](bold green)";
         error_symbol = "[➜](bold red)";
       };
       directory = {
-        truncation_length = 3;
+        truncation_length = 5;
         truncate_to_repo = true;
       };
     };
@@ -49,17 +45,15 @@
   programs.zsh = {
     enable = true;
     enableCompletion = true;
-    autosuggestion.enable = true; # Ghost-text completions
-    syntaxHighlighting.enable = true; # Colors commands as you type
+    autosuggestion.enable = true;
+    syntaxHighlighting.enable = true;
     shellAliases = {
-      # Modern replacements
       ls = "eza --icons --group-directories-first";
       ll = "eza -l --icons --git --group-directories-first";
       la = "eza -a --icons --group-directories-first";
       tree = "eza --tree --icons";
       sudo = "sudo -E "; # The -E flag preserves your environment (including TERM)
 
-      # Navigation & Workflow
       cd = "z"; # Use zoxide jump instead of manual cd
       update = "home-manager switch --flake ~/.config/home-manager#haa";
       ".." = "cd ..";
@@ -71,7 +65,6 @@
       path = "${config.xdg.dataHome}/zsh/history";
     };
 
-    # Oh My Zsh for backend plugin support
     oh-my-zsh = {
       enable = true;
       plugins = [
@@ -79,11 +72,9 @@
         "sudo"
         "fzf"
       ];
-      # Theme is set to null because Starship handles the prompt
       theme = "";
     };
 
-    # Extra init for interactive features
     initExtra = ''
       if [[ -z $DISPLAY ]] && [[ $(tty) = /dev/tty1 ]]; then
         exec nixGLMesa niri
