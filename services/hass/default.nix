@@ -37,18 +37,19 @@
   boot.kernelModules = [ "tun" ];
 
   # 3. Matter & OpenThread Border Router
-  services.matter-server = {
+  services.matterjs-server = {
     enable = true;
-    logLevel = "debug";
     openFirewall = true;
-    extraArgs = {
-      primary-interface = "iot";
-    };
+    extraArgs = [
+      "--primary-interface=iot"
+      "--listen-address=${nodes.nix-homeassistant.ip}"
+    ];
   };
-
+  systemd.services.matterjs-server.environment.VENDOR_ID = "4939";
   services.openthread-border-router = {
     enable = true;
-    backboneInterfaces = [ "iot" ];
+    backboneInterfaces = [ "service" ];
+    interfaceName = "wpan0";
     logLevel = "info";
     radio = {
       device = "/dev/serial/by-id/usb-Itead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_V2_90837c5304f4ef11aa21c61b6d9880ab-if00-port0";
@@ -58,7 +59,7 @@
     };
     web = {
       enable = true;
-      listenAddress = "0.0.0.0";
+      listenAddress = "${nodes.nix-homeassistant.ip}";
     };
   };
   systemd.services.otbr-web.serviceConfig = {
@@ -146,16 +147,21 @@
   # 6. Music Assistant & Discovery
   services.music-assistant = {
     enable = true;
+    openFirewall = true;
     providers = [
       "tidal"
       "soundcloud"
       "hass"
       "jellyfin"
+      "airplay"
+      "radiobrowser"
+      "radioparadise"
       "hass_players"
       "hass"
       "dlna"
       "sendspin"
       "chromecast"
+      "ytmusic"
     ];
   };
 

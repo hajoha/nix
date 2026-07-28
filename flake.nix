@@ -18,7 +18,7 @@
       url = "github:serokell/deploy-rs";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
+    nixpkgs-freecad.url = "github:NixOS/nixpkgs/nixos-26.05";
     nur.url = "github:nix-community/NUR";
     nixgl.url = "github:nix-community/nixGL";
     nvf = {

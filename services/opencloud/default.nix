@@ -241,7 +241,7 @@
       EXTERNAL_OIDC_DOMAIN = "sso.${baseDomain}";
       PROXY_OIDC_REWRITE_WELLKNOWN = "true";
       OC_INSECURE = "true";
-      OC_ADD_RUN_SERVICES = "collaboration,app-registry,gateway,calendar,contacts";
+      OC_ADD_RUN_SERVICES = "collaboration,app-registry,gateway,calendar,contacts,storage-shares,sharing";
       CALENDAR_BACKEND_URL = "https://opencloud.${baseDomain}/caldav/";
       CONTACTS_BACKEND_URL = "https://opencloud.${baseDomain}/carddav/";
       PROXY_ENABLE_CALDAV = "true";

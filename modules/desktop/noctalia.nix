@@ -98,7 +98,7 @@
     playerctl
     cliphist
     sqlite
-
+    flameshot
     awww # Added for high-performance wallpaper management
     # ... other packages
   ];
@@ -453,7 +453,9 @@
 
           "Mod+Shift+E".action = actions.quit;
           # Screenshots & Audio
-          "Print".action = actions.spawn "sh" "-c" "grim -g \"$(slurp)\" - | wl-copy";
+          # 
+          "Print".action = actions.spawn "sh" "-c" "flameshot gui";
+          # "Print".action = actions.spawn "sh" "-c" "grim -g \"$(slurp)\" - | wl-copy";
           "XF86AudioRaiseVolume".action =
             actions.spawn "wpctl" "set-volume" "-l" "1.5" "@DEFAULT_SINK@"
               "5%+";

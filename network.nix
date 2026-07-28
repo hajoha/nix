@@ -23,7 +23,11 @@ rec {
             7878 # Radarr
             8686
             5055
+            6767
+            6060
             8688
+            8084 # Shelfmark
+            8787
             9696 # Prowlarr
             9091 # Transmission/RPC
           ];
@@ -376,6 +380,7 @@ rec {
         firewall.allowedTCPPorts = [
           5000
           8123
+          8082
           8096
           8095
           8097
@@ -389,7 +394,9 @@ rec {
             from = 6001;
             to = 6010;
           } # Typical for dynamic/high-port services
+
         ];
+
       };
       hostname = "homeassistant";
       ip = "10.60.1.33";

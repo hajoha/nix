@@ -1,4 +1,9 @@
-{ pkgs, config, ... }:
+{
+  pkgs,
+  config,
+  inputs,
+  ...
+}:
 {
   home.packages = with pkgs; [
     ripgrep
@@ -10,8 +15,6 @@
     zip
     unzip
     p7zip
-    ferrishot
-    rustdesk
     anydesk
     nautilus
     librepods
@@ -19,8 +22,8 @@
     opencloud-desktop
     headscale
     _1password-gui
+    rustdesk-flutter
     # mattermost-desktop
     # ... etc
   ];
-
 }

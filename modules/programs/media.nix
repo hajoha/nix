@@ -7,6 +7,7 @@
     ffmpeg
     papers
     poppler-utils
+    steam
     # signal-desktop
     (config.lib.nixGL.wrap (
       pkgs.chromium.override {
@@ -21,4 +22,11 @@
       }
     ))
   ];
+
+  programs.obs-studio = {
+    enable = true;
+    plugins = with pkgs.obs-studio-plugins; [
+      wlrobs # wlroots screen capture, works great on niri
+    ];
+  };
 }

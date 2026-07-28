@@ -35,7 +35,7 @@
     ../../modules/programs/cli.nix
     ../../modules/programs/media.nix
     ../../modules/programs/networking.nix
-    ../../modules/programs/3d.nix
+    ../../modules/programs/3d.nix 
     ../../modules/programs/terminal.nix
     ../../modules/programs/android.nix
   ];

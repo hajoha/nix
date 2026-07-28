@@ -130,6 +130,13 @@ in
         locations."/".proxyPass = "http://10.60.1.31:7878";
       };
 
+      "profilarr.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/".proxyPass = "http://10.60.1.31:6868";
+      };
+
       "sonarr.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
@@ -142,6 +149,38 @@ in
         forceSSL = true;
         extraConfig = lanOnly;
         locations."/".proxyPass = "http://10.60.1.31:6336";
+      };
+      "bindery.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "http://10.60.1.31:8787";
+        };
+      };
+
+      "shelfmark.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "http://10.60.1.31:8084";
+        };
+      };
+      "books.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = ''
+          client_max_body_size 500M;   # BookDrop / web uploads
+        '';
+        locations."/" = commonProxy // {
+          proxyPass = "http://10.60.1.31:6060";
+          extraConfig = commonProxy.extraConfig + ''
+            proxy_buffering off;       # smoother epub/audio streaming
+            proxy_read_timeout 600s;
+            proxy_send_timeout 600s;
+          '';
+        };
       };
 
       "lidarr.${baseDomain}" = {
@@ -290,17 +329,7 @@ in
           '';
         };
       };
-      # --- Zitadel ---
-      "${nodes.nix-zitadel.hostname}.${baseDomain}" = {
-        useACMEHost = baseDomain;
-        forceSSL = true;
-        http2 = true;
-        locations."/" = commonProxy // {
-          proxyPass = "http://${nodes.nix-zitadel.ip}:8081";
-          # Notice the ''$ to escape Nginx variables from Nix interpolation
-          extraConfig = commonProxy.extraConfig + "proxy_set_header X-Forwarded-Port 443;";
-        };
-      };
+
       "${nodes.nix-influx.hostname}.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
@@ -409,6 +438,39 @@ in
           return = "301 https://${nodes.nix-homeassistant.hostname}.${baseDomain}/auth/oidc/welcome";
         };
       };
+
+      "matter.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-homeassistant.ip}:5580";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $server_name;
+            proxy_redirect http:// https://;
+            proxy_buffering off;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          '';
+        };
+      };
+      "otbr.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-homeassistant.ip}:8082";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $server_name;
+            proxy_redirect http:// https://;
+            proxy_buffering off;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          '';
+        };
+      };
       "musicassistant.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
@@ -417,14 +479,14 @@ in
           proxyPass = "http://${nodes.nix-homeassistant.ip}:8095";
           proxyWebsockets = true;
           extraConfig = ''
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection $connection_upgrade;
             proxy_set_header Host $server_name;
             proxy_redirect http:// https://;
             proxy_buffering off;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
             add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
           '';
 

@@ -52,6 +52,7 @@
         sponsorblock
         onepassword-password-manager
         youtube-shorts-block
+        zotero-connector
       ];
 
       settings = {
@@ -111,6 +112,7 @@
               "downloads-button"
               "onepassword-password-manager_agilebits_com-browser-action"
               "unified-extensions-button"
+              "zotero-connector"
             ];
             TabsToolbar = [
               "tabbrowser-tabs"
