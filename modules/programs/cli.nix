@@ -26,5 +26,7 @@
     lm_sensors
     flatpak
     openssh
+    wireguard-tools
+    
   ];
 }

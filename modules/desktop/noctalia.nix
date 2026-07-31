@@ -380,6 +380,17 @@ in
           "Mod+D".action = actions.spawn "noctalia-shell" "ipc" "call" "launcher" "toggle";
           "Mod+Shift+Q".action = actions."close-window";
 
+          # Set column width to a fraction of the screen
+          "Mod+Shift+H".action = actions.set-column-width "-10%";
+          "Mod+Shift+L".action = actions.set-column-width "+10%";
+
+          # Preset widths: 1/3, 1/2, 2/3 of screen
+          "Mod+R".action = actions.switch-preset-column-width;
+
+          # Consume/expel: merge windows into one column (stacked) or split them out
+          "Mod+Comma".action = actions.consume-window-into-column;
+          "Mod+Period".action = actions.expel-window-from-column;
+
           # Navigation (Focus)
           "Mod+H".action = actions."focus-column-left";
           "Mod+L".action = actions."focus-column-right";
@@ -423,7 +434,7 @@ in
 
           "Mod+Shift+E".action = actions.quit;
           # Screenshots & Audio
-          # 
+          #
           "Print".action = actions.spawn "sh" "-c" "flameshot gui";
           # "Print".action = actions.spawn "sh" "-c" "grim -g \"$(slurp)\" - | wl-copy";
           "XF86AudioRaiseVolume".action =

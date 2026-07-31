@@ -7,7 +7,7 @@
   ];
   programs.zed-editor = {
     enable = true;
-
+    mutableUserSettings = false;
     # This populates the userSettings "auto_install_extensions"
     extensions = [
       "nix"
@@ -27,8 +27,13 @@
           milliseconds = 200;
         };
       };
-      assistant = {
-        enabled = false;
+
+      agent_servers = {
+        "Claude Code" = {
+          type = "custom";
+          command = "npx";
+          args = [ "-y" "@zed-industries/claude-code-acp" ];
+        };
       };
 
       node = {

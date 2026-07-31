@@ -85,7 +85,7 @@
   };
   environment.systemPackages = [
     pkgs.ghostty.terminfo
-
+    pkgs.trayscale
   ];
 
   services.printing = {
@@ -103,6 +103,12 @@
   networking.hostName = "nixmaschine";
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
   networking.networkmanager.enable = true;
+
+  networking.firewall = {
+    checkReversePath = "loose";
+    trustedInterfaces = [ "tailscale0" ];
+    allowedUDPPorts = [ config.services.tailscale.port ];
+  };
   time.timeZone = "Europe/Berlin";
   i18n.defaultLocale = "en_US.UTF-8";
   fonts.fontconfig.enable = true;
@@ -182,7 +188,7 @@
 
   services.tailscale = {
     enable = true;
-    extraUpFlags = [ "--operator=hajoha" ];
+    useRoutingFeatures = "client";
   };
 
 }

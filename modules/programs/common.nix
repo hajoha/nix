@@ -25,7 +25,6 @@
     headscale
     _1password-gui
     rustdesk-flutter
-    # mattermost-desktop
-    # ... etc
+    fido2-manage
   ];
 }
