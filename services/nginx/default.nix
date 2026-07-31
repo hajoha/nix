@@ -162,7 +162,6 @@ in
       "shelfmark.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
-        extraConfig = lanOnly;
         locations."/" = commonProxy // {
           proxyPass = "http://10.60.1.31:8084";
         };
