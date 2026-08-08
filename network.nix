@@ -136,6 +136,24 @@ rec {
       ip = "10.60.1.35";
       port = 2283;
     };
+    nix-sure = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.37";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        nameservers = [ nodes.nix-adguard.ip ];
+        firewall.allowedTCPPorts = [ 3000 ];
+      };
+      hostname = "sure";
+      sub = "sure";
+      ip = "10.60.1.37";
+      port = 3000;
+    };
     nix-loki = {
       networking = {
         interfaces.service.ipv4.addresses = [

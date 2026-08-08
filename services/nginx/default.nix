@@ -121,6 +121,19 @@ in
           '';
         };
       };
+      "sure.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = lanOnly;
+        locations."/" = commonProxy // {
+          proxyPass = "http://10.60.1.37:3000";
+          # Jellyfin is sensitive to these for OIDC and streaming
+          extraConfig = commonProxy.extraConfig + ''
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_buffering off;
+          '';
+        };
+      };
 
       # --- Nixarr Management (LAN/VPN Only) ---
       "radarr.${baseDomain}" = {

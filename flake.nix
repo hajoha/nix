@@ -13,7 +13,12 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
+    nixpkgs-sure = {
+      type = "github";
+      owner = "pjrm";
+      repo = "nixpkgs";
+      rev = "c7f1c6b2aedf787659fe5eba497e03f79c50e3cd";
+    };
     deploy-rs = {
       url = "github:serokell/deploy-rs";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -184,7 +189,7 @@
         };
 
         # ── LXC service containers (deployed via deploy-rs) ────────────────
-
+        nix-sure = mkLXC "nix-sure" ./services/sure/default.nix [ ];
         nix-adguard = mkLXC "nix-adguard" ./services/adguardhome/default.nix [ ];
         nix-postgres = mkLXC "nix-postgres" ./services/postgres/default.nix [ ];
         nix-paperless = mkLXC "nix-paperless" ./services/paperless/default.nix [ ];
@@ -222,6 +227,9 @@
         # };
 
         # LXC nodes — SSH aliases are "home-nix-<name>" per ~/.ssh/config
+        nix-sure = mkNode (lxcAlias "nix-sure") self.nixosConfigurations.nix-sure {
+          activationTimeout = 600; # db:prepare on first boot is slow
+        };
         nix-adguard = mkNode (lxcAlias "nix-adguard") self.nixosConfigurations.nix-adguard { };
         nix-postgres = mkNode (lxcAlias "nix-postgres") self.nixosConfigurations.nix-postgres { };
         nix-paperless = mkNode (lxcAlias "nix-paperless") self.nixosConfigurations.nix-paperless { };
