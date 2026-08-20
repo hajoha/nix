@@ -42,20 +42,33 @@
     openFirewall = true;
     extraArgs = [
       "--primary-interface=iot"
-      "--listen-address=${nodes.nix-homeassistant.ip}"
+      "--listen-address=10.60.1.33"
+      "--listen-address=10.60.60.33"
+      # "--web-address=::"
     ];
   };
   systemd.services.matterjs-server.environment.VENDOR_ID = "4939";
   services.openthread-border-router = {
     enable = true;
-    backboneInterfaces = [ "service" ];
+    backboneInterfaces = [
+      "iot"
+
+    ];
     interfaceName = "wpan0";
     logLevel = "info";
+    # extraArgs = [
+    #   "-B"
+    #   "iot"
+    # ];
     radio = {
       device = "/dev/serial/by-id/usb-Itead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_V2_90837c5304f4ef11aa21c61b6d9880ab-if00-port0";
       baudRate = 460800;
       flowControl = false;
       # extraDevices = [ "treel://service" ];
+    };
+    rest = {
+      listenAddress = "0.0.0.0"; # or "${nodes.nix-homeassistant.ip}"
+      listenPort = 8081;
     };
     web = {
       enable = true;
@@ -73,7 +86,11 @@
   # This links the fetched GitHub source into the HA custom_components directory
 
   # 5. Home Assistant Configuration
-
+  systemd.tmpfiles.rules = [
+    "f /var/lib/hass/automations.yaml 0644 hass hass - []"
+    "f /var/lib/hass/scripts.yaml 0644 hass hass - {}"
+    "f /var/lib/hass/scenes.yaml 0644 hass hass - []"
+  ];
   services.home-assistant = {
     enable = true;
     extraPackages =
@@ -99,7 +116,9 @@
       "matter"
       "dwd_weather_warnings"
       "music_assistant"
+      "immich"
       "soundtouch"
+      "local_todo"
       "thread"
       "otbr"
     ];
@@ -112,6 +131,12 @@
         default = "info";
       };
       default_config = { };
+      "automation manual" = [ ];
+      "automation ui" = "!include automations.yaml";
+      "script manual" = { };
+      "script ui" = "!include scripts.yaml";
+      "scene manual" = [ ];
+      "scene ui" = "!include scenes.yaml";
       homeassistant = {
         name = "XHain";
         unit_system = "metric";
@@ -180,10 +205,17 @@
     allowInterfaces = [
       "service"
       "iot"
-      "wpan0"
     ];
+
   };
 
+  systemd.services.otbr-agent = {
+    after = [
+      "avahi-daemon.service"
+      "dbus.service"
+    ];
+    wants = [ "avahi-daemon.service" ];
+  };
   # 7. Helper Services & Overrides
   systemd.services.otbr-wpan-up = {
     description = "Bring up wpan0 after OTBR init (LXC fix)";
@@ -207,5 +239,11 @@
     "tty"
   ];
 
+  # NEW (NixOS Structured Settings)
+  services.resolved.settings = {
+    Resolve = {
+      MulticastDNS = "no";
+    };
+  };
   system.stateVersion = "25.11";
 }

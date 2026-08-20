@@ -15,6 +15,8 @@ let
     "keycloak"
     "listmonk"
     "sure"
+    "commafeed"
+    "sparkyfitness"
   ];
 
   # Helper: Maps a service name to its specific sops secret configuration
@@ -22,6 +24,7 @@ let
     sopsFile = ../${name}/postgres.enc.yaml;
     key = "password";
     owner = "postgres";
+    restartUnits = [ "postgresql-password-sync.service" ];
   };
 in
 {

@@ -18,6 +18,14 @@ let
     "sure-sidekiq.service"
     "sure-init-db.service"
   ];
+  ingSyncEnv = pkgs.python3.withPackages (ps: [
+    ps.fints
+    ps.requests
+  ]);
+  ingSync = pkgs.writeScriptBin "ing-sync" ''
+    #!${ingSyncEnv}/bin/python3
+    ${builtins.readFile ./ing-sync.py}
+  '';
 in
 {
   # The module isn't in nixos-unstable's module-list, so import the file directly.
@@ -99,20 +107,29 @@ in
     environment = {
       APP_DOMAIN = domain;
       REQUIRE_INVITE_CODE = "true";
-
-      # Without nginx there's nothing serving ${pkgs.sure}/public, so Rails
-      # has to do it itself. Omitting this gives you an unstyled app: 404s on
-      # every /assets/* request.
       RAILS_SERVE_STATIC_FILES = "true";
-
-      # Make sure Puma listens on the bridge, not just loopback.
       BINDING = "0.0.0.0";
 
-      OIDC_KEYCLOAK_ISSUER = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
-      OIDC_KEYCLOAK_CLIENT_ID = "sure";
+      OIDC_ISSUER = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
+      OIDC_CLIENT_ID = "sure";
+      OIDC_REDIRECT_URI = "https://${domain}/auth/openid_connect/callback";
+      OIDC_BUTTON_LABEL = "SSO Login";
+      OIDC_BUTTON_ICON = "key";
+      AUTH_JIT_MODE = "create_and_link";
+      AUTH_LOCAL_LOGIN_ENABLED = "false";
+      AUTH_LOCAL_ADMIN_OVERRIDE_ENABLED = "false";
+      # ALLOWED_OIDC_DOMAINS = "hackler.io";
     };
   };
-
+  environment.systemPackages = [
+    (pkgs.writeShellScriptBin "sure-rails-env" ''
+      set -a
+      . ${config.sops.secrets."sure-env".path}
+      set +a
+      exec ${lib.getExe pkgs.sudo} -E -u sure \
+        ${config.services.sure.package.rubyEnv}/bin/bundle exec rails "$@"
+    '')
+  ];
   # sure-init-db only orders on network.target, but postgres lives in another
   # container — retry instead of failing the whole activation on a cold boot.
   systemd.services.sure-init-db.serviceConfig = {
@@ -122,6 +139,52 @@ in
   systemd.services.sure-init-db.unitConfig = {
     StartLimitIntervalSec = 300;
     StartLimitBurst = 10;
+  };
+
+  # KEY=value lines, read by systemd as root before dropping to `sure`.
+  sops.secrets."ing-sync-env" = {
+    format = "yaml";
+    sopsFile = ./secrets.enc.yaml;
+    mode = "0400";
+    restartUnits = [ "ing-sync.service" ];
+  };
+
+  systemd.services.ing-sync = {
+    description = "Pull ING transactions via FinTS into Sure";
+    after = [
+      "network-online.target"
+      "sure-web.service"
+    ];
+    wants = [ "network-online.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "sure";
+      Group = "sure";
+      EnvironmentFile = config.sops.secrets."ing-sync-env".path;
+      StateDirectory = "ing-sync";
+      StateDirectoryMode = "0700";
+      ExecStart = "${ingSync}/bin/ing-sync";
+      PrivateTmp = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      NoNewPrivileges = true;
+    };
+    environment = {
+      SURE_URL = "http://127.0.0.1:${toString node.port}";
+      FINTS_BLZ = "50010517";
+      FINTS_ENDPOINT = "https://fints.ing.de/fints/";
+      SYNC_DAYS = "85";
+      FINTS_PRODUCT_ID = "NOTREGISTERED";
+    };
+  };
+
+  systemd.timers.ing-sync = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "daily";
+      RandomizedDelaySec = "30m";
+      Persistent = true;
+    };
   };
 
 }

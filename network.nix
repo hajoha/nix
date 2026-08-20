@@ -22,6 +22,7 @@ rec {
             8989 # Sonarr
             7878 # Radarr
             8686
+            3333
             5055
             6767
             6060
@@ -83,7 +84,7 @@ rec {
       ip = "10.60.1.17";
       port = 443;
     };
-    nix-tt-rss = {
+    nix-commafeed = {
       networking = {
         interfaces.service.ipv4.addresses = [
           {
@@ -94,12 +95,12 @@ rec {
         defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "service";
         nameservers = [ nodes.nix-adguard.ip ];
-        firewall.allowedTCPPorts = [ 8080 ];
+        firewall.allowedTCPPorts = [ 8082 ];
       };
-      hostname = "tt-rss";
+      hostname = "commafeed";
       sub = "rss";
       ip = "10.60.1.36";
-      port = 8080;
+      port = 8082;
     };
     nix-build = {
       networking = {
@@ -402,10 +403,12 @@ rec {
           8096
           8095
           8097
+          8081
         ];
         firewall.allowedUDPPorts = [
           1900
           5353
+          5540
         ];
         firewall.allowedUDPPortRanges = [
           {
@@ -420,7 +423,26 @@ rec {
       ip = "10.60.1.33";
       port = 8123;
     };
-
+    nix-sparkyfitness = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.38";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        nameservers = [ nodes.nix-adguard.ip ];
+        # The module's own nginx serves the frontend + proxies /api,/health-data,/uploads,/mcp on :80.
+        # Your edge nginx (nix-nginx) terminates TLS and forwards here.
+        firewall.allowedTCPPorts = [ 80 ];
+      };
+      hostname = "sparkyfitness";
+      sub = "fitness"; # -> fitness.johann-hackler.com
+      ip = "10.60.1.38";
+      port = 80;
+    };
     # --- Knowledge Base (HedgeDoc) ---
     nix-hedgedoc = {
       networking = {

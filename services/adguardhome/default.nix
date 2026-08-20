@@ -19,7 +19,7 @@
       users = [
         {
           name = "mng";
-          password = "$2y$10$Ru/pd3y5UhFifHbwgX.gXOVL9s65EHi9JaoHbYapR3ftL1mFJSd3";
+          password = "$2y$10$kezoWAcvUs3ZdWQ8E5GV9OhVS5KFu6sg22MqNVIwv/Cu0Gf0ozCCW";
         }
       ];
       dns = {

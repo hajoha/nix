@@ -18,10 +18,14 @@ keys:
   - &pve2 age1tsmms30cyluwl707nmkqaxp6qwmdsmxsf928l0mpnmauhay7nqes3f722s
   - &nixopencloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
   - &hetzner-vps-01 age1vdphsnzygqqr233crr2v9gdh0wvktclnz0hrddhtgmzddy0tpplssvrc2r
-  - &nixttrss age10ewzse5566z4uz5dng54mqwr2cnqp579uzt99235nq5qj0ju2vnszqn945
+  - &nixcommafeed age10ewzse5566z4uz5dng54mqwr2cnqp579uzt99235nq5qj0ju2vnszqn945
   - &nixarr age1278lr6sh049xr4t5e9gw6mv5qlnkkmag32cem9ffd2fvf7eu3axq8hdpx6
-  - &nixsure
+  - &nixsure age13q9z3xle955eumzurctg5huxrq836f2frgp9529mp0v3lz94v3fsw7r7up
+  - &pi3-sendspin age150pdxatszqnp2xcgymmlgyqv3lw67epuz4vv8ptsqf5js227w5jq6g4nhs
 creation_rules:
+  - path_regex: hosts/pi3-sendspin/.*\.enc\.yaml$
+    key_groups:
+      - age: [*fokus, *private] # Adjust if netbox has its own key
   - path_regex: services/sure/postgres.enc.yaml$
     key_groups:
       - age: [*nixpostgres, *nixsure, *fokus, *private] # Adjust if netbox has its own key
@@ -45,6 +49,15 @@ creation_rules:
   - path_regex: services/immich/.*\.enc\.yaml$
     key_groups:
       - age: [*niximmich, *fokus, *private]
+
+  - path_regex: services/commafeed/postgres.enc.yaml$
+    key_groups:
+      - age: [*nixpostgres, *nixcommafeed, *fokus, *private]
+
+  - path_regex: services/commafeed/.*\.enc\.yaml$
+    key_groups:
+      - age: [*nixcommafeed, *fokus, *private]
+
 
   - path_regex: services/keycloak/postgres.enc.yaml$
     key_groups:

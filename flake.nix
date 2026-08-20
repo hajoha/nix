@@ -21,7 +21,6 @@
     };
     deploy-rs = {
       url = "github:serokell/deploy-rs";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
     nixpkgs-freecad.url = "github:NixOS/nixpkgs/nixos-26.05";
     nur.url = "github:nix-community/NUR";
@@ -57,7 +56,7 @@
       url = "github:noctalia-dev/noctalia/legacy-v4";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    niri.url = "github:sodiboo/niri-flake";
+    niri.url = "github:epireyn/niri-flake";
     niri.inputs.nixpkgs.follows = "nixpkgs";
     nixarr.url = "github:nix-media-server/nixarr";
   };
@@ -156,7 +155,13 @@
 
       nixosModules.ssh-client = import ./modules/profiles/ssh-client.nix;
       nixosConfigurations = {
-
+        pi3-sendspin = nixpkgs.lib.nixosSystem {
+          specialArgs = { inherit inputs baseDomain; };
+          modules = [
+            ./hosts/pi3-sendspin/configuration.nix
+            sops-nix.nixosModules.sops
+          ];
+        };
         # ── Managed with nixos-rebuild (not deploy-rs) ─────────────────────
         # nixos-rebuild switch --flake .#<name> --build-host ... --target-host ...
         nixmaschine = nixpkgs.lib.nixosSystem {
@@ -206,6 +211,8 @@
         nix-homeassistant = mkLXC "nix-homeassistant" ./services/hass/default.nix [ ];
         nix-nginx = mkLXC "nix-nginx" ./services/nginx/default.nix [ ];
         nix-headscale = mkLXC "nix-headscale" ./services/headscale/default.nix [ ];
+
+        nix-commafeed = mkLXC "nix-commafeed" ./services/commafeed/default.nix [ ];
         nix-build = mkLXC "nix-build" ./services/build/default.nix [ ];
       };
 
@@ -241,7 +248,8 @@
           activationTimeout = 600;
         };
         nix-listmonk = mkNode (lxcAlias "nix-listmonk") self.nixosConfigurations.nix-listmonk { };
-        nix-loki = mkNode (lxcAlias "nix-loki") self.nixosConfigurations.nix-loki { };
+        nix-commafeed = mkNode (lxcAlias "nix-commafeed") self.nixosConfigurations.nix-commafeed { };
+        # nix-loki = mkNode (lxcAlias "nix-loki") self.nixosConfigurations.nix-loki { };
         nix-unifi-controller =
           mkNode (lxcAlias "nix-unifi-controller") self.nixosConfigurations.nix-unifi-controller
             { };
@@ -252,7 +260,7 @@
             { };
         nix-nginx = mkNode (lxcAlias "nix-nginx") self.nixosConfigurations.nix-nginx { };
         nix-headscale = mkNode (lxcAlias "nix-headscale") self.nixosConfigurations.nix-headscale { };
-        nix-build = mkNode (lxcAlias "nix-build") self.nixosConfigurations.nix-build { };
+        # nix-build = mkNode (lxcAlias "nix-build") self.nixosConfigurations.nix-build { };
       };
 
       checks = builtins.mapAttrs (_system: lib': lib'.deployChecks self.deploy) deploy-rs.lib;
@@ -264,7 +272,10 @@
           inherit pkgs;
           sopsFile = pve2Secret;
         };
+        sd-image-pi3 = self.nixosConfigurations.pi3-sendspin.config.system.build.sdImage;
       };
+      packages.aarch64-linux.sd-image-pi3 =
+        self.nixosConfigurations.pi3-sendspin.config.system.build.sdImage;
 
       apps.${system} = {
         pve-zfs-backup-install = {

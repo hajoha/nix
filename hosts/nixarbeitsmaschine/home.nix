@@ -18,31 +18,14 @@
   };
 
   xdg.desktopEntries = {
-    # The key here MUST match the original filename (signal-desktop) to override properly
     signal-desktop = {
       name = "Signal";
-      # This points directly to the binary in the nix store
       exec = "nixGLMesa ${pkgs.signal-desktop}/bin/signal-desktop --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland %u";
       icon = "signal-desktop";
       terminal = false;
       categories = [
         "Network"
         "InstantMessaging"
-      ];
-    };
-
-    mattermost-desktop = {
-      name = "Mattermost";
-      # This points directly to the binary in the nix store
-      exec = "nixGLMesa ${pkgs.mattermost-desktop}/bin/mattermost-desktop --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland %U";
-      icon = "mattermost-desktop";
-      terminal = false;
-      categories = [
-        "Network"
-        "InstantMessaging"
-      ];
-      mimeType = [
-        "x-scheme-handler/mattermost"
       ];
     };
   };

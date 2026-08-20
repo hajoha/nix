@@ -85,10 +85,12 @@ in
         port = 3000;
         cookie_secure = true;
         cookie_secret_path = config.sops.secrets."headplane/serverCookieSecret".path;
-        base_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
+        # base_url is not a standard option under server; public URL behavior is handled by headscale.public_url
       };
       headscale = {
         url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
+        # Moved api_key_path from oidc to headscale block
+        api_key_path = config.sops.secrets."headplane/oidcHeadscaleApiKey".path;
       };
       # integration.agent = {
       #   enabled = true;
@@ -96,11 +98,8 @@ in
       # };
       oidc = {
         issuer = keycloakIssuer;
-        # Often Headplane and Headscale share a client,
-        # but you can create a separate "headplane" client if preferred.
         client_id = "headplane";
         client_secret_path = config.sops.secrets."headplane/OIDC_CLIENT_SECRET".path;
-        headscale_api_key_path = config.sops.secrets."headplane/oidcHeadscaleApiKey".path;
         # redirect_uri = "https://${nodes.nix-headscale.hostname}.${baseDomain}/admin/oidc/callback";
         disable_api_key_login = true;
         token_endpoint_auth_method = "client_secret_basic";

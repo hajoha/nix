@@ -16,7 +16,6 @@
     unzip
     p7zip
     ferrishot
-    #    rustdesk
     anydesk
     nautilus
     librepods

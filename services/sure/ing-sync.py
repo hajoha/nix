@@ -64,10 +64,15 @@ def main():
                     {
                         "date": d["date"].isoformat(),
                         "amount": str(d["amount"].amount),
+                        "currency": str(d["amount"].currency),
                         "name": (
                             d.get("applicant_name") or d.get("posting_text") or ""
                         )[:255],
-                        "notes": (d.get("purpose") or "").replace("\n", " ")[:255],
+                        "notes": " ".join(
+                            filter(
+                                None, [d.get("purpose"), d.get("additional_purpose")]
+                            )
+                        ).replace("\n", " ")[:255],
                     }
                 )
 
@@ -80,42 +85,36 @@ def main():
         return 0
 
     buf = io.StringIO()
-    w = csv.DictWriter(buf, fieldnames=["date", "amount", "name", "notes"])
+    w = csv.DictWriter(buf, fieldnames=["date", "amount", "currency", "name", "notes"])
     w.writeheader()
     w.writerows(rows)
     payload = buf.getvalue()
 
     base = os.environ["SURE_URL"].rstrip("/")
     headers = {
-        "Authorization": f"Bearer {os.environ['SURE_API_TOKEN']}",
+        "X-Api-Key": os.environ["SURE_API_KEY"],
         "Content-Type": "application/json",
     }
     body = {
-        "import": {
-            "type": "TransactionImport",
-            "raw_file_str": payload,
-            "account_id": os.environ.get("SURE_ACCOUNT_ID"),
-        }
+        "type": "TransactionImport",
+        "account_id": os.environ["SURE_ACCOUNT_ID"],
+        "raw_file_content": payload,
+        "date_col_label": "date",
+        "amount_col_label": "amount",
+        "currency_col_label": "currency",
+        "name_col_label": "name",
+        "notes_col_label": "notes",
+        "date_format": "%Y-%m-%d",
+        "number_format": "1,234.56",
+        "signage_convention": "inflows_positive",
+        "publish": "true",
     }
-
-    # Validate first — this persists nothing.
-    v = requests.post(
-        f"{base}/api/v1/imports/validate",
-        headers=headers,
-        data=json.dumps(body),
-        timeout=60,
-    )
-    if not v.ok:
-        print(f"validation failed {v.status_code}: {v.text[:500]}", file=sys.stderr)
-        return 1
-
     r = requests.post(
         f"{base}/api/v1/imports", headers=headers, data=json.dumps(body), timeout=120
     )
     if not r.ok:
         print(f"import failed {r.status_code}: {r.text[:500]}", file=sys.stderr)
         return 1
-
     print(f"imported {len(rows)} rows")
     return 0
 

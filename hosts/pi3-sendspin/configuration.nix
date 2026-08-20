@@ -220,7 +220,7 @@ in
   };
 
   users.users.root.openssh.authorizedKeys.keys = [
-    # "ssh-ed25519 AAAA... your key"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIocRHpz5SimboTEV6r/YGafvLqNO5qH//VdzcInV/CB johann.hackler@fokus.fraunhofer.de"
   ];
 
   nix.settings = {

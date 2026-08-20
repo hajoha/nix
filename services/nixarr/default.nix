@@ -11,6 +11,200 @@
 let
   keycloakUrl = "https://${nodes.nix-keycloak.sub}.${baseDomain}";
   stateDir = "/data/media/.state/nixarr/seerr";
+
+  beetsWithPlugins = pkgs.python3Packages.beets.override {
+    pluginOverrides = {
+      chroma.enable = true; # AcoustID - not on by default
+    };
+  };
+
+  # --------------------------------------------------------------------------
+  # Beets matching policy
+  #
+  # Kept in its own file and pulled in via `include:` so it can be shared by the
+  # tag / manual configs without multi-line Nix string interpolation.
+  #
+  # max_rec is the important half. Without it a single penalty (e.g. `year`)
+  # caps the recommendation at "medium" no matter how good the overall score is,
+  # and quiet mode then skips the release - which is why 99.8% matches were
+  # being dropped. The zeroed distance weights stop WEB rips being penalised
+  # against digital reissues carrying a different year/country/label.
+  # --------------------------------------------------------------------------
+  beetsMatchConfig = pkgs.writeText "beets-match.yaml" ''
+    match:
+      strong_rec_thresh: 0.12
+      medium_rec_thresh: 0.30
+      rec_gap_thresh: 0.25
+      max_rec:
+        missing_tracks: medium
+        unmatched_tracks: medium
+        track_title: strong
+        artist: strong
+        album: strong
+        media: strong
+        mediums: strong
+        year: strong
+        country: strong
+        label: strong
+        catalognum: strong
+      distance_weights:
+        country: 0.0
+        year: 0.0
+        media: 0.0
+        label: 0.0
+        catalognum: 0.0
+      preferred:
+        countries: []
+        media: []
+      ignored_media: []
+  '';
+
+  # --------------------------------------------------------------------------
+  # Stage 1: identify and write MusicBrainz IDs into the files.
+  #
+  # Runs BEFORE Lidarr sees the release, as a SABnzbd post-processing script.
+  # Fast: no artwork, no lyrics, no replaygain. The only job here is to get
+  # MUSICBRAINZ_ALBUMID / MUSICBRAINZ_RELEASETRACKID into the tags so Lidarr's
+  # matcher (release-ID weight 5.0, recording-ID weight 10.0) can do its job.
+  # --------------------------------------------------------------------------
+  beetsTagConfig = pkgs.writeText "beets-tag.yaml" ''
+    include:
+      - ${beetsMatchConfig}
+    directory: /data/media/library/music
+    import:
+      move: no          # critical - do not reorganise, Lidarr owns placement
+      copy: no          # critical - same reason
+      write: yes
+      quiet: yes
+      quiet_fallback: skip
+      timid: no
+      autotag: yes
+      duplicate_action: keep
+    plugins: chroma fromfilename musicbrainz
+    chroma:
+      auto: yes
+  '';
+
+  # --------------------------------------------------------------------------
+  # Stage 2: enrichment. Runs AFTER Lidarr has imported, on Lidarr's copy.
+  #
+  # Artwork / lyrics / replaygain are slow and network-bound, so they are kept
+  # out of the download path where they would stall the SAB queue. -A on the
+  # command line skips re-matching, since stage 1 already tagged these files.
+  # --------------------------------------------------------------------------
+  beetsEnrichConfig = pkgs.writeText "beets-enrich.yaml" ''
+    directory: /data/media/library/music
+    import:
+      move: no
+      copy: no
+      write: yes
+      quiet: yes
+      timid: no
+      duplicate_action: keep
+    plugins: fetchart embedart lyrics replaygain musicbrainz
+    fetchart:
+      auto: yes
+      maxwidth: 1200
+      sources: filesystem coverart itunes
+    embedart:
+      auto: yes
+      maxwidth: 1200
+    replaygain:
+      auto: yes
+      backend: ffmpeg
+    lyrics:
+      auto: yes
+  '';
+
+  # --------------------------------------------------------------------------
+  # Interactive config, for the second pass over whatever stage 1 still skips.
+  #   beet -c /etc/beets/manual.yaml -l /tmp/manual.db import -t <dir>
+  # --------------------------------------------------------------------------
+  beetsManualConfig = pkgs.writeText "beets-manual.yaml" ''
+    include:
+      - ${beetsMatchConfig}
+    directory: /data/media/library/music
+    import:
+      move: no
+      copy: no
+      write: yes
+      quiet: no
+      timid: yes
+      autotag: yes
+      duplicate_action: keep
+    plugins: chroma fromfilename musicbrainz
+    chroma:
+      auto: yes
+  '';
+
+  # --------------------------------------------------------------------------
+  # Pre-import hook. Invoked by SABnzbd with the completed job directory as $1.
+  #
+  # The library DB is a throwaway in a tempdir on purpose: a persistent DB makes
+  # beets refuse re-runs with "This album is already in the library! Skipping."
+  # A tag-only pass has no use for library state.
+  #
+  # Always exits 0 - SABnzbd marks a job failed on a non-zero script exit, and a
+  # beets hiccup should not fail the download.
+  # --------------------------------------------------------------------------
+  beetsPreImport = pkgs.writeShellApplication {
+    name = "beets-pre-import";
+    runtimeInputs = [
+      beetsWithPlugins
+      pkgs.chromaprint # fpcalc, for chroma
+      pkgs.coreutils
+    ];
+    text = ''
+      target="''${1:-}"
+      [ -d "$target" ] || exit 0
+
+      workdir="$(mktemp -d)"
+      trap 'rm -rf "$workdir"' EXIT
+      export HOME="$workdir"
+      export XDG_CONFIG_HOME="$workdir/.config"
+
+      beet --config ${beetsTagConfig} \
+           --library "$workdir/library.db" \
+           import --quiet "$target" || true
+
+      exit 0
+    '';
+  };
+
+  # --------------------------------------------------------------------------
+  # Post-import hook. Wired into Lidarr as a Custom Script on Download Import.
+  # Lidarr_AddedTrackPaths is only populated once an import has SUCCEEDED, so
+  # this can only ever do enrichment - it cannot fix a failed match.
+  # --------------------------------------------------------------------------
+  beetsImport = pkgs.writeShellApplication {
+    name = "lidarr-beets-import";
+    runtimeInputs = [
+      beetsWithPlugins
+      pkgs.chromaprint
+      pkgs.ffmpeg # replaygain backend
+      pkgs.imagemagick # embedart resizing
+      pkgs.coreutils
+      pkgs.findutils
+    ];
+    text = ''
+      [ -n "''${Lidarr_AddedTrackPaths:-}" ] || exit 0
+
+      workdir="$(mktemp -d)"
+      trap 'rm -rf "$workdir"' EXIT
+      export HOME="$workdir"
+      export XDG_CONFIG_HOME="$workdir/.config"
+
+      printf '%s' "$Lidarr_AddedTrackPaths" | tr '|' '\n' \
+        | xargs -r -n1 dirname | sort -u \
+        | while read -r dir; do
+            beet --config ${beetsEnrichConfig} \
+                 --library "$workdir/library.db" \
+                 import --quiet --noautotag "$dir" || true
+          done
+
+      exit 0
+    '';
+  };
 in
 {
   # 1. Core Nixarr Configuration
@@ -98,15 +292,15 @@ in
         user = "bitmagnet";
       };
       dht_crawler = {
-        scaling_factor = 5; # Reduce from default 10 to lower CPU/Disk load
-        save_files_threshold = 100; # Prevent giant torrents from bloating the DB
-        save_pieces = false; # Ensure this is false
+        scaling_factor = 2; # Lower from 5 to 2 to heavily reduce write rate
+        save_files_threshold = 10; # Lower from 100 to stop saving giant file lists inside torrents
+        save_pieces = false;
       };
     };
   };
 
   systemd.services.pg-vacuum = {
-    script = "${pkgs.postgresql}/bin/psql -d bitmagnet -c 'VACUUM ANALYZE;'";
+    script = "${pkgs.postgresql}/bin/psql -d bitmagnet -c 'VACUUM FULL ANALYZE;'";
     serviceConfig.User = "postgres";
   };
   systemd.timers.pg-vacuum = {
@@ -123,6 +317,29 @@ in
     "d /data/media/downloads/books 0775 1000 169 -"
     "d /data/media/downloads/audiobooks 0775 1000 169 -"
   ];
+
+  environment.systemPackages = [
+    beetsWithPlugins
+    pkgs.chromaprint
+    pkgs.ffmpeg
+    pkgs.imagemagick
+  ];
+
+  # Interactive config for cleaning up leftovers by hand.
+  environment.etc."beets/manual.yaml".source = beetsManualConfig;
+
+  # Stable paths for the hooks - the store path changes on every rebuild,
+  # these don't.
+  environment.etc."beets/lidarr-import.sh".source = "${beetsImport}/bin/lidarr-beets-import";
+
+  # SABnzbd post-processing script. Point SAB at this directory under
+  # Config -> Folders -> Post-Processing Scripts Folder, then set
+  # Script = beets-tag.sh on the music category.
+  environment.etc."sabnzbd/scripts/beets-tag.sh" = {
+    source = "${beetsPreImport}/bin/beets-pre-import";
+    mode = "0755";
+  };
+
   services.postgresql = {
     enable = true;
     # Increase autovacuum frequency for the bitmagnet database
@@ -140,6 +357,10 @@ in
     secrets.oidc_client_secret = {
       owner = "root";
     };
+    secrets.aurral_oidc_client_secret = {
+      owner = "root";
+    };
+
     # NEW: add grimmory_db_password to secrets.enc.yaml
     secrets.grimmory_db_password = { };
     templates = {
@@ -152,6 +373,13 @@ in
         MYSQL_PASSWORD=${config.sops.placeholder.grimmory_db_password}
         MYSQL_ROOT_PASSWORD=${config.sops.placeholder.grimmory_db_password}
       '';
+
+      "seerr.env".content = ''
+        OIDC_CLIENT_SECRET=${config.sops.placeholder.oidc_client_secret}
+      '';
+      "aurral.env".content = ''
+        OIDC_CLIENT_SECRET=${config.sops.placeholder.aurral_oidc_client_secret}
+      '';
     };
   };
 
@@ -160,6 +388,34 @@ in
   virtualisation.oci-containers = {
     backend = "docker";
     containers = {
+      #   seerr = {
+      #     image = "ghcr.io/seerr-team/seerr:0078a48";
+      #     autoStart = true;
+      #     ports = [
+      #       "5055:5055"
+      #     ];
+      #     environment = {
+      #       PUID = "1000";
+      #       PGID = "1000";
+      #       TZ = "Etc/UTC";
+      #       PORT = "5055";
+      #       OIDC_ISSUER_URL = "${keycloakUrl}/realms/${keycloakRealm}";
+      #       OIDC_CLIENT_ID = "seerr";
+      #       OIDC_REDIRECT_URI = "https://seerr.${baseDomain}/api/v1/auth/oidc/callback";
+      #     };
+      #     environmentFiles = [
+      #       config.sops.templates."seerr.env".path
+      #     ];
+      #     volumes = [
+      #       "/data/media/.state/nixarr/seerr:/app/config"
+      #     ];
+      #     extraOptions = [
+      #       "--user=1000:1000"
+      #       "--network=host"
+
+      #     ];
+
+      #   };
 
       # --- Books: library / reading layer (replaces autocaliweb) ---
       grimmory-mariadb = {
@@ -251,8 +507,8 @@ in
       # };
 
       musicseerr = {
-        image = "ghcr.io/habirabbu/musicseerr:v2.3.0";
-        autoStart = true;
+        image = "ghcr.io/habirabbu/droppedneedle:latest";
+        autoStart = false;
         environment = {
           PUID = "1000";
           PGID = "1000";
@@ -262,6 +518,7 @@ in
         volumes = [
           "/var/lib/musicseerr/config:/app/config"
           "/var/lib/musicseerr/cache:/app/cache"
+          "/data/media/library/music:/data/media/library/music:ro"
         ];
         extraOptions = [
           "--network=host"
@@ -302,14 +559,29 @@ in
         ];
       };
       aurral = {
-        image = "ghcr.io/lklynet/aurral:latest";
+        image = "ghcr.io/lklynet/aurral:2.4.0";
         autoStart = true;
         environment = {
           PUID = "1000";
           PGID = "1000";
           TZ = "Etc/UTC";
           DOWNLOAD_FOLDER = "/data/media/downloads/aurral";
+          OIDC_ENABLED = "true";
+          OIDC_ISSUER = "${keycloakUrl}/realms/${keycloakRealm}"; # e.g. https://auth.yourdomain.com/realms/your-realm
+          OIDC_CLIENT_ID = "aurral";
+          OIDC_REDIRECT_URI = "https://aurral.${baseDomain}/sso/callback";
+          OIDC_GROUPS_CLAIM = "groups";
+          # Optional mapping configurations:
+          OIDC_SCOPES = "openid profile email";
+          OIDC_USERNAME_CLAIM = "preferred_username";
+          OIDC_DEFAULT_ROLE = "user"; # "user" or "admin"
+          # OIDC_ADMIN_USERS = "your-admin-username";
+          OIDC_ADMIN_GROUPS = "aurral_admin";
+          OIDC_LOGOUT_URL = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/logout";
         };
+        environmentFiles = [
+          config.sops.templates."aurral.env".path
+        ];
         volumes = [
           # Storage data path for state & internal database
           "/var/lib/aurral/data:/app/backend/data"
