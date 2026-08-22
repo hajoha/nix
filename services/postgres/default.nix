@@ -16,7 +16,6 @@ let
     "listmonk"
     "sure"
     "commafeed"
-    "sparkyfitness"
   ];
 
   # Helper: Maps a service name to its specific sops secret configuration

@@ -124,6 +124,7 @@
     ];
     customComponents = [
       pkgs.home-assistant-custom-components.auth_oidc
+      (pkgs.callPackage ./matter-binding-helper.nix { })
     ];
 
     config = {

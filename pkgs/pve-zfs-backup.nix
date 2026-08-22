@@ -7,7 +7,7 @@ let
   backups = [
     {
       name = "postgres";
-      dataset = "threetbpool/postgres";
+      dataset = "threetbpool/subvol-105-disk-0";
       mount = "${mountRoot}/postgres";
     }
     {
@@ -58,7 +58,7 @@ let
     cleanup() {
       echo "--- Post-execution cleanup ---"
       [[ -f "$TMP_KEY" ]] && rm -f "$TMP_KEY"
-      
+
       for item in ${
         builtins.concatStringsSep " " (map (b: "'${b.name}'") (pkgs.lib.reverseList backups))
       }; do
@@ -124,7 +124,7 @@ let
     }:/usr/bin:/bin"
     Environment="HOME=/root"
     # This ensures the script has a real /tmp if it needs it
-    PrivateTmp=false 
+    PrivateTmp=false
     ExecStart=${backupScript}/bin/pve-zfs-backup
     User=root
   '';

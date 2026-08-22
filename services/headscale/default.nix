@@ -75,6 +75,7 @@ in
   };
 
   # 3. Headplane UI Service
+  # 3. Headplane UI Service
   services.headplane = {
     enable = true;
     debug = true;
@@ -85,27 +86,21 @@ in
         port = 3000;
         cookie_secure = true;
         cookie_secret_path = config.sops.secrets."headplane/serverCookieSecret".path;
-        # base_url is not a standard option under server; public URL behavior is handled by headscale.public_url
       };
+
       headscale = {
         url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
-        # Moved api_key_path from oidc to headscale block
+        # Provides the base domain so Headplane can construct /admin/oidc/callback
+        public_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
         api_key_path = config.sops.secrets."headplane/oidcHeadscaleApiKey".path;
       };
-      # integration.agent = {
-      #   enabled = true;
-      #   pre_authkey_path = config.sops.secrets."headplane/integrationAgentPreAuthkeyPath".path;
-      # };
+
       oidc = {
         issuer = keycloakIssuer;
         client_id = "headplane";
         client_secret_path = config.sops.secrets."headplane/OIDC_CLIENT_SECRET".path;
-        # redirect_uri = "https://${nodes.nix-headscale.hostname}.${baseDomain}/admin/oidc/callback";
         disable_api_key_login = true;
         token_endpoint_auth_method = "client_secret_basic";
-        #        role_map = {
-        #          "headplane-admin" = "owner";
-        #        };
       };
     };
   };
