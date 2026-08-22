@@ -1,6 +1,6 @@
 {
   lib,
-  fetchFromGitHub,
+  fetchzip,
   buildHomeAssistantComponent,
   home-assistant,
 }:
@@ -8,15 +8,10 @@
 buildHomeAssistantComponent rec {
   owner = "cedricziel";
   domain = "matter_binding_helper";
-  version = "0.1.0"; # pin to a tag/commit, check the repo for latest release
-
-  src = fetchFromGitHub {
-    owner = "cedricziel";
-    repo = "ha-matter-binding-helper";
-    rev = "v${version}"; # or a commit sha
-    hash = ""; # leave empty first, nix build will tell you the correct hash
+  version = "0.35.3";
+  src = fetchzip {
+    url = "https://github.com/cedricziel/ha-matter-binding-helper/releases/download/v${version}/matter_binding_helper.zip";
+    stripRoot = false;
+    hash = "sha256-MHPFyP1MJr8sonwe2+/0U9fMi7E5kDq80I8RRcpMhso="; # nix build will report the correct one — paste it in
   };
-
-  # add any extra python deps the component needs, if not already in home-assistant.python.pkgs
-  # dependencies = with home-assistant.python.pkgs; [ ... ];
 }
