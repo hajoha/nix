@@ -58,7 +58,9 @@
     };
     niri.url = "github:epireyn/niri-flake";
     niri.inputs.nixpkgs.follows = "nixpkgs";
+
     nixarr.url = "github:nix-media-server/nixarr";
+    # nixarr.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -87,20 +89,29 @@
       keycloakRealm = "main";
       pve2Secret = ./secrets/pve2.enc.yaml;
 
-      deployLib = deploy-rs.lib.${system};
+      deployPkgs = import nixpkgs {
+        inherit system;
+        overlays = [
+          deploy-rs.overlays.default
+          (final: prev: {
+            deploy-rs = {
+              inherit (pkgs) deploy-rs;
+              lib = prev.deploy-rs.lib;
+            };
+          })
+        ];
+      };
 
+      deployLib = deployPkgs.deploy-rs.lib;
       # ── SSH alias helpers ─────────────────────────────────────────────────
       # LXC nodes: "nix-nginx"      → "home-nix-nginx"   (from ~/.ssh/config)
       # Hetzner:   "hetzner-vps-01" → "hetzner-vps-01"   (from ~/.ssh/config)
       # deploy-rs passes hostname straight to SSH, so ProxyJump, IdentityFile,
       # Port etc. in your ssh config are all respected automatically.
       lxcAlias = name: "home-${name}";
-
-      # ── mkLXC ─────────────────────────────────────────────────────────────
-      mkLXC =
-        name: servicePath: extraModules:
-        lib.nixosSystem {
-          inherit system;
+      mkLXC' =
+        nixpkgs': name: servicePath: extraModules:
+        nixpkgs'.lib.nixosSystem {
           specialArgs = {
             inherit
               inputs
@@ -113,6 +124,7 @@
           modules = [
             ./modules/profiles/lxc-base.nix
             ./services/alloy/default.nix
+            { nixpkgs.hostPlatform = system; }
             servicePath
             sops-nix.nixosModules.sops
             {
@@ -124,6 +136,8 @@
           ]
           ++ extraModules;
         };
+
+      mkLXC = mkLXC' nixpkgs;
 
       # ── mkNode ────────────────────────────────────────────────────────────
       # Used only for LXC containers and hetzner-vps-01.
@@ -162,8 +176,6 @@
             sops-nix.nixosModules.sops
           ];
         };
-        # ── Managed with nixos-rebuild (not deploy-rs) ─────────────────────
-        # nixos-rebuild switch --flake .#<name> --build-host ... --target-host ...
         nixmaschine = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           specialArgs = { inherit inputs nixgl baseDomain; };
@@ -206,13 +218,17 @@
         nix-listmonk = mkLXC "nix-listmonk" ./services/listmonk/default.nix [ ];
         nix-loki = mkLXC "nix-loki" ./services/loki/default.nix [ ];
         nix-unifi-controller = mkLXC "nix-unifi-controller" ./services/unifi-controller/default.nix [ ];
-        nix-arr = mkLXC "nix-arr" ./services/nixarr/default.nix [ nixarr.nixosModules.default ];
+        nix-arr = mkLXC' inputs.nixpkgs-freecad "nix-arr" ./services/nixarr/default.nix [
+          nixarr.nixosModules.default
+        ];
         nix-opencloud = mkLXC "nix-opencloud" ./services/opencloud/default.nix [ ];
         nix-homeassistant = mkLXC "nix-homeassistant" ./services/hass/default.nix [ ];
         nix-nginx = mkLXC "nix-nginx" ./services/nginx/default.nix [ ];
         nix-headscale = mkLXC "nix-headscale" ./services/headscale/default.nix [ ];
+        nix-ollama = mkLXC "nix-ollama" ./services/ollama/default.nix [ ];
 
         nix-commafeed = mkLXC "nix-commafeed" ./services/commafeed/default.nix [ ];
+        nix-flathunter = mkLXC "nix-flathunter" ./services/flathunter/default.nix [ ];
         nix-build = mkLXC "nix-build" ./services/build/default.nix [ ];
       };
 
@@ -239,11 +255,11 @@
         };
         nix-adguard = mkNode (lxcAlias "nix-adguard") self.nixosConfigurations.nix-adguard { };
         nix-postgres = mkNode (lxcAlias "nix-postgres") self.nixosConfigurations.nix-postgres { };
-        nix-paperless = mkNode (lxcAlias "nix-paperless") self.nixosConfigurations.nix-paperless { };
+        # nix-paperless = mkNode (lxcAlias "nix-paperless") self.nixosConfigurations.nix-paperless { };
         nix-hedgedoc = mkNode (lxcAlias "nix-hedgedoc") self.nixosConfigurations.nix-hedgedoc { };
         nix-immich = mkNode (lxcAlias "nix-immich") self.nixosConfigurations.nix-immich { };
-        nix-influx = mkNode (lxcAlias "nix-influx") self.nixosConfigurations.nix-influx { };
-        nix-grafana = mkNode (lxcAlias "nix-grafana") self.nixosConfigurations.nix-grafana { };
+        # nix-influx = mkNode (lxcAlias "nix-influx") self.nixosConfigurations.nix-influx { };
+        # nix-grafana = mkNode (lxcAlias "nix-grafana") self.nixosConfigurations.nix-grafana { };
         nix-keycloak = mkNode (lxcAlias "nix-keycloak") self.nixosConfigurations.nix-keycloak {
           activationTimeout = 600;
         };
@@ -260,7 +276,9 @@
             { };
         nix-nginx = mkNode (lxcAlias "nix-nginx") self.nixosConfigurations.nix-nginx { };
         nix-headscale = mkNode (lxcAlias "nix-headscale") self.nixosConfigurations.nix-headscale { };
+        # nix-ollama = mkNode (lxcAlias "nix-ollama") self.nixosConfigurations.nix-ollama { };
         # nix-build = mkNode (lxcAlias "nix-build") self.nixosConfigurations.nix-build { };
+        # nix-flathunter = mkNode (lxcAlias "nix-flathunter") self.nixosConfigurations.nix-flathunter { };
       };
 
       checks = builtins.mapAttrs (_system: lib': lib'.deployChecks self.deploy) deploy-rs.lib;
@@ -309,7 +327,7 @@
           age
           ssh-to-age
           nixos-rebuild
-          deploy-rs.packages.${system}.deploy-rs
+          pkgs.deploy-rs
         ];
       };
     };

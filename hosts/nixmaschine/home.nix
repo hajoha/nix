@@ -33,7 +33,7 @@
     ../../modules/programs/cli.nix
     ../../modules/programs/media.nix
     ../../modules/programs/networking.nix
-    ../../modules/programs/3d.nix 
+    ../../modules/programs/3d.nix
     ../../modules/programs/terminal.nix
     ../../modules/programs/android.nix
   ];
@@ -54,11 +54,13 @@
   programs.niri.settings.environment = {
     ELECTRON_OZONE_PLATFORM_HINT = "wayland";
   };
-
+  gtk.gtk4.theme = config.gtk.theme;
+  programs.yazi.shellWrapperName = "yy";
+  programs.firefox.configPath = ".mozilla/firefox";
+  programs.niri.settings.input.warp-mouse-to-focus.enable = true;
   home.packages = with pkgs; [
     signal-desktop
     networkmanagerapplet
   ];
-
 
 }

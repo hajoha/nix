@@ -17,7 +17,7 @@
   # Proxmox LXC Essentials
   boot.isContainer = true;
   networking.useDHCP = false; # Proxmox usually assigns IP via DHCP/Static via UI
-
+  # services.dbus.implementation = "dbus";
   # Optimization for containers
   services.getty.autologinUser = "root";
   systemd.services."sys-kernel-debug.mount".enable = false;

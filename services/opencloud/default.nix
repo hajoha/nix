@@ -61,6 +61,7 @@
     url = "https://opencloud.${baseDomain}";
     address = "0.0.0.0";
     port = 9200;
+    package = pkgs.opencloud;
 
     # The module maps each key here to /etc/opencloud/<key>.yaml
     settings = {

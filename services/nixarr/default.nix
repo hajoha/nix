@@ -228,7 +228,11 @@ in
     transmission = {
       enable = true;
       vpn.enable = true;
-      peerPort = 51820;
+      peerPort = 61234;
+      extraSettings = {
+        rpc-host-whitelist-enabled = false;
+        rpc-whitelist-enabled = false;
+      };
     };
 
     bazarr.enable = true;
@@ -243,11 +247,22 @@ in
     shelfmark.openFirewall = true;
     shelfmark.host = "0.0.0.0";
 
+    audiobookshelf.enable = true;
+    audiobookshelf.openFirewall = true;
+    audiobookshelf.host = "0.0.0.0";
+
   };
+
+  systemd.services.audiobookshelf.serviceConfig.ReadWritePaths = [
+    "/data/media/library"
+  ];
+
+  networking.firewall.checkReversePath = false;
   systemd.services.shelfmark.environment = {
     HIDE_LOCAL_AUTH = "false";
     DISABLE_LOCAL_AUTH = "false";
     OIDC_AUTO_REDIRECT = "false";
+    HOME = "/tmp";
   };
 
   systemd.services.bitmagnet.vpnconfinement = {
@@ -268,15 +283,40 @@ in
   };
 
   vpnNamespaces.wg = {
-    openVPNPorts = [ ];
+    openVPNPorts = [
+      {
+        port = 61234;
+        protocol = "both";
+      }
+    ];
     portMappings = [
       {
         from = 3333;
         to = 3333;
       }
+      {
+        from = 9091; # Transmission WebUI host port
+        to = 9091; # Transmission WebUI internal port
+      }
     ];
   };
-
+  systemd.services.proton-natpmp = {
+    description = "Proton VPN NAT-PMP Port Forwarding Renewal";
+    after = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "simple";
+      Restart = "always";
+      RestartSec = "45s";
+    };
+    script = ''
+      while true; do
+        ${pkgs.libnatpmp}/bin/natpmpc -a 1 0 udp 60 -g 10.2.0.1
+        ${pkgs.libnatpmp}/bin/natpmpc -a 1 0 tcp 60 -g 10.2.0.1
+        sleep 45
+      done
+    '';
+  };
   services.bitmagnet = {
     enable = true;
     openFirewall = false;
@@ -318,6 +358,10 @@ in
     "d /data/media/downloads/audiobooks 0775 1000 169 -"
   ];
 
+  nixarr.shelfmark.package = pkgs.shelfmark.overrideAttrs (old: {
+    pythonPath = (old.pythonPath or [ ]) ++ [ pkgs.python3Packages.httpx ];
+    propagatedBuildInputs = (old.propagatedBuildInputs or [ ]) ++ [ pkgs.python3Packages.httpx ];
+  });
   environment.systemPackages = [
     beetsWithPlugins
     pkgs.chromaprint
@@ -506,25 +550,25 @@ in
       #   ];
       # };
 
-      musicseerr = {
-        image = "ghcr.io/habirabbu/droppedneedle:latest";
-        autoStart = false;
-        environment = {
-          PUID = "1000";
-          PGID = "1000";
-          PORT = "8688";
-          TZ = "Etc/UTC";
-        };
-        volumes = [
-          "/var/lib/musicseerr/config:/app/config"
-          "/var/lib/musicseerr/cache:/app/cache"
-          "/data/media/library/music:/data/media/library/music:ro"
-        ];
-        extraOptions = [
-          "--network=host"
-          "--pull=always"
-        ];
-      };
+      # musicseerr = {
+      #   image = "ghcr.io/habirabbu/droppedneedle:latest";
+      #   autoStart = false;
+      #   environment = {
+      #     PUID = "1000";
+      #     PGID = "1000";
+      #     PORT = "8688";
+      #     TZ = "Etc/UTC";
+      #   };
+      #   volumes = [
+      #     "/var/lib/musicseerr/config:/app/config"
+      #     "/var/lib/musicseerr/cache:/app/cache"
+      #     "/data/media/library/music:/data/media/library/music:ro"
+      #   ];
+      #   extraOptions = [
+      #     "--network=host"
+      #     "--pull=always"
+      #   ];
+      # };
       profilarr = {
         image = "ghcr.io/dictionarry-hub/profilarr:latest";
         autoStart = true;

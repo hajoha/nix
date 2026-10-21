@@ -35,15 +35,16 @@
   };
   # 2. Kernel & Networking Adjustments
   boot.kernelModules = [ "tun" ];
-
+  boot.kernel.sysctl = {
+    "net.ipv6.conf.all.forwarding" = lib.mkForce 1;
+    "net.ipv6.conf.default.forwarding" = lib.mkForce 1;
+  };
   # 3. Matter & OpenThread Border Router
   services.matterjs-server = {
     enable = true;
     openFirewall = true;
     extraArgs = [
       "--primary-interface=iot"
-      "--listen-address=10.60.1.33"
-      "--listen-address=10.60.60.33"
       # "--web-address=::"
     ];
   };
@@ -91,6 +92,31 @@
     "f /var/lib/hass/scripts.yaml 0644 hass hass - {}"
     "f /var/lib/hass/scenes.yaml 0644 hass hass - []"
   ];
+
+  services.mosquitto = {
+    enable = true;
+    listeners = [
+      {
+        port = 1883;
+        omitPasswordAuth = true;
+        settings = {
+          bind_interface = "iot";
+          allow_anonymous = true;
+        };
+        acl = [ "pattern readwrite #" ];
+      }
+      {
+        port = 1883;
+        omitPasswordAuth = true;
+        settings = {
+          bind_interface = "lo";
+          allow_anonymous = true;
+        };
+        acl = [ "pattern readwrite #" ];
+      }
+    ];
+  };
+
   services.home-assistant = {
     enable = true;
     extraPackages =
@@ -121,10 +147,15 @@
       "local_todo"
       "thread"
       "otbr"
+      "mqtt"
     ];
     customComponents = [
       pkgs.home-assistant-custom-components.auth_oidc
+      pkgs.home-assistant-custom-components.valetudo
       (pkgs.callPackage ./matter-binding-helper.nix { })
+    ];
+    customLovelaceModules = [
+      pkgs.home-assistant-custom-lovelace-modules.valetudo-map-card
     ];
 
     config = {
@@ -206,6 +237,7 @@
     allowInterfaces = [
       "service"
       "iot"
+      "wpan"
     ];
 
   };

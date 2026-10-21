@@ -79,6 +79,8 @@
         tokenURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/token";
         userProfileURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/userinfo";
         scope = "openid email profile";
+
+        userProfileIdAttr = "sub";
         userProfileDisplayNameAttr = "preferred_username";
         userProfileEmailAttr = "email";
         userProfileUsernameAttr = "preferred_username";

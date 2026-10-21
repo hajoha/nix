@@ -4,8 +4,8 @@ pkgs.stdenv.mkDerivation {
   version = "8.3.4";
 
   src = pkgs.fetchurl {
-    url = "https://www.cc-pki.fraunhofer.de/images/stories/files/downloads/treiber/middleware/linux/cv/SCinterface_8_3_4_Ubuntu.zip";
-    sha256 = "sha256-fqim4yvWLHoUbzD4m4Jsgo6q4PFISXy5xtQUYkQL0ic=";
+    url = "https://www.pki.fraunhofer.de/images/stories/files/downloads/treiber/middleware/linux/cv/SCinterface_8_3_13_Ubuntu.zip";
+    sha256 = "sha256-MyjknT4243Pzl6C0xwJUxXrqGt0PXx/dPikb41ummnQ=";
   };
 
   nativeBuildInputs = [
@@ -34,7 +34,7 @@ pkgs.stdenv.mkDerivation {
     find extracted -name "*.so*" -exec cp -v {} $out/lib/ \;
 
     # Copy the configuration file (Crucial for Cryptovision)
-    cp -v SCinterface_8_3_4/support/cvP11.ini $out/lib/cvP11.ini
+    cp -v SCinterface_8_3_13/support/cvP11.ini $out/lib/cvP11.ini
 
     # Force the symlink for pcsc-lite
     ln -sf ${pkgs.lib.getLib pkgs.pcsclite}/lib/libpcsclite.so.1 $out/lib/libpcsclite.so.1

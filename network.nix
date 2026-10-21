@@ -2,6 +2,27 @@ rec {
   baseDomain = "johann-hackler.com";
 
   nodes = {
+    nix-flathunter = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.40";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        nameservers = [ nodes.nix-adguard.ip ];
+        # Nothing listens by default — it is an outbound-only crawler.
+        # Uncomment only if you enable the optional web UI:
+        # firewall.allowedTCPPorts = [ 8080 ];
+      };
+      hostname = "flathunter";
+      # No `sub`: the bot has no UI. Add `sub = "flats";` only if you enable
+      # the Flask web interface and want it behind nix-nginx.
+      ip = "10.60.1.40";
+      port = 8080;
+    };
     nix-arr = {
       networking = {
         interfaces.service.ipv4.addresses = [
@@ -397,6 +418,7 @@ rec {
         defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "service";
         firewall.allowedTCPPorts = [
+          1883
           5000
           8123
           8082
@@ -442,6 +464,24 @@ rec {
       sub = "fitness"; # -> fitness.johann-hackler.com
       ip = "10.60.1.38";
       port = 80;
+    };
+    nix-ollama = {
+      networking = {
+        interfaces.service.ipv4.addresses = [
+          {
+            address = "10.60.1.39";
+            prefixLength = 24;
+          }
+        ];
+        defaultGateway.address = "10.60.1.1";
+        defaultGateway.interface = "service";
+        nameservers = [ nodes.nix-adguard.ip ];
+        firewall.allowedTCPPorts = [ 11434 ];
+      };
+      hostname = "ollama";
+      # No `sub`: keep the unauthenticated API off the public edge proxy.
+      ip = "10.60.1.39";
+      port = 11434;
     };
     # --- Knowledge Base (HedgeDoc) ---
     nix-hedgedoc = {

@@ -135,6 +135,66 @@ in
         };
       };
 
+      "claude-science.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = ''
+          allow 10.60.0.0/16;
+          allow 100.64.0.0/10;
+          allow 127.0.0.1;
+          deny all;
+          error_page 403 =444 /;
+          client_max_body_size 10G;
+        '';
+        locations."/" = {
+          proxyPass = "http://10.60.1.198:8000";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_buffering off;
+            proxy_request_buffering off;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+            send_timeout 3600s;
+          '';
+        };
+      };
+
+      # Preview origin: app port + 1. Separate hostname is required — a
+      # previewed page must not share an origin with the app session.
+      "claude-science-preview.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        extraConfig = ''
+          allow 10.60.0.0/16;
+          allow 100.64.0.0/10;
+          allow 127.0.0.1;
+          deny all;
+          error_page 403 =444 /;
+          client_max_body_size 10G;
+        '';
+        locations."/" = {
+          proxyPass = "http://10.60.1.198:8001";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_buffering off;
+            proxy_request_buffering off;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+            send_timeout 3600s;
+          '';
+        };
+      };
+
       # --- Nixarr Management (LAN/VPN Only) ---
       "radarr.${baseDomain}" = {
         useACMEHost = baseDomain;
@@ -171,7 +231,13 @@ in
           proxyPass = "http://10.60.1.31:8787";
         };
       };
-
+      "audiobooks.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        locations."/" = commonProxy // {
+          proxyPass = "http://10.60.1.31:9292";
+        };
+      };
       "shelfmark.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;

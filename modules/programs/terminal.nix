@@ -75,14 +75,6 @@
       theme = "";
     };
 
-    initExtra = ''
-      if [[ -z $DISPLAY ]] && [[ $(tty) = /dev/tty1 ]]; then
-        exec nixGLMesa niri
-      fi
-      # Bind arrow keys for prefix-based history search
-      bindkey '^[[A' up-line-or-search
-      bindkey '^[[B' down-line-or-search
-    '';
   };
 
   # --- Smarter Directory Jumping ---

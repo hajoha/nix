@@ -82,12 +82,12 @@ in
 
     settings = {
       server = {
-        host = "0.0.0.0";
+        host = "0.0.0.0"; # see point 3
         port = 3000;
+        base_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
         cookie_secure = true;
         cookie_secret_path = config.sops.secrets."headplane/serverCookieSecret".path;
       };
-
       headscale = {
         url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
         # Provides the base domain so Headplane can construct /admin/oidc/callback
