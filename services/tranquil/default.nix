@@ -7,18 +7,18 @@
 #           ./secrets.enc.yaml   app secrets, SSO, SMTP
 {
   config,
-  nodes,
-  baseDomain,
-  keycloakRealm,
   ...
 }:
+
 let
+  inherit (config.homelab) nodes sso;
+  baseDomain = config.homelab.domain;
   node = nodes.nix-tranquil;
   pg = nodes.nix-postgres;
   kc = nodes.nix-keycloak;
 
-  pdsHost = "${node.sub}.${baseDomain}";
-  keycloakIssuer = "https://${kc.sub}.${baseDomain}/realms/${keycloakRealm}";
+  pdsHost = node.fqdn;
+  keycloakIssuer = sso.issuer;
 
   inherit (config.sops) placeholder;
 
@@ -84,7 +84,7 @@ in
   };
   networking.hosts.${nodes.nix-nginx.ip} = [
     pdsHost
-    "${kc.sub}.${baseDomain}"
+    kc.fqdn
   ];
 
   services.tranquil-pds = {

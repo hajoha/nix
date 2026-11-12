@@ -2,11 +2,12 @@
   config,
   pkgs,
   lib,
-  nodes,
-  keycloakRealm,
-  baseDomain,
   ...
 }:
+
+let
+  inherit (config.homelab) nodes sso;
+in
 {
   # 1. SOPS Configuration
   sops.defaultSopsFile = ./secrets.enc.yaml;
@@ -38,7 +39,7 @@
       # Networking & Branding
       host = "0.0.0.0";
       port = nodes.nix-hedgedoc.port;
-      domain = "${nodes.nix-hedgedoc.hostname}.${baseDomain}";
+      domain = nodes.nix-hedgedoc.fqdn;
 
       # SSL handled by Nginx proxy
       protocolUseSSL = true;
@@ -56,7 +57,7 @@
 
       allowOrigin = [
         "localhost"
-        "${nodes.nix-hedgedoc.hostname}.${baseDomain}"
+        nodes.nix-hedgedoc.fqdn
       ];
 
       # Database connection using the nix-postgres node
@@ -74,10 +75,10 @@
         enabled = true;
         provider = "generic";
         # Public URLs require the FQDN for browser redirects via Nginx
-        baseURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
-        authorizationURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/auth";
-        tokenURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/token";
-        userProfileURL = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/protocol/openid-connect/userinfo";
+        baseURL = sso.issuer;
+        authorizationURL = "${sso.issuer}/protocol/openid-connect/auth";
+        tokenURL = "${sso.issuer}/protocol/openid-connect/token";
+        userProfileURL = "${sso.issuer}/protocol/openid-connect/userinfo";
         scope = "openid email profile";
 
         userProfileIdAttr = "sub";

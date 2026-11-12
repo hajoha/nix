@@ -1,11 +1,12 @@
 {
   config,
   pkgs,
-  nodes,
-  baseDomain,
   ...
 }:
 
+let
+  inherit (config.homelab) nodes;
+in
 {
 
   users.users.listmonk = {
@@ -46,7 +47,7 @@
     # Static settings (config.toml)
     settings = {
       app.address = "0.0.0.0:9000";
-      app.root_url = "https://${nodes.nix-listmonk.sub}.${baseDomain}";
+      app.root_url = nodes.nix-listmonk.url;
       db = {
         host = nodes.nix-postgres.ip;
         port = nodes.nix-postgres.port;

@@ -1,15 +1,15 @@
 {
   config,
   pkgs,
-  nodes,
-  keycloakRealm,
-  baseDomain,
   ...
 }:
+
 let
+  inherit (config.homelab) nodes sso;
+  baseDomain = config.homelab.domain;
   # Construct the Keycloak Issuer URL
   # Standard format: https://<domain>/realms/<realm-name>
-  keycloakIssuer = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
+  keycloakIssuer = sso.issuer;
 in
 {
   # 1. SOPS Secrets Configuration
@@ -38,7 +38,7 @@ in
 
     settings = {
       log.level = "info";
-      server_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
+      server_url = nodes.nix-headscale.url;
       metrics_listen_addr = "0.0.0.0:9090";
 
       tls_cert_path = null;
@@ -49,7 +49,7 @@ in
         # Change this to match the 'Client ID' you create in Keycloak
         client_id = "headplane";
         client_secret_path = config.sops.secrets."headplane/OIDC_CLIENT_SECRET".path;
-        redirect_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}/oidc/callback";
+        redirect_url = "${nodes.nix-headscale.url}/oidc/callback";
         scope = [
           "openid"
           "profile"
@@ -85,14 +85,14 @@ in
       server = {
         host = "0.0.0.0"; # see point 3
         port = 3000;
-        base_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
+        base_url = nodes.nix-headscale.url;
         cookie_secure = true;
         cookie_secret_path = config.sops.secrets."headplane/serverCookieSecret".path;
       };
       headscale = {
-        url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
+        url = nodes.nix-headscale.url;
         # Provides the base domain so Headplane can construct /admin/oidc/callback
-        public_url = "https://${nodes.nix-headscale.hostname}.${baseDomain}";
+        public_url = nodes.nix-headscale.url;
         api_key_path = config.sops.secrets."headplane/oidcHeadscaleApiKey".path;
       };
 

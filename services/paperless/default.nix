@@ -2,13 +2,11 @@
   config,
   lib,
   pkgs,
-  nodes,
-  baseDomain,
-  keycloakRealm,
   ...
 }:
+
 let
-  keycloakUrl = "https://${nodes.nix-keycloak.sub}.${baseDomain}";
+  inherit (config.homelab) nodes sso;
 in
 
 {
@@ -34,7 +32,7 @@ in
       PAPERLESS_DBPASS=${config.sops.placeholder."env"}
       PAPERLESS_SOCIALACCOUNT_PROVIDERS='{"openid_connect": {"OAUTH_PKCE_ENABLED": "True", "APPS": [{"provider_id": "keycloak", "name": "SSO", "client_id": "paperless", "secret": "${
         config.sops.placeholder."paperless-creds/oidcSecret"
-      }", "settings": {"server_url": "${keycloakUrl}/realms/${keycloakRealm}/.well-known/openid-configuration"}}]}}'
+      }", "settings": {"server_url": "${sso.issuer}/.well-known/openid-configuration"}}]}}'
     '';
   };
 
@@ -48,7 +46,7 @@ in
     environmentFile = config.sops.templates.".env".path;
 
     settings = {
-      PAPERLESS_URL = "https://${nodes.nix-paperless.hostname}.${baseDomain}";
+      PAPERLESS_URL = nodes.nix-paperless.url;
 
       # Database connection to central Postgres
       PAPERLESS_DBHOST = nodes.nix-postgres.ip;

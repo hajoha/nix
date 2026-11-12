@@ -2,10 +2,12 @@
   config,
   pkgs,
   lib,
-  nodes,
-  baseDomain,
   ...
 }:
+
+let
+  inherit (config.homelab) nodes;
+in
 {
   services.adguardhome = {
     enable = true;

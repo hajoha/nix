@@ -2,11 +2,12 @@
   config,
   lib,
   pkgs,
-  nodes,
-  keycloakRealm,
-  baseDomain,
   ...
 }:
+
+let
+  inherit (config.homelab) nodes sso;
+in
 {
   sops.secrets."hass_db_user" = {
     owner = "hass";
@@ -177,7 +178,7 @@
 
       auth_oidc = {
         client_id = "!secret client_id";
-        discovery_url = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/.well-known/openid-configuration";
+        discovery_url = "${sso.issuer}/.well-known/openid-configuration";
       };
 
       thread = { };

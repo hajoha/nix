@@ -1,5 +1,11 @@
-{ config, nodes, ... }:
+{
+  config,
+  ...
+}:
 
+let
+  inherit (config.homelab) nodes;
+in
 {
   # 1. Enable the service using your specific NixOS module
   services.alloy = {

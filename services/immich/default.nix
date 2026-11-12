@@ -2,11 +2,12 @@
   config,
   pkgs,
   lib,
-  nodes,
-  keycloakRealm,
-  baseDomain,
   ...
 }:
+
+let
+  inherit (config.homelab) nodes sso;
+in
 {
   users.users.immich.extraGroups = [
     "video"
@@ -65,7 +66,7 @@
       logging.enabled = true;
       logging.level = "log";
 
-      server.externalDomain = "https://${nodes.nix-immich.sub}.${baseDomain}";
+      server.externalDomain = nodes.nix-immich.url;
       newVersionCheck.enabled = true;
       ffmpeg = {
         accel = "vaapi";
@@ -137,7 +138,7 @@
       oauth = {
         enabled = true;
         autoRegister = true;
-        issuerUrl = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
+        issuerUrl = sso.issuer;
         clientId = "immich";
         clientSecret._secret = config.sops.secrets."immich-oauth-client-secret".path;
         scope = "openid email profile";

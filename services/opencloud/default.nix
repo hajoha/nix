@@ -2,11 +2,13 @@
   config,
   lib,
   pkgs,
-  nodes,
-  keycloakRealm,
-  baseDomain,
   ...
 }:
+
+let
+  inherit (config.homelab) sso;
+  baseDomain = config.homelab.domain;
+in
 {
 
   sops.secrets."opencloud-env" = {
@@ -238,7 +240,7 @@
 
       # OIDC & General Config
       OC_URL = "https://opencloud.${baseDomain}";
-      OC_OIDC_ISSUER = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
+      OC_OIDC_ISSUER = sso.issuer;
       EXTERNAL_OIDC_DOMAIN = "sso.${baseDomain}";
       PROXY_OIDC_REWRITE_WELLKNOWN = "true";
       OC_INSECURE = "true";
@@ -260,7 +262,7 @@
       PROXY_ROLE_ASSIGNMENT_OIDC_CLAIM = "groups";
       PROXY_AUTOPROVISION_CLAIM_USERNAME = "preferred_username";
       OC_EXCLUDE_RUN_SERVICES = "idp";
-      WEB_OPTION_ACCOUNT_EDIT_LINK_HREF = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}/account";
+      WEB_OPTION_ACCOUNT_EDIT_LINK_HREF = "${sso.issuer}/account";
       PROXY_AUTOPROVISION_CLAIM_DISPLAYNAME = "preferred_username";
       GRAPH_ASSIGN_DEFAULT_USER_ROLE = "false";
       GRAPH_USERNAME_MATCH = "none";

@@ -2,14 +2,13 @@
   config,
   lib,
   pkgs,
-  nodes,
-  baseDomain,
-  keycloakRealm,
   ...
 }:
 
 let
-  keycloakUrl = "https://${nodes.nix-keycloak.sub}.${baseDomain}";
+  inherit (config.homelab) nodes sso;
+  baseDomain = config.homelab.domain;
+  keycloakUrl = nodes.nix-keycloak.url;
   stateDir = "/data/media/.state/nixarr/seerr";
 
   beetsWithPlugins = pkgs.python3Packages.beets.override {
@@ -443,7 +442,7 @@ in
       #       PGID = "1000";
       #       TZ = "Etc/UTC";
       #       PORT = "5055";
-      #       OIDC_ISSUER_URL = "${keycloakUrl}/realms/${keycloakRealm}";
+      #       OIDC_ISSUER_URL = sso.issuer;
       #       OIDC_CLIENT_ID = "seerr";
       #       OIDC_REDIRECT_URI = "https://seerr.${baseDomain}/api/v1/auth/oidc/callback";
       #     };
@@ -611,7 +610,7 @@ in
           TZ = "Etc/UTC";
           DOWNLOAD_FOLDER = "/data/media/downloads/aurral";
           OIDC_ENABLED = "true";
-          OIDC_ISSUER = "${keycloakUrl}/realms/${keycloakRealm}"; # e.g. https://auth.yourdomain.com/realms/your-realm
+          OIDC_ISSUER = sso.issuer; # e.g. https://auth.yourdomain.com/realms/your-realm
           OIDC_CLIENT_ID = "aurral";
           OIDC_REDIRECT_URI = "https://aurral.${baseDomain}/sso/callback";
           OIDC_GROUPS_CLAIM = "groups";
@@ -621,7 +620,7 @@ in
           OIDC_DEFAULT_ROLE = "user"; # "user" or "admin"
           # OIDC_ADMIN_USERS = "your-admin-username";
           OIDC_ADMIN_GROUPS = "aurral_admin";
-          OIDC_LOGOUT_URL = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/logout";
+          OIDC_LOGOUT_URL = "${sso.issuer}/protocol/openid-connect/logout";
         };
         environmentFiles = [
           config.sops.templates."aurral.env".path

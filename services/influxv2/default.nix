@@ -2,10 +2,12 @@
   config,
   lib,
   pkgs,
-  nodes,
   ...
 }:
 
+let
+  inherit (config.homelab) nodes;
+in
 {
   # 1. SOPS Configuration
   sops.defaultSopsFile = ./secrets.enc.yaml;

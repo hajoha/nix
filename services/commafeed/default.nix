@@ -2,10 +2,13 @@
   config,
   lib,
   pkgs,
-  nodes,
-  baseDomain,
   ...
 }:
+
+let
+  inherit (config.homelab) nodes;
+  baseDomain = config.homelab.domain;
+in
 {
   # Only the DB password needs to be secret here. Unlike tt-rss's
   # feedCryptKey/passwordFile split, CommaFeed's module has no

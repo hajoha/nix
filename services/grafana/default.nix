@@ -2,15 +2,11 @@
   config,
   lib,
   pkgs,
-  nodes,
-  baseDomain,
-  keycloakRealm,
   ...
 }:
 
 let
-  # Build the Keycloak URL dynamically from your nodes map
-  keycloakUrl = "https://${nodes.nix-keycloak.sub}.${baseDomain}";
+  inherit (config.homelab) nodes sso;
 in
 {
   sops.defaultSopsFile = ./secrets.enc.yaml;
@@ -51,7 +47,7 @@ in
         {
           name = "InfluxDB_v2";
           type = "influxdb";
-          url = "http://${nodes.nix-influx.ip}:${toString nodes.nix-influx.port}";
+          url = nodes.nix-influx.addr;
           isDefault = true;
           jsonData = {
             version = "Flux";
@@ -75,7 +71,7 @@ in
         http_addr = "0.0.0.0";
         http_port = nodes.nix-grafana.port;
         domain = nodes.nix-grafana.hostname;
-        root_url = "https://${nodes.nix-grafana.hostname}.${baseDomain}/";
+        root_url = "${nodes.nix-grafana.url}/";
         enforce_domain = false;
         enable_gzip = true;
       };
@@ -89,9 +85,9 @@ in
         client_secret = "$__file{${config.sops.secrets."GRAFANA_KEYCLOAK_SECRET".path}}";
         scopes = "openid profile email groups";
         # Endpoints mapped to your Keycloak instance
-        auth_url = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/auth";
-        token_url = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/token";
-        api_url = "${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/userinfo";
+        auth_url = "${sso.issuer}/protocol/openid-connect/auth";
+        token_url = "${sso.issuer}/protocol/openid-connect/token";
+        api_url = "${sso.issuer}/protocol/openid-connect/userinfo";
 
         # RBAC: Map Keycloak groups to Grafana roles
         role_attribute_path = "contains(groups, 'grafana-admin') && 'Admin' || contains(groups, 'grafana-editor') && 'Editor' || 'Viewer'";

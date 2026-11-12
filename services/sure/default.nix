@@ -3,14 +3,13 @@
   lib,
   pkgs,
   inputs,
-  nodes,
-  baseDomain,
-  keycloakRealm,
   ...
 }:
+
 let
+  inherit (config.homelab) nodes sso;
   node = nodes.nix-sure;
-  domain = "${node.sub}.${baseDomain}"; # sure.johann-hackler.com
+  domain = node.fqdn; # sure.johann-hackler.com
   surePkgs = inputs.nixpkgs-sure.legacyPackages.${pkgs.stdenv.hostPlatform.system};
 
   sureUnits = [
@@ -110,7 +109,7 @@ in
       RAILS_SERVE_STATIC_FILES = "true";
       BINDING = "0.0.0.0";
 
-      OIDC_ISSUER = "https://${nodes.nix-keycloak.sub}.${baseDomain}/realms/${keycloakRealm}";
+      OIDC_ISSUER = sso.issuer;
       OIDC_CLIENT_ID = "sure";
       OIDC_REDIRECT_URI = "https://${domain}/auth/openid_connect/callback";
       OIDC_BUTTON_LABEL = "SSO Login";
@@ -119,7 +118,7 @@ in
       AUTH_LOCAL_LOGIN_ENABLED = "false";
       AUTH_LOCAL_ADMIN_OVERRIDE_ENABLED = "false";
       # OPENAI_ACCESS_TOKEN = "ollama-local"; # dummy; Ollama ignores auth
-      # OPENAI_URI_BASE = "http://${nodes.nix-ollama.ip}:${toString nodes.nix-ollama.port}/v1";
+      # OPENAI_URI_BASE = "${nodes.nix-ollama.addr}/v1";
       # OPENAI_MODEL = "llama3.1:8b";
       # # CPU inference is slow — raise the client timeout so calls don't error out:
       # OPENAI_REQUEST_TIMEOUT = "600";

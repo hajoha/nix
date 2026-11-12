@@ -1,11 +1,12 @@
 {
   config,
   pkgs,
-  nodes,
-  baseDomain,
   ...
 }:
 
+let
+  inherit (config.homelab) nodes;
+in
 {
 
   users.users.keycloak = {
@@ -46,7 +47,7 @@
       http-host = "0.0.0.0";
       http-port = nodes.nix-keycloak.port;
 
-      hostname = "https://${nodes.nix-keycloak.sub}.${baseDomain}";
+      hostname = nodes.nix-keycloak.url;
       http-relative-path = "/";
 
       proxy-headers = "xforwarded";

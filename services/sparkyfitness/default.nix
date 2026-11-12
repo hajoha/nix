@@ -3,13 +3,13 @@
   lib,
   pkgs,
   inputs,
-  nodes,
-  baseDomain,
   ...
 }:
+
 let
+  inherit (config.homelab) nodes;
   node = nodes.nix-sparkyfitness;
-  domain = "${node.sub}.${baseDomain}"; # fitness.johann-hackler.com
+  domain = node.fqdn; # fitness.johann-hackler.com
 in
 {
   imports = [ inputs.sparkyfitness.nixosModules.sparkyfitness ];

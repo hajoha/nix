@@ -2,9 +2,12 @@
   config,
   pkgs,
   lib,
-  nodes,
   ...
 }:
+
+let
+  inherit (config.homelab) nodes;
+in
 {
   # Automatically ship journald logs to your central Loki instance
   services.promtail = {

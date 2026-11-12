@@ -24,21 +24,28 @@ let
     nix-tranquil = [ inputs.tranquil.nixosModules.default ];
   };
 
+  # Typed inventory for the homelab module (modules/nixos/homelab.nix).
+  homelabConfig.homelab = {
+    domain = baseDomain;
+    sso.realm = keycloakRealm;
+    nodes = lib.mapAttrs (
+      _: n:
+      {
+        inherit (n) ip port hostname;
+      }
+      // lib.optionalAttrs (n ? sub) { inherit (n) sub; }
+    ) nodes;
+  };
+
   lxcNodes = lib.filterAttrs (_: n: n.service != null) nodes;
 
   mkLXC =
     name: node:
     lib.nixosSystem {
-      specialArgs = {
-        inherit
-          inputs
-          nodes
-          baseDomain
-          keycloakRealm
-          self
-          ;
-      };
+      specialArgs = { inherit inputs self; };
       modules = [
+        ../modules/nixos/homelab.nix
+        homelabConfig
         ../modules/profiles/lxc-base.nix
         ../services/alloy/default.nix
         { nixpkgs.hostPlatform = system; }

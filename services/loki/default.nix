@@ -1,10 +1,12 @@
 {
   config,
-  nodes,
   lib,
   ...
 }:
 
+let
+  inherit (config.homelab) nodes;
+in
 {
   # 1. User and Persistence Setup
   users.users.loki = {

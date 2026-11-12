@@ -2,11 +2,11 @@
   config,
   pkgs,
   lib,
-  nodes,
-  baseDomain,
   ...
 }:
+
 let
+  inherit (config.homelab) nodes;
   flathunter = pkgs.callPackage ./package.nix { };
 
   # Non-secret configuration. This is rendered through a sops template below
@@ -153,7 +153,7 @@ in
   #   after = [ "network-online.target" ];
   #   environment = {
   #     HOME = "/var/lib/flathunter";
-  #     FLATHUNTER_WEBSITE_DOMAIN = "${nodes.nix-flathunter.sub}.${baseDomain}";
+  #     FLATHUNTER_WEBSITE_DOMAIN = nodes.nix-flathunter.fqdn;
   #   };
   #   serviceConfig = {
   #     ExecStart = "${flathunter}/bin/flathunter-web --config ${configFile}";

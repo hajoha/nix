@@ -2,8 +2,6 @@
   config,
   pkgs,
   modulesPath,
-  nodes,
-  baseDomain,
   ...
 }:
 

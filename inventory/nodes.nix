@@ -357,7 +357,6 @@
   nix-build = {
     ip = "10.60.1.15";
     hostname = "build";
-    sub = "";
     port = 0;
     deploy = false;
   };
