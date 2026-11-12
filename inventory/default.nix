@@ -49,6 +49,7 @@ let
   mkNode =
     name: n:
     removeAttrs n [
+      "db"
       "tcp"
       "udp"
       "gateway"
@@ -61,8 +62,13 @@ let
       service = if n ? service then n.service else lib.removePrefix "nix-" name;
       deploy = n.deploy or { };
     };
+  nodes = lib.mapAttrs mkNode raw;
 in
 {
-  inherit baseDomain keycloakRealm;
-  nodes = lib.mapAttrs mkNode raw;
+  inherit baseDomain keycloakRealm nodes;
+
+  # Service names that get a database on nix-postgres (see `db` in nodes.nix).
+  databases = lib.mapAttrsToList (name: _: nodes.${name}.service) (
+    lib.filterAttrs (_: n: n.db or false) raw
+  );
 }

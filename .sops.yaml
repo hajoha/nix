@@ -1,167 +1,211 @@
-keys:
-  - &fokus age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a
-  - &private age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t
-  - &nixadguard age1lxmq9lg6xdytfld525vmep3j0ndv9m6esrzfjfqx25qgygvjxcdqga48y2
-  - &nixcloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
-  - &nixnginx age1hlrrupj5kcjawrdkujygpsvtwc4y6td0jcah758sply05p92ps9qa6gsaq
-  - &nixbuild age1wnyjcxf6jjc60tdgaf4eaf3hcmpkvx25mjtc6tmhy8j9689tp9lq7nw262
-  - &nixpostgres age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru
-  - &nixheadscale age1tr07ymeucgt9rp3cwjp9nmef6zss9jlszjaqw66dekr8mrctv94sghrfv7
-  - &nixhedgedoc age1zer03mv8vrpem0tntknsfudv66nlvttzlvdvq05t7434r2w96dtqx7cpmy
-  - &nixgrafana age1sj998jequkhv0qqrx8futqvemy75080guz7zna0v6kz5hvtfxv6qtacary
-  - &nixinflux age12pdk27hcxvk8fgc7r0rtt8l4tzjaghppgj3suyuz4vuqzlnft43sa6cjsy
-  - &nixpaperless age1jau78xmks5656ck6vlv4g3hg9j3gnjh8u2l552q9v2lmxazhm4ts474ayc
-  - &nixhomeassistant age1jj90rpvwju98ssmp4n2755fa6zmcyql489k8qh6hnnwfg4fmdcyscm4k3h
-  - &nixkeycloak age1cphj25m2fa320yjy0mtt6l0u9k9v78g0s3x69msgx2gxhjdjz5jsu0ztu6
-  - &niximmich age1y9ykrzglk2w9sj546awh4qr0pfhq7xlm8nnq4hvmg8gpqyc6md2qzyjap8
-  - &nixlistmonk age14ne78pjpeqhxaclldk5dhumc208z6gyeepecc6sm3aprmt5q3ssq7xml8l
-  - &pve2 age1tsmms30cyluwl707nmkqaxp6qwmdsmxsf928l0mpnmauhay7nqes3f722s
-  - &nixopencloud age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd
-  - &hetzner-vps-01 age1vdphsnzygqqr233crr2v9gdh0wvktclnz0hrddhtgmzddy0tpplssvrc2r
-  - &nixcommafeed age10ewzse5566z4uz5dng54mqwr2cnqp579uzt99235nq5qj0ju2vnszqn945
-  - &nixarr age1278lr6sh049xr4t5e9gw6mv5qlnkkmag32cem9ffd2fvf7eu3axq8hdpx6
-  - &nixsure age13q9z3xle955eumzurctg5huxrq836f2frgp9529mp0v3lz94v3fsw7r7up
-  - &pi3-sendspin age150pdxatszqnp2xcgymmlgyqv3lw67epuz4vv8ptsqf5js227w5jq6g4nhs
-  - &nixflathunter age1cxvhh5jqfxgsgyd0ljsdvgn0lyqz6pdshxsl0w7tjlv7wy6ufdcs994vw4
-  - &nixtranquil age12s7wtm5k630w7q7znk6g3zz5299gym697clpvtmar56cltudx4qq6lfs4r
+# GENERATED from inventory/ by `nix run .#sops-config` — do not edit.
+# Change inventory/nodes.nix (age, sopsReaders, db) or inventory/keys.nix.
 creation_rules:
-  - path_regex: services/tranquil/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixpostgres, *nixtranquil, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/tranquil/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixtranquil, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/flathunter/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixflathunter, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: hosts/pi3-sendspin/.*\.enc\.yaml$
-    key_groups:
-      - age: [*fokus, *private] # Adjust if netbox has its own key
-  - path_regex: services/sure/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixpostgres, *nixsure, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/sure/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixsure, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/listmonk/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixpostgres, *nixlistmonk, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/listmonk/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixlistmonk, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/immich/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixpostgres, *niximmich, *fokus, *private]
-
-  - path_regex: services/immich/.*\.enc\.yaml$
-    key_groups:
-      - age: [*niximmich, *fokus, *private]
-
-  - path_regex: services/commafeed/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixpostgres, *nixcommafeed, *fokus, *private]
-
-  - path_regex: services/commafeed/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixcommafeed, *fokus, *private]
-
-
-  - path_regex: services/keycloak/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixpostgres, *nixkeycloak, *fokus, *private]
-
-  - path_regex: services/keycloak/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixkeycloak, *fokus, *private]
-
-  - path_regex: services/hass/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixpostgres, *nixhomeassistant, *fokus, *private]
-
-  - path_regex: services/hass/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixhomeassistant, *fokus, *private]
-
-  - path_regex: services/paperless/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixpostgres, *nixpaperless, *fokus, *private]
-
-  - path_regex: services/paperless/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixpaperless, *fokus, *private]
-
-  - path_regex: services/headscale/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixheadscale, *fokus, *private]
-
-  - path_regex: services/hedgedoc/postgres.enc.yaml$
-    key_groups:
-      - age: [*nixpostgres, *nixhedgedoc, *fokus, *private]
-
-  - path_regex: services/nixarr/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixarr, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/hedgedoc/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixhedgedoc, *fokus, *private]
-
-  - path_regex: services/adguard/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixadguard, *fokus, *private]
-  # Adguard (LXC version)
-  - path_regex: services/adguardhome/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixadguard, *fokus, *private]
-
-  # Monitoring Stack
-  - path_regex: services/(influxv2|grafana)/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixinflux, *nixgrafana, *fokus, *private]
-
-  # Networking & Others
-  - path_regex: services/nginx/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixnginx, *fokus, *private]
-
-  - path_regex: services/netbox/.*\.enc\.yaml$
-    key_groups:
-      - age: [*nixheadscale, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/opencloud/secrets.enc.yaml$
-    key_groups:
-      - age: [*nixopencloud, *fokus, *private] # Adjust if netbox has its own key
-
-  - path_regex: services/.*\/postgres\.enc\.yaml$
-    key_groups:
-      - age: [*nixpostgres, *fokus, *private]
-
-  - path_regex: services/([^/]+)/[^/]+\.(yaml|json|env|ini)$
-    key_groups:
-      - age: [*fokus, *private]
-  # Catch-all for any other services (Safety net for the NAS)
-  - path_regex: services/.*\.enc\.yaml$
-    key_groups:
-      - age: [*fokus, *private]
-  - path_regex: secrets/.*\.enc\.toml$
-    key_groups:
-      - age: [*fokus, *private]
-
-  - path_regex: secrets/pve2.enc\.yaml$
-    key_groups:
-      - age: [*fokus, *private, *pve2]
-
-  - path_regex: hosts/hetzner-vps-01/secrets.enc.yaml$
-    key_groups:
-      - age: [*hetzner-vps-01, *fokus, *private]
-
-  - path_regex: secrets/router.enc.yaml$
-    key_groups:
-      - age: [*fokus, *private]
+- path_regex: services/adguardhome/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1lxmq9lg6xdytfld525vmep3j0ndv9m6esrzfjfqx25qgygvjxcdqga48y2 # nix-adguard
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/nixarr/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1278lr6sh049xr4t5e9gw6mv5qlnkkmag32cem9ffd2fvf7eu3axq8hdpx6 # nix-arr
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/build/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1wnyjcxf6jjc60tdgaf4eaf3hcmpkvx25mjtc6tmhy8j9689tp9lq7nw262 # nix-build
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/commafeed/postgres\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age10ewzse5566z4uz5dng54mqwr2cnqp579uzt99235nq5qj0ju2vnszqn945 # nix-commafeed
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/commafeed/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age10ewzse5566z4uz5dng54mqwr2cnqp579uzt99235nq5qj0ju2vnszqn945 # nix-commafeed
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/flathunter/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1cxvhh5jqfxgsgyd0ljsdvgn0lyqz6pdshxsl0w7tjlv7wy6ufdcs994vw4 # nix-flathunter
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/grafana/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1sj998jequkhv0qqrx8futqvemy75080guz7zna0v6kz5hvtfxv6qtacary # nix-grafana
+      - age12pdk27hcxvk8fgc7r0rtt8l4tzjaghppgj3suyuz4vuqzlnft43sa6cjsy # nix-influx
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/headscale/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1tr07ymeucgt9rp3cwjp9nmef6zss9jlszjaqw66dekr8mrctv94sghrfv7 # nix-headscale
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/hedgedoc/postgres\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age1zer03mv8vrpem0tntknsfudv66nlvttzlvdvq05t7434r2w96dtqx7cpmy # nix-hedgedoc
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/hedgedoc/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1zer03mv8vrpem0tntknsfudv66nlvttzlvdvq05t7434r2w96dtqx7cpmy # nix-hedgedoc
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/hass/postgres\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age1jj90rpvwju98ssmp4n2755fa6zmcyql489k8qh6hnnwfg4fmdcyscm4k3h # nix-homeassistant
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/hass/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1jj90rpvwju98ssmp4n2755fa6zmcyql489k8qh6hnnwfg4fmdcyscm4k3h # nix-homeassistant
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/immich/postgres\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age1y9ykrzglk2w9sj546awh4qr0pfhq7xlm8nnq4hvmg8gpqyc6md2qzyjap8 # nix-immich
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/immich/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1y9ykrzglk2w9sj546awh4qr0pfhq7xlm8nnq4hvmg8gpqyc6md2qzyjap8 # nix-immich
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/influxv2/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age12pdk27hcxvk8fgc7r0rtt8l4tzjaghppgj3suyuz4vuqzlnft43sa6cjsy # nix-influx
+      - age1sj998jequkhv0qqrx8futqvemy75080guz7zna0v6kz5hvtfxv6qtacary # nix-grafana
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/keycloak/postgres\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age1cphj25m2fa320yjy0mtt6l0u9k9v78g0s3x69msgx2gxhjdjz5jsu0ztu6 # nix-keycloak
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/keycloak/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1cphj25m2fa320yjy0mtt6l0u9k9v78g0s3x69msgx2gxhjdjz5jsu0ztu6 # nix-keycloak
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/listmonk/postgres\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age14ne78pjpeqhxaclldk5dhumc208z6gyeepecc6sm3aprmt5q3ssq7xml8l # nix-listmonk
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/listmonk/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age14ne78pjpeqhxaclldk5dhumc208z6gyeepecc6sm3aprmt5q3ssq7xml8l # nix-listmonk
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/nginx/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1hlrrupj5kcjawrdkujygpsvtwc4y6td0jcah758sply05p92ps9qa6gsaq # nix-nginx
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/opencloud/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd # nix-opencloud
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/paperless/postgres\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age1jau78xmks5656ck6vlv4g3hg9j3gnjh8u2l552q9v2lmxazhm4ts474ayc # nix-paperless
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/paperless/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1jau78xmks5656ck6vlv4g3hg9j3gnjh8u2l552q9v2lmxazhm4ts474ayc # nix-paperless
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/postgres/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/sure/postgres\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age13q9z3xle955eumzurctg5huxrq836f2frgp9529mp0v3lz94v3fsw7r7up # nix-sure
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/sure/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age13q9z3xle955eumzurctg5huxrq836f2frgp9529mp0v3lz94v3fsw7r7up # nix-sure
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/tranquil/postgres\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age12s7wtm5k630w7q7znk6g3zz5299gym697clpvtmar56cltudx4qq6lfs4r # nix-tranquil
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/tranquil/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age12s7wtm5k630w7q7znk6g3zz5299gym697clpvtmar56cltudx4qq6lfs4r # nix-tranquil
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: hosts/hetzner-vps-01/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1vdphsnzygqqr233crr2v9gdh0wvktclnz0hrddhtgmzddy0tpplssvrc2r # hetzner-vps-01
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: hosts/pi3-sendspin/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age150pdxatszqnp2xcgymmlgyqv3lw67epuz4vv8ptsqf5js227w5jq6g4nhs # pi3-sendspin
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: secrets/pve2\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1tsmms30cyluwl707nmkqaxp6qwmdsmxsf928l0mpnmauhay7nqes3f722s # pve2
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/.*/postgres\.enc\.yaml$
+  key_groups:
+    - age:
+      - age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru # nix-postgres
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: .*\.enc\.(yaml|toml|json|env|ini)$
+  key_groups:
+    - age:
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private

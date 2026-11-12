@@ -5,18 +5,8 @@
   ...
 }:
 let
-  # Single source of truth for services requiring a DB and a Secret
-  servicesWithDB = [
-    "hass"
-    "hedgedoc"
-    "paperless"
-    "immich"
-    "keycloak"
-    "listmonk"
-    "sure"
-    "commafeed"
-    "tranquil"
-  ];
+  # Declared per node with `db = true` in inventory/nodes.nix.
+  servicesWithDB = config.homelab.databases;
 
   # Helper: Maps a service name to its specific sops secret configuration
   mkSopsSecret = name: {

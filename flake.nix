@@ -107,6 +107,9 @@
           ;
       };
       hosts = import ./flake/hosts.nix { inherit inputs inventory pkgs; };
+
+      # .sops.yaml is generated from the inventory (see inventory/sops.nix).
+      sopsYaml = pkgs.writeText "sops.yaml" (import ./inventory/sops.nix { inherit lib; });
     in
     {
       nixosModules.ssh-client = import ./modules/profiles/ssh-client.nix;
@@ -115,9 +118,18 @@
       inherit (hosts) homeConfigurations;
 
       deploy.nodes = lxc.deployNodes;
-      checks = builtins.mapAttrs (
-        _: deployLib': deployLib'.deployChecks self.deploy
-      ) inputs.deploy-rs.lib;
+      checks =
+        lib.recursiveUpdate
+          (builtins.mapAttrs (_: deployLib': deployLib'.deployChecks self.deploy) inputs.deploy-rs.lib)
+          {
+            ${system}.sops-config = pkgs.runCommand "sops-config-up-to-date" { } ''
+              if ! diff -u ${./.sops.yaml} ${sopsYaml}; then
+                echo ".sops.yaml is out of date, run: nix run .#sops-config" >&2
+                exit 1
+              fi
+              touch $out
+            '';
+          };
 
       packages.${system} = {
         pve-zfs-backup = import ./pkgs/pve-zfs-backup.nix {
@@ -135,6 +147,15 @@
           program = "${self.packages.${system}.pve-zfs-backup}/bin/pve-zfs-backup-install";
         };
         default = self.apps.${system}.pve-zfs-backup-install;
+
+        # Regenerate .sops.yaml from the inventory (run from the repo root).
+        sops-config = {
+          type = "app";
+          program = "${pkgs.writeShellScript "sops-config" ''
+            cp --no-preserve=mode ${sopsYaml} .sops.yaml
+            echo "wrote .sops.yaml; re-encrypt changed files with: sops updatekeys <file>"
+          ''}";
+        };
       };
 
       formatter.${system} = pkgs.nixfmt;

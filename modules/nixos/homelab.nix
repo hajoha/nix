@@ -6,6 +6,7 @@
 #   config.homelab.nodes.<n>.fqdn         "<sub or hostname>.<domain>"
 #   config.homelab.nodes.<n>.url          "https://<fqdn>"
 #   config.homelab.sso.issuer             Keycloak realm issuer URL
+#   config.homelab.databases              services with a DB on nix-postgres
 { lib, config, ... }:
 let
   inherit (lib) mkOption types;
@@ -53,6 +54,15 @@ in
     nodes = mkOption {
       type = types.attrsOf nodeType;
       default = { };
+    };
+
+    databases = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
+      description = ''
+        Services with a database + user on nix-postgres; each one's password
+        comes from services/<name>/postgres.enc.yaml.
+      '';
     };
 
     sso = {

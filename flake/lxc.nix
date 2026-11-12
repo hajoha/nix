@@ -28,6 +28,7 @@ let
   homelabConfig.homelab = {
     domain = baseDomain;
     sso.realm = keycloakRealm;
+    inherit (inventory) databases;
     nodes = lib.mapAttrs (
       _: n:
       {
