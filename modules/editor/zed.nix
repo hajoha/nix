@@ -32,7 +32,10 @@
         "Claude Code" = {
           type = "custom";
           command = "npx";
-          args = [ "-y" "@zed-industries/claude-code-acp" ];
+          args = [
+            "-y"
+            "@zed-industries/claude-code-acp"
+          ];
         };
       };
 

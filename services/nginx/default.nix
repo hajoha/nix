@@ -76,44 +76,48 @@ let
   };
 
   # Long-running streams/uploads to the claude-science VM (app + preview).
-  claudeScience = port: vhost {
-    lan = true;
-    extraConfig = ''
-      client_max_body_size 10G;
-    '';
-    locations."/" = {
-      proxyPass = "http://10.60.1.198:${toString port}";
-      proxyWebsockets = true;
+  claudeScience =
+    port:
+    vhost {
+      lan = true;
       extraConfig = ''
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_buffering off;
-        proxy_request_buffering off;
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-        send_timeout 3600s;
+        client_max_body_size 10G;
       '';
+      locations."/" = {
+        proxyPass = "http://10.60.1.198:${toString port}";
+        proxyWebsockets = true;
+        extraConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_buffering off;
+          proxy_request_buffering off;
+          proxy_read_timeout 3600s;
+          proxy_send_timeout 3600s;
+          send_timeout 3600s;
+        '';
+      };
     };
-  };
 
   # Home Assistant add-ons (matter, otbr) behind LAN-only vhosts.
-  hassAddon = port: vhost {
-    lan = true;
-    locations."/" = commonProxy // {
-      proxyPass = hass port;
-      proxyWebsockets = true;
-      extraConfig = ''
-        proxy_set_header Host $server_name;
-        proxy_redirect http:// https://;
-        proxy_buffering off;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      '';
+  hassAddon =
+    port:
+    vhost {
+      lan = true;
+      locations."/" = commonProxy // {
+        proxyPass = hass port;
+        proxyWebsockets = true;
+        extraConfig = ''
+          proxy_set_header Host $server_name;
+          proxy_redirect http:// https://;
+          proxy_buffering off;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        '';
+      };
     };
-  };
 in
 {
 
@@ -472,7 +476,8 @@ in
         };
         "${nodes.nix-unifi-controller.fqdn}" = vhost {
           lan = true;
-          locations."/" = proxy "https://${nodes.nix-unifi-controller.ip}:${toString nodes.nix-unifi-controller.port}" "";
+          locations."/" =
+            proxy "https://${nodes.nix-unifi-controller.ip}:${toString nodes.nix-unifi-controller.port}" "";
         };
       };
   };

@@ -27,6 +27,6 @@
     flatpak
     openssh
     wireguard-tools
-    
+
   ];
 }

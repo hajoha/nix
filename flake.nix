@@ -115,7 +115,9 @@
       inherit (hosts) homeConfigurations;
 
       deploy.nodes = lxc.deployNodes;
-      checks = builtins.mapAttrs (_: deployLib': deployLib'.deployChecks self.deploy) inputs.deploy-rs.lib;
+      checks = builtins.mapAttrs (
+        _: deployLib': deployLib'.deployChecks self.deploy
+      ) inputs.deploy-rs.lib;
 
       packages.${system} = {
         pve-zfs-backup = import ./pkgs/pve-zfs-backup.nix {
