@@ -1,5 +1,6 @@
+# SSH aliases "home-<node>" for every inventory node (used by nix-build).
 {
-  nodes,
+  config,
   lib,
   ...
 }:
@@ -10,6 +11,6 @@
         HostName ${node.ip}
         User root
 
-    '') nodes
+    '') config.homelab.nodes
   );
 }
