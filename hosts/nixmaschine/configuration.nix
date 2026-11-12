@@ -19,7 +19,7 @@
   imports = [
     ./hardware-configuration.nix
     inputs.niri.nixosModules.niri
-    #    ./../../modules/virt/vm.nix
+    #    ./../../modules/nixos/vm.nix
   ];
 
   users.defaultUserShell = pkgs.zsh;

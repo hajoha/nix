@@ -47,7 +47,7 @@ let
       modules = [
         ../modules/nixos/homelab.nix
         homelabConfig
-        ../modules/profiles/lxc-base.nix
+        ../modules/nixos/lxc-base.nix
         ../services/alloy/default.nix
         { nixpkgs.hostPlatform = system; }
         ../services/${node.service}/default.nix

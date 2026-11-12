@@ -112,7 +112,7 @@
       sopsYaml = pkgs.writeText "sops.yaml" (import ./inventory/sops.nix { inherit lib; });
     in
     {
-      nixosModules.ssh-client = import ./modules/profiles/ssh-client.nix;
+      nixosModules.ssh-client = import ./modules/nixos/ssh-client.nix;
 
       nixosConfigurations = hosts.nixosConfigurations // lxc.nixosConfigurations;
       inherit (hosts) homeConfigurations;
