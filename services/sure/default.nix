@@ -117,12 +117,6 @@ in
       AUTH_JIT_MODE = "create_and_link";
       AUTH_LOCAL_LOGIN_ENABLED = "false";
       AUTH_LOCAL_ADMIN_OVERRIDE_ENABLED = "false";
-      # OPENAI_ACCESS_TOKEN = "ollama-local"; # dummy; Ollama ignores auth
-      # OPENAI_URI_BASE = "${nodes.nix-ollama.addr}/v1";
-      # OPENAI_MODEL = "llama3.1:8b";
-      # # CPU inference is slow — raise the client timeout so calls don't error out:
-      # OPENAI_REQUEST_TIMEOUT = "600";
-      # AI_DEBUG_MODE = "true";  # temporarily, to watch prompts/responses
       # ALLOWED_OIDC_DOMAINS = "hackler.io";
     };
   };
