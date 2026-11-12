@@ -179,11 +179,11 @@
         "xwayland-satellite-unstable": "xwayland-satellite-unstable"
       },
       "locked": {
-        "lastModified": 1793035051,
-        "narHash": "sha256-sYxb40TXMx//j7Lr77FYZ5bdTInKCEwN8I5v3ljO2sA=",
+        "lastModified": 1793012230,
+        "narHash": "sha256-zQq82rQS1Nb5j6O1nP7rWv0Az6+5qLCmiA/DdjeIWEs=",
         "owner": "epireyn",
         "repo": "niri-flake",
-        "rev": "0ba376bce74a7afe71ca80e368d0b48b6972bb5c",
+        "rev": "bad8bd7e18002069e744582b029107d570e82c36",
         "type": "github"
       },
       "original": {
