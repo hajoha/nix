@@ -10,7 +10,7 @@ keys:
   - &nixhedgedoc age1zer03mv8vrpem0tntknsfudv66nlvttzlvdvq05t7434r2w96dtqx7cpmy
   - &nixgrafana age1sj998jequkhv0qqrx8futqvemy75080guz7zna0v6kz5hvtfxv6qtacary
   - &nixinflux age12pdk27hcxvk8fgc7r0rtt8l4tzjaghppgj3suyuz4vuqzlnft43sa6cjsy
-  - &nixpaperless age1cckct34a8k96kwcq7yqzruhal04pgw65yrvew6pceuhrxqeyn53slfgeak
+  - &nixpaperless age1jau78xmks5656ck6vlv4g3hg9j3gnjh8u2l552q9v2lmxazhm4ts474ayc
   - &nixhomeassistant age1jj90rpvwju98ssmp4n2755fa6zmcyql489k8qh6hnnwfg4fmdcyscm4k3h
   - &nixkeycloak age1cphj25m2fa320yjy0mtt6l0u9k9v78g0s3x69msgx2gxhjdjz5jsu0ztu6
   - &niximmich age1y9ykrzglk2w9sj546awh4qr0pfhq7xlm8nnq4hvmg8gpqyc6md2qzyjap8
@@ -23,7 +23,16 @@ keys:
   - &nixsure age13q9z3xle955eumzurctg5huxrq836f2frgp9529mp0v3lz94v3fsw7r7up
   - &pi3-sendspin age150pdxatszqnp2xcgymmlgyqv3lw67epuz4vv8ptsqf5js227w5jq6g4nhs
   - &nixflathunter age1cxvhh5jqfxgsgyd0ljsdvgn0lyqz6pdshxsl0w7tjlv7wy6ufdcs994vw4
+  - &nixtranquil age12s7wtm5k630w7q7znk6g3zz5299gym697clpvtmar56cltudx4qq6lfs4r
 creation_rules:
+  - path_regex: services/tranquil/postgres.enc.yaml$
+    key_groups:
+      - age: [*nixpostgres, *nixtranquil, *fokus, *private] # Adjust if netbox has its own key
+
+  - path_regex: services/tranquil/.*\.enc\.yaml$
+    key_groups:
+      - age: [*nixtranquil, *fokus, *private] # Adjust if netbox has its own key
+
   - path_regex: services/flathunter/.*\.enc\.yaml$
     key_groups:
       - age: [*nixflathunter, *fokus, *private] # Adjust if netbox has its own key

@@ -481,7 +481,7 @@ in
       };
 
       grimmory = {
-        image = "ghcr.io/grimmory-tools/grimmory:latest";
+        image = "ghcr.io/grimmory-tools/grimmory:v3.5.0";
         autoStart = true;
         ports = [
           "6060:6060" # Web UI / OPDS / KOReader & Kobo sync

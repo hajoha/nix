@@ -1,6 +1,6 @@
 rec {
-  baseDomain = "johann-hackler.com";
-
+  # baseDomain = "johann-hackler.com";
+  baseDomain = "hackler.io";
   nodes = {
     nix-flathunter = {
       networking = {
@@ -465,7 +465,7 @@ rec {
       ip = "10.60.1.38";
       port = 80;
     };
-    nix-ollama = {
+    nix-tranquil = {
       networking = {
         interfaces.service.ipv4.addresses = [
           {
@@ -476,12 +476,12 @@ rec {
         defaultGateway.address = "10.60.1.1";
         defaultGateway.interface = "service";
         nameservers = [ nodes.nix-adguard.ip ];
-        firewall.allowedTCPPorts = [ 11434 ];
+        firewall.allowedTCPPorts = [ 3000 ];
       };
-      hostname = "ollama";
-      # No `sub`: keep the unauthenticated API off the public edge proxy.
+      hostname = "tranquil";
+      sub = "pds"; # -> pds.hackler.io, handles at <name>.pds.hackler.io
       ip = "10.60.1.39";
-      port = 11434;
+      port = 3000;
     };
     # --- Knowledge Base (HedgeDoc) ---
     nix-hedgedoc = {

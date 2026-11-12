@@ -45,11 +45,18 @@
         rewrites = [
           {
             domain = "*.johann-hackler.com";
-            # Now points to the Nginx LXC's IP from network.nix
             answer = "${nodes.nix-nginx.ip}";
           }
           {
             domain = "johann-hackler.com";
+            answer = "${nodes.nix-nginx.ip}";
+          }
+          {
+            domain = "*.hackler.io";
+            answer = "${nodes.nix-nginx.ip}";
+          }
+          {
+            domain = "hackler.io";
             answer = "${nodes.nix-nginx.ip}";
           }
         ];

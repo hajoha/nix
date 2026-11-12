@@ -28,7 +28,7 @@
     # ../../modules/programs/networking.nix
     ../../modules/programs/3d.nix
     ../../modules/programs/terminal.nix
-    ../../modules/programs/android.nix
+    # ../../modules/programs/android.nix
   ];
 
   home.stateVersion = "23.11";

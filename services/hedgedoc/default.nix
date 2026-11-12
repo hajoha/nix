@@ -86,7 +86,7 @@
         userProfileUsernameAttr = "preferred_username";
       };
 
-      debug = true;
+      debug = false;
       email = false;
     };
   };

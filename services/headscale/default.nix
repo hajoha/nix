@@ -66,9 +66,10 @@ in
         base_domain = "vpn.${baseDomain}";
         nameservers = {
           global = [
-            nodes.nix-adguard.ip
+
             "9.9.9.9"
           ];
+          split."hackler.io" = [ nodes.nix-adguard.ip ];
         };
       };
     };

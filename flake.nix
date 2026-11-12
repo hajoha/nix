@@ -4,10 +4,12 @@
     extra-substituters = [
       "https://noctalia.cachix.org"
       "https://cache.nixos.org"
+      "https://tranquil.cachix.org"
     ];
     extra-trusted-public-keys = [
       "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+      "tranquil.cachix.org-1:PoO+mGL6a6LcJiPakMDHN4E218/ei/7v2sxeDtNkSRg="
     ];
   };
 
@@ -61,6 +63,14 @@
 
     nixarr.url = "github:nix-media-server/nixarr";
     # nixarr.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Tranquil PDS (atproto Personal Data Server).
+    # Pinned to a release tag: this is your identity server, track releases
+    # rather than main. Bump the tag + `nix flake update tranquil` to upgrade.
+    # No `inputs.nixpkgs.follows` on purpose: keeping upstream's nixpkgs pin
+    # means the store paths match tranquil.cachix.org, so the Rust build is
+    # substituted instead of compiled locally.
+    tranquil.url = "git+https://tangled.org/tranquil.farm/tranquil-pds?ref=refs/tags/v0.7.1";
   };
 
   outputs =
@@ -76,6 +86,7 @@
       niri,
       nixarr,
       old-nixpkgs,
+      tranquil,
 
       ...
     }@inputs:
@@ -218,7 +229,7 @@
         nix-listmonk = mkLXC "nix-listmonk" ./services/listmonk/default.nix [ ];
         nix-loki = mkLXC "nix-loki" ./services/loki/default.nix [ ];
         nix-unifi-controller = mkLXC "nix-unifi-controller" ./services/unifi-controller/default.nix [ ];
-        nix-arr = mkLXC' inputs.nixpkgs-freecad "nix-arr" ./services/nixarr/default.nix [
+        nix-arr = mkLXC "nix-arr" ./services/nixarr/default.nix [
           nixarr.nixosModules.default
         ];
         nix-opencloud = mkLXC "nix-opencloud" ./services/opencloud/default.nix [ ];
@@ -226,6 +237,9 @@
         nix-nginx = mkLXC "nix-nginx" ./services/nginx/default.nix [ ];
         nix-headscale = mkLXC "nix-headscale" ./services/headscale/default.nix [ ];
         nix-ollama = mkLXC "nix-ollama" ./services/ollama/default.nix [ ];
+        nix-tranquil = mkLXC "nix-tranquil" ./services/tranquil/default.nix [
+          tranquil.nixosModules.default
+        ];
 
         nix-commafeed = mkLXC "nix-commafeed" ./services/commafeed/default.nix [ ];
         nix-flathunter = mkLXC "nix-flathunter" ./services/flathunter/default.nix [ ];
@@ -255,7 +269,7 @@
         };
         nix-adguard = mkNode (lxcAlias "nix-adguard") self.nixosConfigurations.nix-adguard { };
         nix-postgres = mkNode (lxcAlias "nix-postgres") self.nixosConfigurations.nix-postgres { };
-        # nix-paperless = mkNode (lxcAlias "nix-paperless") self.nixosConfigurations.nix-paperless { };
+        nix-paperless = mkNode (lxcAlias "nix-paperless") self.nixosConfigurations.nix-paperless { };
         nix-hedgedoc = mkNode (lxcAlias "nix-hedgedoc") self.nixosConfigurations.nix-hedgedoc { };
         nix-immich = mkNode (lxcAlias "nix-immich") self.nixosConfigurations.nix-immich { };
         # nix-influx = mkNode (lxcAlias "nix-influx") self.nixosConfigurations.nix-influx { };
@@ -276,6 +290,7 @@
             { };
         nix-nginx = mkNode (lxcAlias "nix-nginx") self.nixosConfigurations.nix-nginx { };
         nix-headscale = mkNode (lxcAlias "nix-headscale") self.nixosConfigurations.nix-headscale { };
+        # nix-tranquil = mkNode (lxcAlias "nix-tranquil") self.nixosConfigurations.nix-tranquil { };
         # nix-ollama = mkNode (lxcAlias "nix-ollama") self.nixosConfigurations.nix-ollama { };
         # nix-build = mkNode (lxcAlias "nix-build") self.nixosConfigurations.nix-build { };
         # nix-flathunter = mkNode (lxcAlias "nix-flathunter") self.nixosConfigurations.nix-flathunter { };

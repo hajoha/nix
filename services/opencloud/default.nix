@@ -30,8 +30,8 @@
       # This allows your domain to request documents
       # Note the double-backslash: Nix requires it to pass a single backslash to Nginx/Collabora
       storage.wopi.host = [
-        "^opencloud\\.johann-hackler\\.com$"
-        "^collabora\\.johann-hackler\\.com$"
+        "^opencloud\\.hackler.io\\.com$"
+        "^collabora\\.hackler.io\\.com$"
       ];
       net = {
         listen = "any";
@@ -47,7 +47,7 @@
         group = [
           {
             # This covers the primary domain and any port variation
-            host = [ "https://opencloud\\.johann-hackler\\.com(:[0-9]+)?" ];
+            host = [ "https://opencloud\\.hackler.io\\.com(:[0-9]+)?" ];
             allow = true;
           }
         ];

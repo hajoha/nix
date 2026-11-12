@@ -540,6 +540,31 @@ in
           '';
         };
       };
+      # --- atproto PDS (Tranquil) ---
+      # Must stay public (no lanOnly): relays, appviews and OAuth clients such as
+      # tangled.org reach it from the internet. User handles are subdomains
+      # (<name>.pds.<domain>) and resolve via /.well-known/atproto-did on the
+      # same backend, hence the wildcard alias.
+      "${nodes.nix-tranquil.sub}.${baseDomain}" = {
+        useACMEHost = baseDomain;
+        forceSSL = true;
+        serverAliases = [ "*.${nodes.nix-tranquil.sub}.${baseDomain}" ];
+        extraConfig = ''
+          # Blob uploads and repo imports (Tranquil accepts imports up to 1 GiB).
+          client_max_body_size 1G;
+          proxy_request_buffering off;
+        '';
+        locations."/" = commonProxy // {
+          proxyPass = "http://${nodes.nix-tranquil.ip}:${toString nodes.nix-tranquil.port}";
+          extraConfig = commonProxy.extraConfig + ''
+            # com.atproto.sync.subscribeRepos is a long-lived websocket that
+            # relays hold open; a quiet single-user PDS would hit nginx's
+            # default 60s read timeout and get disconnected over and over.
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+          '';
+        };
+      };
       "otbr.${baseDomain}" = {
         useACMEHost = baseDomain;
         forceSSL = true;
@@ -646,7 +671,10 @@ in
     defaults.group = "nginx"; # This allows the nginx group to read the certs
     defaults.enableDebugLogs = true;
     certs."${baseDomain}" = {
-      extraDomainNames = [ "*.${baseDomain}" ];
+      extraDomainNames = [
+        "*.${baseDomain}"
+        "*.${nodes.nix-tranquil.sub}.${baseDomain}"
+      ];
       dnsProvider = "inwx";
       email = "acme@hackler.io";
 
