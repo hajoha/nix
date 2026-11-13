@@ -366,6 +366,14 @@
   };
 
   # --- Infra ---
+  # GitHub webhooks (public via nix-nginx at hooks.<domain>); hands them to
+  # the host through a shared directory (hosts/homelab/ci.nix).
+  nix-hooks = {
+    ip = "10.60.1.18";
+    hostname = "hooks";
+    port = 9000;
+  };
+
   # Retired: the homelab host builds for itself now (services/build is
   # imported by hosts/homelab). Kept so its IP stays reserved.
   nix-build = {

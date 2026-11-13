@@ -29,6 +29,8 @@ in
       ../modules/nixos/homelab.nix
       inventory.homelabConfig
       inputs.sops-nix.nixosModules.sops
+      # commit the system was built from (`nixos-version --configuration-revision`)
+      { system.configurationRevision = self.rev or self.dirtyRev or null; }
     ];
   };
 
