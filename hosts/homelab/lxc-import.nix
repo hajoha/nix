@@ -78,7 +78,8 @@ let
         dev = os.lstat(top).st_dev
         for d, dirs, files in os.walk(top):
             dirs[:] = [x for x in dirs if os.lstat(os.path.join(d, x)).st_dev == dev]
-            for p in [d] + [os.path.join(d, f) for f in files]:
+            # dirs also holds symlinks to directories (not descended into)
+            for p in ([d] if d == top else []) + [os.path.join(d, x) for x in dirs + files]:
                 st = os.lstat(p)
                 u, g = fix(st.st_uid), fix(st.st_gid)
                 if (u, g) != (st.st_uid, st.st_gid):
@@ -97,6 +98,7 @@ let
     runtimeInputs = [
       config.boot.zfs.package
       pkgs.lvm2
+      pkgs.kmod
       pkgs.rsync
       pkgs.python3
       pkgs.util-linux
@@ -114,12 +116,18 @@ let
       fi
 
       echo "== activating VG pve from the Proxmox disk"
+      modprobe dm-thin-pool
       vgchange -ay pve --config '${thinConf}'
       src=/run/homelab-import/src
       mkdir -p "$src"
+      # leftovers of an interrupted run
+      while mountpoint -q "$src"; do umount "$src"; done
+      trap 'while mountpoint -q "$src"; do umount "$src"; done' EXIT
 
       zfs list -H -o name "$pool/containers" >/dev/null 2>&1 ||
         zfs create -o mountpoint=none "$pool/containers"
+      # journald & co. use POSIX ACLs; inherited by every container dataset
+      zfs set acltype=posixacl xattr=sa "$pool/containers"
 
       while read -r node lv rest; do
         [ -n "$node" ] || continue
@@ -129,12 +137,13 @@ let
         root=/var/lib/nixos-containers/$node
         echo "== $node ($lv)"
 
-        if zfs list -H -o name "$ds" >/dev/null 2>&1; then
-          if [ -e "$root/etc" ]; then
-            echo "  $ds already has a root filesystem, skipping"
-            continue
-          fi
-        else
+        # written after the id shift; a run that died halfway is simply redone
+        # (rsync is incremental, the shift only touches ids >= 100000)
+        if [ -e "$root/.homelab-imported" ]; then
+          echo "  already imported, skipping"
+          continue
+        fi
+        if ! zfs list -H -o name "$ds" >/dev/null 2>&1; then
           zfs create -o mountpoint="$root" "$ds"
         fi
 
@@ -160,12 +169,14 @@ let
             shiftdirs+=("$root$path")
           elif zfs list -H -o name "$child" >/dev/null 2>&1; then
             echo "  $child already in place"
+            shiftdirs+=("$root$path")
           else
             echo "  WARNING: neither $sub nor $child exists" >&2
           fi
         done
 
         python3 ${shiftIds} "''${shiftdirs[@]}"
+        touch "$root/.homelab-imported"
       done < ${table}
 
       vgchange -an pve

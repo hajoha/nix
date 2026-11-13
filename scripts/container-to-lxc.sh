@@ -47,7 +47,7 @@ for top in sys.argv[1:]:
     dev = os.lstat(top).st_dev
     for d, dirs, files in os.walk(top):
         dirs[:] = [x for x in dirs if os.lstat(os.path.join(d, x)).st_dev == dev]
-        for p in [d] + [os.path.join(d, f) for f in files]:
+        for p in ([d] if d == top else []) + [os.path.join(d, x) for x in dirs + files]:
             st = os.lstat(p)
             u, g = fix(st.st_uid), fix(st.st_gid)
             if (u, g) != (st.st_uid, st.st_gid):
