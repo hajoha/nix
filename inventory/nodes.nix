@@ -203,19 +203,6 @@
     autoStart = false; # CT was stopped on pve2
   };
 
-  nix-sparkyfitness = {
-    ip = "10.60.1.38";
-    hostname = "sparkyfitness";
-    sub = "fitness";
-    port = 80;
-    # The module's own nginx serves the frontend + API on :80; nix-nginx
-    # terminates TLS and forwards here.
-    tcp = [ 80 ];
-    # Not built yet: services/sparkyfitness needs an `inputs.sparkyfitness`
-    # flake input that does not exist.
-    service = null;
-  };
-
   nix-arr = {
     ip = "10.60.1.31";
     age = "age1278lr6sh049xr4t5e9gw6mv5qlnkkmag32cem9ffd2fvf7eu3axq8hdpx6";
@@ -379,8 +366,8 @@
   };
 
   # --- Infra ---
-  # Retired: the homelab host builds for itself now. Kept so its IP stays
-  # reserved (and so its age key can still read services/build secrets).
+  # Retired: the homelab host builds for itself now (services/build is
+  # imported by hosts/homelab). Kept so its IP stays reserved.
   nix-build = {
     ip = "10.60.1.15";
     age = "age1wnyjcxf6jjc60tdgaf4eaf3hcmpkvx25mjtc6tmhy8j9689tp9lq7nw262";

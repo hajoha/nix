@@ -75,32 +75,6 @@ let
     bazarr = 6767; # subtitles
   };
 
-  # Long-running streams/uploads to the claude-science VM (app + preview).
-  claudeScience =
-    port:
-    vhost {
-      lan = true;
-      extraConfig = ''
-        client_max_body_size 10G;
-      '';
-      locations."/" = {
-        proxyPass = "http://10.60.1.198:${toString port}";
-        proxyWebsockets = true;
-        extraConfig = ''
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Host $host;
-          proxy_buffering off;
-          proxy_request_buffering off;
-          proxy_read_timeout 3600s;
-          proxy_send_timeout 3600s;
-          send_timeout 3600s;
-        '';
-      };
-    };
-
   # Home Assistant add-ons (matter, otbr) behind LAN-only vhosts.
   hassAddon =
     port:
@@ -248,11 +222,6 @@ in
             proxy_buffering off;
           '';
         };
-
-        "claude-science.${baseDomain}" = claudeScience 8000;
-        # Preview origin: app port + 1. Separate hostname is required — a
-        # previewed page must not share an origin with the app session.
-        "claude-science-preview.${baseDomain}" = claudeScience 8001;
 
         "${nodes.nix-commafeed.fqdn}" = vhost {
           locations."/" = proxy nodes.nix-commafeed.addr ''

@@ -13,12 +13,6 @@ creation_rules:
       - age1278lr6sh049xr4t5e9gw6mv5qlnkkmag32cem9ffd2fvf7eu3axq8hdpx6 # nix-arr
       - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
       - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
-- path_regex: services/build/.*\.enc\.yaml$
-  key_groups:
-    - age:
-      - age1wnyjcxf6jjc60tdgaf4eaf3hcmpkvx25mjtc6tmhy8j9689tp9lq7nw262 # nix-build
-      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
-      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
 - path_regex: services/commafeed/postgres\.enc\.yaml$
   key_groups:
     - age:

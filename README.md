@@ -154,8 +154,8 @@ for m in 100:nix-unifi-controller 101:nix-opencloud 103:nix-adguard \
 done
 ```
 
-(102 nix-build is retired, 104 claude-code and 116 sparkyfitness are not in
-the repo.) Per CT, the LVM rootfs is copied into `<pool>/containers/<node>`;
+(102 nix-build is retired; 104 claude-code and 116 sparkyfitness are not
+migrated.) Per CT, the LVM rootfs is copied into `<pool>/containers/<node>`;
 every `mpN` that is a subvolume on the pool (postgres, immich, arr,
 opencloud) is renamed to a child dataset mounted at the same path inside the
 container root (no copy); unprivileged id shifts are undone; the ssh host key
