@@ -174,19 +174,19 @@ creation_rules:
       - age1xs3c6d6kujddr8s2qxkk22z50fu8gevt2qhf4zyljrl73tx52y0s069ptc # nix-tranquil
       - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
       - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
-- path_regex: hosts/hetzner-vps-01/.*\.enc\.yaml$
+- path_regex: hosts/hetzner-vps-01/.*\.enc\.(yaml|json)$
   key_groups:
     - age:
       - age1vdphsnzygqqr233crr2v9gdh0wvktclnz0hrddhtgmzddy0tpplssvrc2r # hetzner-vps-01
       - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
       - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
-- path_regex: hosts/homelab/.*\.enc\.yaml$
+- path_regex: hosts/homelab/.*\.enc\.(yaml|json)$
   key_groups:
     - age:
       - age1pcd76fcxy8d2t43f7d9eck6gg0upq59vtz4lzw0f4jvpmwmauu0qd48xwj # homelab
       - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
       - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
-- path_regex: hosts/pi3-sendspin/.*\.enc\.yaml$
+- path_regex: hosts/pi3-sendspin/.*\.enc\.(yaml|json)$
   key_groups:
     - age:
       - age150pdxatszqnp2xcgymmlgyqv3lw67epuz4vv8ptsqf5js227w5jq6g4nhs # pi3-sendspin

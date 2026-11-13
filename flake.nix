@@ -152,6 +152,70 @@
             echo "wrote .sops.yaml; re-encrypt changed files with: sops updatekeys <file>"
           ''}";
         };
+
+        # Ssh host key (= sops identity) for a new homelab container, made
+        # here instead of on the host: writes `age` into inventory/nodes.nix
+        # and the private key into hosts/homelab/container-keys.enc.json.
+        #   nix run .#new-node-key nix-foo
+        new-node-key = {
+          type = "app";
+          program = lib.getExe (
+            pkgs.writeShellApplication {
+              name = "new-node-key";
+              runtimeInputs = with pkgs; [
+                sops
+                openssh
+                ssh-to-age
+                jq
+                gawk
+                coreutils
+                git
+              ];
+              text = ''
+                node=''${1:?usage: nix run .#new-node-key <node>}
+                file=hosts/homelab/container-keys.enc.json
+                nodes=inventory/nodes.nix
+                [ -f "$nodes" ] || { echo "run this from the repo root" >&2; exit 1; }
+                grep -qx "  $node = {" "$nodes" ||
+                  { echo "no node '$node' in $nodes, add it first" >&2; exit 1; }
+                if [ -f "$file" ] && jq -e --arg n "$node" 'has($n)' "$file" >/dev/null; then
+                  echo "$node already has a key in $file" >&2; exit 1
+                fi
+
+                # creation rules must be current before encrypting
+                nix run .#sops-config >/dev/null
+
+                tmp=$(mktemp -d -p "''${XDG_RUNTIME_DIR:-/tmp}")
+                trap 'rm -rf "$tmp"' EXIT
+                ssh-keygen -q -t ed25519 -N "" -C "root@$node" -f "$tmp/key"
+                age=$(ssh-to-age < "$tmp/key.pub")
+
+                if [ -f "$file" ]; then
+                  sops set "$file" "[\"$node\"]" "$(jq -Rs . < "$tmp/key")"
+                else
+                  jq -n --arg n "$node" --rawfile k "$tmp/key" '{($n): $k}' > "$tmp/plain.json"
+                  sops encrypt --filename-override "$file" "$tmp/plain.json" > "$tmp/enc.json"
+                  install -m 644 "$tmp/enc.json" "$file"
+                fi
+                git add "$file"
+
+                # age = "…"; in the node's block (replace or add)
+                awk -v n="$node" -v a="$age" '
+                  $0 == "  " n " = {" { inblock = 1; print; next }
+                  inblock && /^    age = / { print "    age = \"" a "\";"; done = 1; next }
+                  inblock && $0 == "  };" { if (!done) print "    age = \"" a "\";"; inblock = 0 }
+                  { print }
+                ' "$nodes" > "$tmp/nodes.nix"
+                cat "$tmp/nodes.nix" > "$nodes"
+
+                nix run .#sops-config
+                echo
+                echo "$node: age = $age"
+                echo "next: create its secrets (sops services/<svc>/secrets.enc.yaml), deploy"
+              '';
+            }
+          );
+        };
       };
 
       formatter.${system} = pkgs.nixfmt;

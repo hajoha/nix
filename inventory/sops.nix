@@ -3,7 +3,7 @@
 #
 #   services/<svc>/*.enc.yaml        the node's `age` key + its `sopsReaders`
 #   services/<svc>/postgres.enc.yaml  ... + nix-postgres   (nodes with db = true)
-#   hosts/<host>/*.enc.yaml          that host's key from keys.nix
+#   hosts/<host>/*.enc.{yaml,json}   that host's key from keys.nix
 #   everything else                  admins only
 #
 # Admin keys (keys.nix) can always decrypt.
@@ -52,7 +52,7 @@ let
   );
 
   hostRules = mapAttrsToList (
-    host: key: rule "hosts/${host}/.*\\.enc\\.yaml$" [ (named host key) ]
+    host: key: rule "hosts/${host}/.*\\.enc\\.(yaml|json)$" [ (named host key) ]
   ) keys.hosts;
 
   fallbackRules = [
