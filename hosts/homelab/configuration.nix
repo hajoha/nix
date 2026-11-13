@@ -33,6 +33,10 @@
   boot.supportedFilesystems.zfs = true;
   boot.zfs.extraPools = [ params.pool ];
   boot.zfs.forceImportRoot = false;
+  # The pool is encrypted (passphrase). Import it at boot without asking, so
+  # the box comes up headless; unlock over ssh:
+  #   zfs load-key threetbpool && zfs mount -a && systemctl start machines.target
+  boot.zfs.requestEncryptionCredentials = false;
   services.zfs.autoScrub.enable = true;
   services.zfs.trim.enable = true;
   services.zfs.zed.settings.ZED_NOTIFY_VERBOSE = true;

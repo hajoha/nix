@@ -32,12 +32,16 @@ in
   services.borgmatic = {
     enable = true;
     settings = {
-      # Same data as the old Proxmox backup (postgres, immich, opencloud);
-      # opencloud keeps its files on its root, so the whole state dir.
+      # Same data as the old Proxmox backup (postgres, immich, opencloud),
+      # plus the container roots and their ssh keys, which live on the
+      # unredundant NVMe now (one_file_system: the roots without the ZFS
+      # data mounts inside them, those are listed separately).
       source_directories = [
+        "/var/lib/nixos-containers"
+        "/var/lib/homelab/keys"
         "${containerDir "nix-postgres"}/var/lib/postgresql"
         "${containerDir "nix-immich"}/var/lib/immich"
-        "${containerDir "nix-opencloud"}/var/lib/opencloud"
+        "${containerDir "nix-opencloud"}/var/lib/opencloud/data"
       ];
       repositories = [
         {

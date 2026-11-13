@@ -34,6 +34,7 @@ in
 
   deployNode = {
     hostname = params.management.address;
+    sshUser = "root";
     magicRollback = true;
     autoRollback = true;
     # container restarts (keycloak, sure db:prepare) run inside activation

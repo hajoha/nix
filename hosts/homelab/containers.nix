@@ -1,8 +1,9 @@
 # Host-specific extras for individual containers: devices and capabilities.
 # Everything else about a container comes from the inventory
 # (modules/nixos/homelab-host.nix). Large data (immich library, arr media,
-# postgres) is a child dataset mounted inside the container root, e.g.
-# <pool>/containers/nix-arr/data -> /data, so it needs no bind mount here.
+# postgres, ./data-volumes.nix) is a ZFS dataset on the HDD pool mounted
+# inside the container root, e.g. <pool>/containers/nix-arr/data -> /data,
+# so it needs no bind mount here.
 {
   lib,
   pkgs,
@@ -10,6 +11,8 @@
   ...
 }:
 let
+  dataVolumes = import ./data-volumes.nix;
+
   dri = {
     allowedDevices = [
       {
@@ -30,6 +33,24 @@ in
       pkgs.intel-media-driver # VA-API / QSV for Skylake (P530)
     ];
   };
+
+  # The pool is unlocked by hand after boot. A container whose data dataset is
+  # not mounted must not start: it would initialise an empty postgres/immich
+  # on the NVMe underneath the mount point.
+  systemd.services = lib.mapAttrs' (
+    node: vols:
+    lib.nameValuePair "container@${node}" {
+      after = [ "zfs-mount.service" ];
+      preStart = lib.mkBefore (
+        lib.concatMapStrings (p: ''
+          ${pkgs.util-linux}/bin/mountpoint -q /var/lib/nixos-containers/${node}${p} || {
+            echo "${p}: ZFS dataset not mounted (pool locked? zfs load-key ${params.pool} && zfs mount -a)" >&2
+            exit 1
+          }
+        '') (lib.attrNames vols)
+      );
+    }
+  ) dataVolumes;
 
   containers = {
     # Thread/Zigbee radio + the wpan0 tun device of the OpenThread border

@@ -2,11 +2,11 @@
 # (`containers.<name>`, systemd-nspawn) on this host.
 #
 # Per container:
-#   - its own ZFS dataset <pool>/containers/<name>, mounted as the container
-#     root (/var/lib/nixos-containers/<name>); created on first start
-#   - an ssh host key in /var/lib/homelab/keys/<name> (dataset
-#     <pool>/homelab-keys; generated if missing, or copied over from the old
-#     LXC so sops keeps working)
+#   - its root is a plain directory on the system disk
+#     (/var/lib/nixos-containers/<name>); large data lives on the HDD pool as
+#     <pool>/containers/<name>/<x>, mounted inside it (hosts/homelab)
+#   - an ssh host key in /var/lib/homelab/keys/<name> (generated if missing;
+#     its age key is the node's sops recipient)
 #   - one macvlan per VLAN interface the node uses (on the host VLAN
 #     interface of the same name), see container-base.nix
 #
@@ -102,32 +102,19 @@ in
   });
   networking.interfaces = lib.genAttrs usedVlans (_: { });
 
-  # Dataset + host key for every container, before it starts.
+  # Host key for every container, before it starts.
   systemd.services = {
     homelab-container-prepare = {
-      description = "Create container datasets and ssh host keys";
-      after = [ "zfs-mount.service" ];
-      requires = [ "zfs-mount.service" ];
+      description = "Create container ssh host keys";
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
       };
-      path = [
-        config.boot.zfs.package
-        pkgs.openssh
-      ];
+      path = [ pkgs.openssh ];
       script = ''
-        if ! zfs list -H -o name ${pool}/homelab-keys >/dev/null 2>&1; then
-          zfs create -o mountpoint=${keyRoot} ${pool}/homelab-keys
-        fi
-        chmod 700 ${keyRoot}
+        install -d -m 700 ${keyRoot}
       ''
       + concatMapStrings (name: ''
-        ds=${pool}/containers/${name}
-        if ! zfs list -H -o name "$ds" >/dev/null 2>&1; then
-          echo "creating $ds"
-          zfs create -p -o mountpoint=/var/lib/nixos-containers/${name} "$ds"
-        fi
         key=${keyRoot}/${name}/ssh_host_ed25519_key
         if [ ! -e "$key" ]; then
           echo "generating ssh host key for ${name}"
@@ -145,7 +132,7 @@ in
     }
   ) serviceNodes;
 
-  # Local snapshots of every container root (sanoid prunes them).
+  # Local snapshots of the container data datasets (sanoid prunes them).
   services.sanoid = {
     enable = true;
     datasets."${pool}/containers" = {

@@ -42,9 +42,14 @@ secrets/                secrets not tied to a service
 - Each inventory node with a `service` becomes `containers.<node>` (systemd-nspawn).
   Containers share the host's `/nix/store` (read-only): one store, one GC,
   one deploy for everything.
-- Container root = ZFS dataset `<pool>/containers/<node>` mounted at
-  `/var/lib/nixos-containers/<node>`; sanoid snapshots them
-  (hourly 24, daily 14, monthly 3).
+- Container root = plain directory `/var/lib/nixos-containers/<node>` on the
+  NVMe (fast, no snapshots; borgmatic backs it up). Large data
+  (`hosts/homelab/data-volumes.nix`: postgres, immich, arr, opencloud) stays
+  on the HDD pool as `<pool>/containers/<node>/<name>`, mounted inside the
+  root; sanoid snapshots those (hourly 24, daily 14, monthly 3).
+- The pool is encrypted and unlocked by hand after every boot; until then
+  the containers with data volumes refuse to start:
+  `zfs load-key threetbpool && zfs mount -a && systemctl start machines.target`.
 - Networking: the host has one VLAN interface per network (`service`, `iot`,
   `dmz`, `wireguard`, ids in `params.nix`) without an address. Every container
   gets a macvlan on each VLAN it uses, renamed inside to the VLAN name, and its
@@ -52,8 +57,8 @@ secrets/                secrets not tied to a service
   like the LXCs. (The host itself cannot talk to its containers over macvlan;
   use `nixos-container root-login <node>` or go via the router.)
 - Secrets: every container has its own ssh host key
-  (`/var/lib/homelab/keys/<node>`, dataset `<pool>/homelab-keys`,
-  bind-mounted read-only), generated on first start; its age recipient is the
+  (`/var/lib/homelab/keys/<node>`, bind-mounted read-only), generated on
+  first start; its age recipient is the
   node's `age` in `nodes.nix` (`homelab-age-keys` prints them all).
 
 ```bash

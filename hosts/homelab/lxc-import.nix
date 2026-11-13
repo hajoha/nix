@@ -6,11 +6,13 @@
 #   homelab-import-lxc nix-paperless   just one
 #
 # Per CT:
-#   - rootfs LV on the Proxmox disk (VG "pve", thin)  --rsync-->  <pool>/containers/<node>
+#   - rootfs LV on the Proxmox disk (VG "pve", thin)  --rsync-->
+#     /var/lib/nixos-containers/<node> (plain directory on the NVMe)
 #     (without /nix, /proc, ..., the mount points, and the old ssh host key:
 #     every container gets a fresh key, secrets are re-encrypted)
-#   - each data subvolume on the pool is renamed (no copy) to
-#     <pool>/containers/<node>/<name>, mounted at the same path in the container
+#   - each data subvolume (./data-volumes.nix) is renamed on the pool (no
+#     copy) to <pool>/containers/<node>/<name>, mounted at the same path in
+#     the container
 #   - the unprivileged uid/gid shift (100000) is undone
 #
 # The table is pve2's /etc/pve/lxc/*.conf as of 2026-11-13 (all unprivileged).
@@ -23,50 +25,40 @@
 }:
 let
   pool = params.pool;
+  dataVolumes = import ./data-volumes.nix;
 
-  cts = {
-    nix-unifi-controller.lv = "vm-100-disk-0";
-    nix-opencloud = {
-      lv = "vm-101-disk-0";
-      mps."/var/lib/opencloud/data" = "subvol-101-disk-0";
-    };
-    nix-adguard.lv = "vm-103-disk-1";
-    nix-postgres = {
-      lv = "vm-105-disk-0";
-      mps."/var/lib/postgresql" = "subvol-105-disk-0";
-    };
-    nix-arr = {
-      lv = "vm-106-disk-0";
-      mps."/data" = "subvol-106-disk-0";
-    };
-    nix-hedgedoc.lv = "vm-107-disk-0";
-    nix-headscale.lv = "vm-108-disk-0";
-    nix-sure.lv = "vm-109-disk-0";
-    nix-grafana.lv = "vm-110-disk-0";
-    nix-nginx.lv = "vm-111-disk-0";
-    nix-keycloak.lv = "vm-112-disk-0";
-    nix-immich = {
-      lv = "vm-113-disk-0";
-      mps."/var/lib/immich" = "subvol-113-disk-0";
-    };
-    nix-paperless.lv = "vm-114-disk-0";
-    nix-homeassistant.lv = "vm-115-disk-1";
-    nix-listmonk.lv = "vm-117-disk-0";
-    nix-loki.lv = "vm-118-disk-0";
-    nix-commafeed.lv = "vm-119-disk-0";
-    nix-flathunter.lv = "vm-120-disk-0";
-    nix-tranquil.lv = "vm-121-disk-0";
+  # container -> rootfs LV on the Proxmox disk
+  lvs = {
+    nix-unifi-controller = "vm-100-disk-0";
+    nix-opencloud = "vm-101-disk-0";
+    nix-adguard = "vm-103-disk-1";
+    nix-postgres = "vm-105-disk-0";
+    nix-arr = "vm-106-disk-0";
+    nix-hedgedoc = "vm-107-disk-0";
+    nix-headscale = "vm-108-disk-0";
+    nix-sure = "vm-109-disk-0";
+    nix-grafana = "vm-110-disk-0";
+    nix-nginx = "vm-111-disk-0";
+    nix-keycloak = "vm-112-disk-0";
+    nix-immich = "vm-113-disk-0";
+    nix-paperless = "vm-114-disk-0";
+    nix-homeassistant = "vm-115-disk-1";
+    nix-listmonk = "vm-117-disk-0";
+    nix-loki = "vm-118-disk-0";
+    nix-commafeed = "vm-119-disk-0";
+    nix-flathunter = "vm-120-disk-0";
+    nix-tranquil = "vm-121-disk-0";
   };
 
   # "<node> <lv> <path>=<subvol> ..." per line
   table = pkgs.writeText "lxc-import-table" (
     lib.concatStrings (
       lib.mapAttrsToList (
-        node: ct:
-        "${node} ${ct.lv}"
-        + lib.concatStrings (lib.mapAttrsToList (path: sub: " ${path}=${sub}") (ct.mps or { }))
+        node: lv:
+        "${node} ${lv}"
+        + lib.concatStrings (lib.mapAttrsToList (path: sub: " ${path}=${sub}") (dataVolumes.${node} or { }))
         + "\n"
-      ) cts
+      ) lvs
     )
   );
 
@@ -126,7 +118,7 @@ let
 
       zfs list -H -o name "$pool/containers" >/dev/null 2>&1 ||
         zfs create -o mountpoint=none "$pool/containers"
-      # journald & co. use POSIX ACLs; inherited by every container dataset
+      # POSIX ACLs for the data datasets (inherited)
       zfs set acltype=posixacl xattr=sa "$pool/containers"
 
       while read -r node lv rest; do
@@ -143,9 +135,11 @@ let
           echo "  already imported, skipping"
           continue
         fi
-        if ! zfs list -H -o name "$ds" >/dev/null 2>&1; then
-          zfs create -o mountpoint="$root" "$ds"
+        if [ "$(zfs list -H -o mountpoint "$ds" 2>/dev/null)" = "$root" ]; then
+          echo "  $ds is the old container-root dataset; remove it first: zfs destroy $ds" >&2
+          exit 1
         fi
+        mkdir -p "$root"
 
         excludes=(--exclude=/nix --exclude=/proc --exclude=/sys --exclude=/dev
                   --exclude=/run --exclude=/tmp
@@ -161,6 +155,8 @@ let
           path=''${m%%=*}
           sub=$pool/''${m#*=}
           child=$ds/$(basename "$path")
+          zfs list -H -o name "$ds" >/dev/null 2>&1 ||
+            zfs create -o canmount=off "$ds"
           if zfs list -H -o name "$sub" >/dev/null 2>&1; then
             echo "  $sub -> $child ($path)"
             zfs snapshot "$sub@pre-migration"
