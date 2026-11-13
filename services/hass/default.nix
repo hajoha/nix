@@ -118,6 +118,14 @@ in
     ];
   };
 
+  # bind_interface needs the address on `iot` already; at container boot
+  # mosquitto otherwise races network-addresses-iot, exits and crashes in its
+  # shutdown cleanup (the restart then works).
+  systemd.services.mosquitto = {
+    after = [ "network-addresses-iot.service" ];
+    wants = [ "network-addresses-iot.service" ];
+  };
+
   services.home-assistant = {
     enable = true;
     extraPackages =
