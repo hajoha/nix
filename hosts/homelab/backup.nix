@@ -53,6 +53,9 @@ in
       ];
       encryption_passcommand = "cat ${config.sops.secrets.borg_passphrase.path}";
       archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
+      # One series with the archives from Proxmox (pve2-…): list and prune
+      # all of them, not only the ones matching the current hostname.
+      match_archives = "*";
       compression = "lz4";
       one_file_system = true;
       zfs = {
@@ -65,6 +68,15 @@ in
       keep_weekly = 4;
       keep_monthly = 6;
     };
+  };
+
+  # The upstream unit is sandboxed for plain file backups. The zfs hook needs
+  # /dev/zfs (snapshots) and CAP_SYS_ADMIN to mount them under
+  # /run/borgmatic (in the unit's own mount namespace). Drop-in: the
+  # capability is added to the upstream set.
+  systemd.services.borgmatic.serviceConfig = {
+    PrivateDevices = false;
+    CapabilityBoundingSet = [ "CAP_SYS_ADMIN" ];
   };
 
   # Same schedule as before (03:00 + up to 30 min).
