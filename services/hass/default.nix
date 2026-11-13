@@ -118,6 +118,14 @@ in
     ];
   };
 
+  # bind_interface needs the address on `iot` already; at container boot
+  # mosquitto otherwise races network-addresses-iot, exits and crashes in its
+  # shutdown cleanup (the restart then works).
+  systemd.services.mosquitto = {
+    after = [ "network-addresses-iot.service" ];
+    wants = [ "network-addresses-iot.service" ];
+  };
+
   services.home-assistant = {
     enable = true;
     extraPackages =
@@ -227,20 +235,23 @@ in
     enable = true;
     nssmdns4 = true;
     nssmdns6 = true;
-    reflector = true;
-    ipv6 = true;
-    ipv4 = true;
-    publish = {
-      enable = true;
-      addresses = true;
-      userServices = true;
+    settings = {
+      server = {
+        use-ipv4 = true;
+        use-ipv6 = true;
+        allow-interfaces = [
+          "service"
+          "iot"
+          "wpan"
+        ];
+      };
+      publish = {
+        disable-publishing = false;
+        disable-user-service-publishing = false;
+        publish-addresses = true;
+      };
+      reflector.enable-reflector = true;
     };
-    allowInterfaces = [
-      "service"
-      "iot"
-      "wpan"
-    ];
-
   };
 
   systemd.services.otbr-agent = {

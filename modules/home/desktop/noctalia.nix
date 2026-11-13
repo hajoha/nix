@@ -201,7 +201,7 @@ in
           # the mouse is at the edge.
           max-scroll-amount = "0%";
         };
-        warp-mouse-to-focus = true;
+        warp-mouse-to-focus.enable = true;
         workspace-auto-back-and-forth = false;
       };
 

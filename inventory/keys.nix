@@ -1,4 +1,4 @@
-# age keys that are not LXC nodes (those live in nodes.nix as `age`).
+# age keys that are not containers (those live in nodes.nix as `age`).
 {
   # Can decrypt every secret in the repo.
   admins = {
@@ -7,7 +7,7 @@
   };
 
   hosts = {
-    pve2 = "age1tsmms30cyluwl707nmkqaxp6qwmdsmxsf928l0mpnmauhay7nqes3f722s";
+    homelab = "age1pcd76fcxy8d2t43f7d9eck6gg0upq59vtz4lzw0f4jvpmwmauu0qd48xwj";
     hetzner-vps-01 = "age1vdphsnzygqqr233crr2v9gdh0wvktclnz0hrddhtgmzddy0tpplssvrc2r";
     pi3-sendspin = "age150pdxatszqnp2xcgymmlgyqv3lw67epuz4vv8ptsqf5js227w5jq6g4nhs";
   };

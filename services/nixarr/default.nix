@@ -206,6 +206,12 @@ let
   };
 in
 {
+  # In an nspawn container /run/host is read-only. The upstream unit uses
+  # RootDirectory= with BindPaths=/run, so systemd tries to stage os-release
+  # in /run/host and fails (status=226/NAMESPACE). Run without the private
+  # root; the container is the sandbox.
+  systemd.services.transmission.serviceConfig.RootDirectory = lib.mkForce "";
+
   # 1. Core Nixarr Configuration
   services.flaresolverr = {
     enable = true;

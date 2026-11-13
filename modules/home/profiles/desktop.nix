@@ -3,7 +3,7 @@
 {
   imports = [
     inputs.noctalia.homeModules.default
-    inputs.nvf.homeManagerModules.default
+    inputs.nvf.homeModules.default
     ../browser/firefox.nix
     ../mail/thunderbird.nix
     ../editor/nvf.nix

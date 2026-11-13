@@ -1,7 +1,7 @@
 { pkgs, inputs, ... }:
 let
   pkgs-freecad = import inputs.nixpkgs-freecad {
-    inherit (pkgs) system;
+    inherit (pkgs.stdenv.hostPlatform) system;
   };
 in
 {

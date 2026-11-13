@@ -19,6 +19,8 @@
   imports = [ ../../modules/home/profiles/base.nix ];
 
   home.stateVersion = "23.11";
+  # Keep the old yazi wrapper name; setting it silences the default-changed warning.
+  programs.yazi.shellWrapperName = "yy";
   home.packages = [
     (pkgs.callPackage ../../pkgs/scinterface/default.nix { })
   ];

@@ -1,5 +1,5 @@
 {
-  description = "Homelab NixOS LXC Infrastructure";
+  description = "Homelab: NixOS host with service containers, plus workstations";
   nixConfig = {
     extra-substituters = [
       "https://noctalia.cachix.org"
@@ -97,11 +97,10 @@
       };
       deployLib = deployPkgs.deploy-rs.lib;
 
-      lxc = import ./flake/lxc.nix {
+      homelab = import ./flake/homelab.nix {
         inherit
           self
           inputs
-          system
           inventory
           deployLib
           ;
@@ -114,10 +113,17 @@
     {
       nixosModules.ssh-client = import ./modules/nixos/ssh-client.nix;
 
-      nixosConfigurations = hosts.nixosConfigurations // lxc.nixosConfigurations;
+      nixosConfigurations = hosts.nixosConfigurations // {
+        homelab = homelab.nixosConfiguration;
+      };
       inherit (hosts) homeConfigurations;
 
-      deploy.nodes = lxc.deployNodes;
+      deploy.nodes.homelab = homelab.deployNode;
+
+      # One container's system, e.g. `nix build .#containers.nix-paperless`
+      legacyPackages.${system}.containers = lib.mapAttrs (
+        _: c: c.config.system.build.toplevel
+      ) self.nixosConfigurations.homelab.config.containers;
       checks =
         lib.recursiveUpdate
           (builtins.mapAttrs (_: deployLib': deployLib'.deployChecks self.deploy) inputs.deploy-rs.lib)
@@ -132,22 +138,12 @@
           };
 
       packages.${system} = {
-        pve-zfs-backup = import ./pkgs/pve-zfs-backup.nix {
-          inherit pkgs;
-          sopsFile = ./secrets/pve2.enc.yaml;
-        };
         sd-image-pi3 = self.nixosConfigurations.pi3-sendspin.config.system.build.sdImage;
       };
       packages.aarch64-linux.sd-image-pi3 =
         self.nixosConfigurations.pi3-sendspin.config.system.build.sdImage;
 
       apps.${system} = {
-        pve-zfs-backup-install = {
-          type = "app";
-          program = "${self.packages.${system}.pve-zfs-backup}/bin/pve-zfs-backup-install";
-        };
-        default = self.apps.${system}.pve-zfs-backup-install;
-
         # Regenerate .sops.yaml from the inventory (run from the repo root).
         sops-config = {
           type = "app";
@@ -155,6 +151,70 @@
             cp --no-preserve=mode ${sopsYaml} .sops.yaml
             echo "wrote .sops.yaml; re-encrypt changed files with: sops updatekeys <file>"
           ''}";
+        };
+
+        # Ssh host key (= sops identity) for a new homelab container, made
+        # here instead of on the host: writes `age` into inventory/nodes.nix
+        # and the private key into hosts/homelab/container-keys.enc.json.
+        #   nix run .#new-node-key nix-foo
+        new-node-key = {
+          type = "app";
+          program = lib.getExe (
+            pkgs.writeShellApplication {
+              name = "new-node-key";
+              runtimeInputs = with pkgs; [
+                sops
+                openssh
+                ssh-to-age
+                jq
+                gawk
+                coreutils
+                git
+              ];
+              text = ''
+                node=''${1:?usage: nix run .#new-node-key <node>}
+                file=hosts/homelab/container-keys.enc.json
+                nodes=inventory/nodes.nix
+                [ -f "$nodes" ] || { echo "run this from the repo root" >&2; exit 1; }
+                grep -qx "  $node = {" "$nodes" ||
+                  { echo "no node '$node' in $nodes, add it first" >&2; exit 1; }
+                if [ -f "$file" ] && jq -e --arg n "$node" 'has($n)' "$file" >/dev/null; then
+                  echo "$node already has a key in $file" >&2; exit 1
+                fi
+
+                # creation rules must be current before encrypting
+                nix run .#sops-config >/dev/null
+
+                tmp=$(mktemp -d -p "''${XDG_RUNTIME_DIR:-/tmp}")
+                trap 'rm -rf "$tmp"' EXIT
+                ssh-keygen -q -t ed25519 -N "" -C "root@$node" -f "$tmp/key"
+                age=$(ssh-to-age < "$tmp/key.pub")
+
+                if [ -f "$file" ]; then
+                  sops set "$file" "[\"$node\"]" "$(jq -Rs . < "$tmp/key")"
+                else
+                  jq -n --arg n "$node" --rawfile k "$tmp/key" '{($n): $k}' > "$tmp/plain.json"
+                  sops encrypt --filename-override "$file" "$tmp/plain.json" > "$tmp/enc.json"
+                  install -m 644 "$tmp/enc.json" "$file"
+                fi
+                git add "$file"
+
+                # age = "…"; in the node's block (replace or add)
+                awk -v n="$node" -v a="$age" '
+                  $0 == "  " n " = {" { inblock = 1; print; next }
+                  inblock && /^    age = / { print "    age = \"" a "\";"; done = 1; next }
+                  inblock && $0 == "  };" { if (!done) print "    age = \"" a "\";"; inblock = 0 }
+                  { print }
+                ' "$nodes" > "$tmp/nodes.nix"
+                cat "$tmp/nodes.nix" > "$nodes"
+
+                nix run .#sops-config
+                echo
+                echo "$node: age = $age"
+                echo "next: create its secrets (sops services/<svc>/secrets.enc.yaml), deploy"
+              '';
+            }
+          );
         };
       };
 

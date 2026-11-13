@@ -1,4 +1,4 @@
-# Typed view of the inventory for every LXC, set by flake/lxc.nix.
+# Typed view of the inventory, set in every container and on the homelab host.
 #
 #   config.homelab.domain                 "hackler.io"
 #   config.homelab.nodes.<n>.ip / .port   raw address

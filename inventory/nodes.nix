@@ -1,5 +1,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Homelab inventory: one entry per LXC node. This is the ONLY place to add one.
+# Homelab inventory: one entry per container on the homelab host
+# (hosts/homelab). This is the ONLY place to add one.
 #
 #   ip        address on the "service" VLAN (10.60.1.0/24)
 #   hostname  default public name   -> <hostname>.<baseDomain>
@@ -13,9 +14,9 @@
 #   tcp, udp  firewall ports to open (default: none)
 #
 #   service   directory under ./services   (default: name without "nix-";
-#             null = inventory-only node, no nixosConfiguration is built)
-#   deploy    deploy-rs overrides attrset, or false to skip deploy-rs
-#             (default: {} = deployed with defaults)
+#             null = inventory-only node, no container is built)
+#   autoStart false -> the container is built but not started at boot
+#             (default: true). Start by hand: systemctl start container@<name>
 #
 #   gateway   false  -> no default gateway   (default: service VLAN gateway)
 #   dns       list of nameservers, or null to leave unset (default: adguard)
@@ -27,7 +28,7 @@
   # --- Edge Proxy ---
   nix-nginx = {
     ip = "10.60.1.17";
-    age = "age1hlrrupj5kcjawrdkujygpsvtwc4y6td0jcah758sply05p92ps9qa6gsaq";
+    age = "age1hf2xhlpp4xjnjsu868uqhzwg9r5d2cy223ytwq4jue63kenvk9mqy2vefj";
     hostname = "nginx";
     port = 443;
     tcp = [
@@ -66,7 +67,7 @@
   # --- DNS & Ad-Blocking ---
   nix-adguard = {
     ip = "10.60.1.16";
-    age = "age1lxmq9lg6xdytfld525vmep3j0ndv9m6esrzfjfqx25qgygvjxcdqga48y2";
+    age = "age18q08xugmqphq4f5avdpygt2tk9uhyuq4l4f0xz8we3z7e7mwvc6qv77cp0";
     hostname = "adguard";
     port = 3000;
     service = "adguardhome";
@@ -83,7 +84,7 @@
   # --- Database (Postgres) ---
   nix-postgres = {
     ip = "10.60.1.20";
-    age = "age135a39l9pweag59mdvzjs34ndmpza2utd7tew2j6s4fpffnqgf54suqltru";
+    age = "age1ktjfgv8xrxpy8ejyvg82085had5cn59vge0h5r8d4j29p6tjjghsh7jvnv";
     hostname = "postgres";
     port = 5432;
     dns = null;
@@ -93,13 +94,12 @@
   # --- Identity Provider ---
   nix-keycloak = {
     ip = "10.60.1.22";
-    age = "age1cphj25m2fa320yjy0mtt6l0u9k9v78g0s3x69msgx2gxhjdjz5jsu0ztu6";
+    age = "age1lsvmk9n7pz59hugwhena6azczntfk4stet03v582lrukraukkqes54h3c4";
     db = true; # database + user on nix-postgres
     hostname = "keycloak";
     sub = "sso";
     port = 8080;
     tcp = [ 8080 ];
-    deploy.activationTimeout = 600;
   };
 
   # Retired; kept so its IP stays reserved.
@@ -114,7 +114,7 @@
   # --- VPN & Mesh (Headscale) ---
   nix-headscale = {
     ip = "10.60.1.30";
-    age = "age1tr07ymeucgt9rp3cwjp9nmef6zss9jlszjaqw66dekr8mrctv94sghrfv7";
+    age = "age18fc6sktrdeuh0zdkg8wamp4n2gasynjmyzmxehtw8mdmyhr8xy5s6z3j5h";
     hostname = "headscale";
     port = 8080;
     tcp = [
@@ -128,7 +128,7 @@
   # --- Apps ---
   nix-hedgedoc = {
     ip = "10.60.1.23";
-    age = "age1zer03mv8vrpem0tntknsfudv66nlvttzlvdvq05t7434r2w96dtqx7cpmy";
+    age = "age15a7p5ltx5kv94ftkepwffwyungaryv3ny55c5fs5ukmx95jmfvesezfr5u";
     db = true; # database + user on nix-postgres
     hostname = "hedgedoc";
     port = 3005;
@@ -137,7 +137,7 @@
 
   nix-listmonk = {
     ip = "10.60.1.24";
-    age = "age14ne78pjpeqhxaclldk5dhumc208z6gyeepecc6sm3aprmt5q3ssq7xml8l";
+    age = "age104skts33cen67tkcpryutzppxpzmg6jy4xr4zuk7fh3vrsf4zdwq2k5q3n";
     db = true; # database + user on nix-postgres
     hostname = "listmonk";
     sub = "newsletter";
@@ -147,7 +147,7 @@
 
   nix-paperless = {
     ip = "10.60.1.32";
-    age = "age1jau78xmks5656ck6vlv4g3hg9j3gnjh8u2l552q9v2lmxazhm4ts474ayc";
+    age = "age1zuvatjt9fl08tuye2e5vz2j2q9yt59607rza00dleygr559294gqavxert";
     db = true; # database + user on nix-postgres
     hostname = "paperless";
     port = 28981;
@@ -156,7 +156,7 @@
 
   nix-immich = {
     ip = "10.60.1.35";
-    age = "age1y9ykrzglk2w9sj546awh4qr0pfhq7xlm8nnq4hvmg8gpqyc6md2qzyjap8";
+    age = "age19htsz09n6jkpvl58nwqkuqq6yutckg8jnq7nfcv6wqtsz2eeuvfsvs6gjr";
     db = true; # database + user on nix-postgres
     hostname = "immich";
     sub = "photo";
@@ -166,7 +166,7 @@
 
   nix-commafeed = {
     ip = "10.60.1.36";
-    age = "age10ewzse5566z4uz5dng54mqwr2cnqp579uzt99235nq5qj0ju2vnszqn945";
+    age = "age1au0mwv5j852amftsellzfyuc26xtceuy4w2jzswxh77fzlkfku4spgx2eq";
     db = true; # database + user on nix-postgres
     hostname = "commafeed";
     sub = "rss";
@@ -176,18 +176,17 @@
 
   nix-sure = {
     ip = "10.60.1.37";
-    age = "age13q9z3xle955eumzurctg5huxrq836f2frgp9529mp0v3lz94v3fsw7r7up";
+    age = "age1qx8eum7sdfv8935tps0dnhysq3h7q3fjqep9usr6clpyajpc8gyqqmq404";
     db = true; # database + user on nix-postgres
     hostname = "sure";
     sub = "sure";
     port = 3000;
     tcp = [ 3000 ];
-    deploy.activationTimeout = 600; # db:prepare on first boot is slow
   };
 
   nix-opencloud = {
     ip = "10.60.1.14";
-    age = "age16a49l2a56x7cggxrm435s4lldxsq3ntwclc8z8426kg953xk5pjqpcytwd";
+    age = "age1va00gwuz7fkjpctd6zvx45t87e8cg86r5xs0gae2022nzx93fv2sr35df6";
     hostname = "opencloud";
     port = 9200;
     tcp = [ 9100 ];
@@ -195,31 +194,18 @@
 
   nix-tranquil = {
     ip = "10.60.1.39";
-    age = "age12s7wtm5k630w7q7znk6g3zz5299gym697clpvtmar56cltudx4qq6lfs4r";
+    age = "age1xs3c6d6kujddr8s2qxkk22z50fu8gevt2qhf4zyljrl73tx52y0s069ptc";
     db = true; # database + user on nix-postgres
     hostname = "tranquil";
     sub = "pds"; # -> pds.hackler.io, handles at <name>.pds.hackler.io
     port = 3000;
     tcp = [ 3000 ];
-    deploy = false;
-  };
-
-  nix-sparkyfitness = {
-    ip = "10.60.1.38";
-    hostname = "sparkyfitness";
-    sub = "fitness";
-    port = 80;
-    # The module's own nginx serves the frontend + API on :80; nix-nginx
-    # terminates TLS and forwards here.
-    tcp = [ 80 ];
-    # Not built yet: services/sparkyfitness needs an `inputs.sparkyfitness`
-    # flake input that does not exist.
-    service = null;
+    autoStart = false;
   };
 
   nix-arr = {
     ip = "10.60.1.31";
-    age = "age1278lr6sh049xr4t5e9gw6mv5qlnkkmag32cem9ffd2fvf7eu3axq8hdpx6";
+    age = "age1qszselhewckzku7657c48upl77xexwj2j4eascwlk9ju8sstpq7s5znpvw";
     hostname = "nixarr";
     # Nixarr has no single port; Jellyfin is the primary UI.
     port = 8096;
@@ -246,18 +232,18 @@
 
   nix-flathunter = {
     ip = "10.60.1.40";
-    age = "age1cxvhh5jqfxgsgyd0ljsdvgn0lyqz6pdshxsl0w7tjlv7wy6ufdcs994vw4";
+    age = "age1d03hq7wn8lzl8trhdf83d4c6zkynrdkuxee5ct8xd5gm4jcx9yfs2r03vc";
     hostname = "flathunter";
     # Outbound-only crawler; nothing listens unless the web UI is enabled
     # (then add `tcp = [ 8080 ];` and a `sub`).
     port = 8080;
-    deploy = false;
+    autoStart = false;
   };
 
   # --- Smart Home ---
   nix-homeassistant = {
     ip = "10.60.1.33";
-    age = "age1jj90rpvwju98ssmp4n2755fa6zmcyql489k8qh6hnnwfg4fmdcyscm4k3h";
+    age = "age1wj67p0vyn4tractla52dzq8spjz4gn34j20e94ds4zg24vxcea8qnu0vpa";
     db = true; # database + user on nix-postgres
     hostname = "homeassistant";
     port = 8123;
@@ -307,12 +293,6 @@
           via = "fd00:60:1::1";
         }
       ];
-      interfaces.wireguard.ipv4.addresses = [
-        {
-          address = "10.60.99.33";
-          prefixLength = 24;
-        }
-      ];
       firewall.allowedUDPPortRanges = [
         {
           from = 6001;
@@ -360,39 +340,39 @@
       9096 # Loki gRPC
       12345
     ];
-    deploy = false;
   };
 
   nix-grafana = {
     ip = "10.60.1.25";
     sopsReaders = [ "nix-influx" ];
-    age = "age1sj998jequkhv0qqrx8futqvemy75080guz7zna0v6kz5hvtfxv6qtacary";
+    age = "age1knduw4awu7sycxvv7dcajldcwts7ppxgctasvecuw2xfx33fccasqrmut4";
     hostname = "grafana";
     port = 3000;
     tcp = [
       3000
       3100
     ];
-    deploy = false;
   };
 
   nix-influx = {
     ip = "10.60.1.26";
-    age = "age12pdk27hcxvk8fgc7r0rtt8l4tzjaghppgj3suyuz4vuqzlnft43sa6cjsy";
+    age = "age1u437e92k3dg0dlkex8sr856yrtz4yqt0w66ey0xu5qk0e4gxxgqqlq9fdd";
     hostname = "influxv2";
     port = 8086;
     service = "influxv2";
     sopsReaders = [ "nix-grafana" ];
     tcp = [ 8086 ];
-    deploy = false;
+    autoStart = false; # starts empty, enable when ready
   };
 
   # --- Infra ---
+  # Retired: the homelab host builds for itself now (services/build is
+  # imported by hosts/homelab). Kept so its IP stays reserved.
   nix-build = {
     ip = "10.60.1.15";
     age = "age1wnyjcxf6jjc60tdgaf4eaf3hcmpkvx25mjtc6tmhy8j9689tp9lq7nw262";
     hostname = "build";
     port = 0;
-    deploy = false;
+    service = null;
   };
 }
