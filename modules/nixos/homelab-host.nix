@@ -53,7 +53,7 @@ let
   usedVlans = unique (concatMap vlansOf (lib.attrValues serviceNodes));
 
   mkContainer = name: node: {
-    autoStart = node.autoStart;
+    autoStart = node.autoStart && params.startContainers;
     privateNetwork = true;
     macvlans = vlansOf node;
     specialArgs = { inherit inputs self; };

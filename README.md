@@ -22,6 +22,8 @@ hosts/homelab/
   network.nix           host management address
   containers.nix        per-container extras: devices, capabilities, data binds
   backup.nix            borgmatic to backup-01 (ZFS snapshots)
+  lxc-import.nix        homelab-import-lxc / homelab-age-keys (one-off migration)
+  disko.nix, image.nix  NVMe layout; raw image: nix build .#homelab-image
 modules/
   nixos/homelab-host.nix   inventory -> containers.<name>, datasets, keys, VLANs
   nixos/container-base.nix base for every container
@@ -30,7 +32,7 @@ modules/
   home/…                browser, mail, desktop, editor, programs
 services/<name>/        one per container: default.nix + its *.enc.yaml secrets
 hosts/<name>/           other machines (hardware, disko, home.nix)
-scripts/                lxc-to-container.sh (one-off Proxmox migration)
+scripts/                container-to-lxc.sh (undo the import on the Proxmox clone)
 pkgs/                   local packages
 secrets/                secrets not tied to a service
 ```
@@ -49,10 +51,10 @@ secrets/                secrets not tied to a service
   inventory IP. The router sees each container as its own machine, exactly
   like the LXCs. (The host itself cannot talk to its containers over macvlan;
   use `nixos-container root-login <node>` or go via the router.)
-- Secrets: every container keeps its old ssh host key
-  (`/var/lib/homelab/keys/<node>`, bind-mounted read-only), so its age key in
-  `nodes.nix` and `.sops.yaml` are unchanged. A new node gets a key generated
-  on first start.
+- Secrets: every container has its own ssh host key
+  (`/var/lib/homelab/keys/<node>`, dataset `<pool>/homelab-keys`,
+  bind-mounted read-only), generated on first start; its age recipient is the
+  node's `age` in `nodes.nix` (`homelab-age-keys` prints them all).
 
 ```bash
 nixos-container list
@@ -128,85 +130,108 @@ nix flake check                               # also fails if .sops.yaml is stal
 
 ## Migrating from Proxmox
 
-### 1. Parameters
+NixOS goes onto a separate 512G NVMe (Samsung PM9A1); the Proxmox NVMe
+(WD SN770 1TB) is never written to. It is the import source for the LXC data
+and the fallback; the dd clone on the SSD is an extra backup. Every machine
+gets fresh ssh keys and the secrets are re-encrypted from the laptop (admin
+keys can decrypt everything).
 
-Already read off pve2 and filled into `hosts/homelab/params.nix` and
-`hardware.nix` (hostid, NIC + MAC, VLANs 3001/3050/3060, mgmt 10.60.0.4,
-Intel P530, radio, storage box). To re-check:
+Disks: `PVE` = `/dev/disk/by-id/nvme-WD_BLACK_SN770_1TB_24453G405540`,
+`NEW` = the Samsung, in the PC's adapter
+`/dev/disk/by-id/ata-SAMSUNG_MZVL4512HBLU-00BL7_S67VNF1TB39494`.
 
-```bash
-hostid; zpool status; zfs list; lvs; lsblk; ip -br addr; cat /etc/network/interfaces
-for f in /etc/pve/lxc/*.conf; do echo "--- $f"; sed '/^\[/q' $f; done
-```
-
-### 2. Move every LXC onto the pool (on pve2, right before the install)
-
-Make sure the LVM thin pool is not full (`lvs`: `data` Data%), then:
+### 1. Back up the Proxmox NVMe (PC, optional but done)
 
 ```bash
-for m in 100:nix-unifi-controller 101:nix-opencloud 103:nix-adguard \
-         105:nix-postgres 106:nix-arr 107:nix-hedgedoc 108:nix-headscale \
-         109:nix-sure 110:nix-grafana 111:nix-nginx 112:nix-keycloak \
-         113:nix-immich 114:nix-paperless 115:nix-homeassistant \
-         117:nix-listmonk 118:nix-loki 119:nix-commafeed \
-         120:nix-flathunter 121:nix-tranquil; do
-  ./scripts/lxc-to-container.sh ${m%%:*} ${m#*:} || break
-done
+dd if=$PVE of=/dev/disk/by-id/<SSD> bs=64M iflag=fullblock conv=fsync status=progress
+cmp -n $(blockdev --getsize64 $PVE) $PVE /dev/disk/by-id/<SSD> && echo CLONE OK
 ```
 
-(102 nix-build is retired; 104 claude-code and 116 sparkyfitness are not
-migrated.) Per CT, the LVM rootfs is copied into `<pool>/containers/<node>`;
-every `mpN` that is a subvolume on the pool (postgres, immich, arr,
-opencloud) is renamed to a child dataset mounted at the same path inside the
-container root (no copy); unprivileged id shifts are undone; the ssh host key
-goes to `<pool>/homelab-keys` (mounted at `/var/lib/homelab/keys`). Then save
-the host's own keys there too:
+Afterwards never have the clone and `PVE` attached to the same machine at the
+same time (identical LVM ids).
+
+### 2. Install NixOS onto the 512G NVMe (PC)
+
+`hosts/homelab/params.nix` has `startContainers = false`, so the first boot
+brings up the host only. `disko-install` partitions the disk (layout from
+`hosts/homelab/disko.nix`) and runs `nixos-install` onto it directly, with no
+VM and no image. `--disk nvme` maps the config's disk to the name it has on
+the PC.
 
 ```bash
-K=/var/lib/homelab/keys        # mountpoint of <pool>/homelab-keys
-install -d -m 700 $K/_host
-cp /etc/ssh/ssh_host_ed25519_key* $K/_host/     # host key (sops recipient pve2)
-cp -r /root/.ssh $K/_host/root-ssh              # storage box key for borgmatic
-pct pull 102 /etc/nix/signing-key.sec $K/_host/signing-key.sec   # if nix-build signed
+D=$NEW
+sudo wipefs -af $D-part* ; sudo wipefs -af $D ; sudo partprobe $D   # disko won't reformat existing filesystems
+cd ~/git/home-nix
+sudo env PATH="/nix/var/nix/profiles/system/sw/bin:/run/current-system/sw/bin:$PATH" \
+  $(which nix) --extra-experimental-features 'nix-command flakes' \
+  run 'github:nix-community/disko/latest#disko-install' -- \
+  --flake "path:$PWD#homelab" --disk nvme $D
+lsblk -o NAME,SIZE,PARTLABEL,FSTYPE,LABEL $D   # disk-nvme-ESP / -swap / -root
 ```
 
-### 3. Install NixOS next to Proxmox
+- The `PATH` is needed on non-NixOS (Ubuntu's sudo PATH has no `mount` for
+  the chroot step).
+- `setting up secrets… failed` is expected: no host key yet, secrets get
+  re-encrypted in step 4.
+- Evaluation needs ~7 GB RAM.
+- If it fails, check `/mnt/disko-install-root`. When nothing is mounted there,
+  remove it (`chattr -i …/var/empty` first, it is immutable).
 
-pve2's NVMe has ~455 G unpartitioned after Proxmox' LVM (p1-p3). NixOS gets
-its own ESP and root there, Proxmox stays bootable from the firmware boot
-menu (F11) as a fallback. Both use the same hostid (`c78d3ae7`), so the pool
-imports on either without `-f`, but never `zpool upgrade` while Proxmox is
-still the fallback.
+Alternative without a disk attached: `nix build .#homelab-image` builds a raw
+image in a VM (KVM, ~5 GB RAM) to `dd` onto the disk.
 
-Boot the NixOS installer (USB), then:
+### 3. First boot (server: NEW + PVE + HDDs)
+
+Put the Samsung into the server; `PVE` stays attached (second M.2 slot or a
+USB adapter, or the clone SSD instead, never both). Select the Samsung in the
+firmware boot menu (`efibootmgr -o` to make it permanent). The root partition
+grows to the full disk, the pool is imported (same hostid), no container
+starts. `ssh-keygen -R 10.60.0.4` on the laptop (new host key), then on the
+host:
 
 ```bash
-# new partitions in the free space at the end of the NVMe
-sgdisk -n 4:0:+1G -t 4:ef00 -c 4:NIXBOOT -n 5:0:0 -t 5:8300 -c 5:nixos /dev/nvme0n1
-mkfs.vfat -F32 -n NIXBOOT /dev/nvme0n1p4
-mkfs.ext4 -L nixos /dev/nvme0n1p5
-mount /dev/disk/by-label/nixos /mnt
-mkdir -p /mnt/boot && mount /dev/disk/by-label/NIXBOOT /mnt/boot
-
-zpool import -f -R /mnt threetbpool
-K=/mnt/var/lib/homelab/keys/_host
-install -d -m 700 /mnt/etc/ssh /mnt/root/.ssh /mnt/etc/nix
-cp $K/ssh_host_ed25519_key* /mnt/etc/ssh/
-cp $K/root-ssh/id_ed25519_hetzner* $K/root-ssh/known_hosts /mnt/root/.ssh/
-cp $K/signing-key.sec /mnt/etc/nix/ 2>/dev/null || true
-
-git clone https://github.com/hajoha/nix /tmp/home-nix && cd /tmp/home-nix
-git switch nixos-host
-nixos-generate-config --show-hardware-config   # compare with hosts/homelab/hardware.nix
-nixos-install --flake .#homelab --no-root-passwd
-zpool export threetbpool
-reboot
+homelab-import-lxc                       # all CTs, or: homelab-import-lxc nix-paperless
+zfs list -r threetbpool/containers       # every node + postgres/immich/arr/opencloud data
+ls -ln /var/lib/nixos-containers/nix-postgres/var/lib/postgresql   # small uids, not 100xxx
+systemctl start homelab-container-prepare   # generates the container ssh keys
+homelab-age-keys                         # prints host + every container's age key
+ssh-keygen -t ed25519 -N "" -f /root/.ssh/id_ed25519_hetzner   # storage box (backup)
 ```
 
-systemd-boot becomes the default boot entry; pick "Proxmox"/"debian" in the
-firmware boot menu to go back. Note that after step 2 the Proxmox CTs are
-stopped and their data datasets renamed, so Proxmox is a fallback for the
-host, not for the services (`zfs rename` back + `onboot: 1` to undo a CT).
+`homelab-import-lxc` copies each LXC rootfs from `PVE` (mounted read-only)
+into `<pool>/containers/<node>` and renames the data subvolumes (postgres,
+immich, arr, opencloud) into place (`@pre-migration` snapshot first),
+undoing the unprivileged id shift. Afterwards `PVE` can be removed and kept
+on the shelf.
+
+Authorise the new storage box key (Hetzner Robot, or with the password):
+`cat /root/.ssh/id_ed25519_hetzner.pub | ssh -p23 u557074@u557074.your-storagebox.de install-ssh-key`
+
+### 4. Re-encrypt and start (laptop)
+
+```bash
+# paste the keys from homelab-age-keys:
+#   inventory/nodes.nix  `age = "age1…";` per node
+#   inventory/keys.nix   hosts.pve2
+nix run .#sops-config
+for f in $(git ls-files '*.enc.*'); do sops updatekeys -y "$f"; done
+# hosts/homelab/params.nix: startContainers = true;
+git commit -am "homelab: new keys, start containers"
+deploy .#homelab
+ssh root@10.60.0.4 systemctl start machines.target
+```
+
+Check: `machinectl`, `systemctl --failed`, `journalctl -M nix-postgres -u postgresql`,
+`journalctl -M nix-paperless -b | grep -i sops`, the public vhosts.
+
+### Going back to Proxmox
+
+Boot from `PVE` again (put it back, pick it in the boot menu). Its LVM CTs
+are as they were; only postgres, immich, arr and opencloud need their data
+subvolume back: `scripts/container-to-lxc.sh <vmid> <node>` renames it back
+and re-applies the +100000 id shift. Their Proxmox host key and CT keys are
+unchanged, so the old secrets (git history before the re-encryption) still
+work.
 
 ## Housekeeping
 

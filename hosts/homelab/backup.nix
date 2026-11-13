@@ -18,8 +18,8 @@ in
     sopsFile = ../../secrets/pve2.enc.yaml;
   };
 
-  # Hetzner storage box. The key is copied from pve2 to
-  # /root/.ssh/id_ed25519_hetzner during the install (see README).
+  # Hetzner storage box. New key on the host, authorised once (README):
+  #   ssh-keygen -t ed25519 -N "" -f /root/.ssh/id_ed25519_hetzner
   programs.ssh.extraConfig = ''
     Host backup-01
       HostName u557074.your-storagebox.de

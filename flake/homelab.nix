@@ -25,6 +25,7 @@ in
     };
     modules = [
       ../hosts/homelab/configuration.nix
+      inputs.disko.nixosModules.disko
       ../modules/nixos/homelab.nix
       inventory.homelabConfig
       inputs.sops-nix.nixosModules.sops

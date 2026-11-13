@@ -10,6 +10,20 @@
   # lets the pool import without `-f`.
   hostId = "c78d3ae7";
 
+  # The NVMe that disko wipes and partitions (hosts/homelab/disko.nix): the
+  # spare Samsung PM9A1 512G. The Proxmox NVMe (nvme-WD_BLACK_SN770_1TB_
+  # 24453G405540) stays untouched as fallback and import source.
+  # by-id so a second disk can never be picked. Name as seen in the server's
+  # M.2 slot; in the PC's adapter the same disk shows up as
+  # ata-SAMSUNG_MZVL4512HBLU-00BL7_S67VNF1TB39494.
+  # (Only disko formatting uses this; the image mounts by partition label.)
+  rootDisk = "/dev/disk/by-id/nvme-SAMSUNG_MZVL4512HBLU-00BL7_S67VNF1TB39494";
+
+  # false for the first boot: containers stay off until the LXC data is
+  # imported (homelab-import-lxc) and the secrets are re-encrypted for the
+  # new keys. Then set true and deploy.
+  startContainers = false;
+
   # ZFS data pool on the 4 HDDs (stays as it is, gets imported at boot).
   pool = "threetbpool";
 

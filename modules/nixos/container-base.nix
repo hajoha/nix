@@ -23,8 +23,8 @@ in
     ../../services/ssh/root.nix
   ];
 
-  # Same key as the old LXC (copied to the host during migration), so
-  # known_hosts and the age recipients in .sops.yaml stay valid.
+  # Generated on the host by homelab-container-prepare; its age recipient is
+  # the node's `age` in inventory/nodes.nix (`homelab-age-keys` prints it).
   services.openssh.hostKeys = [
     {
       path = "${hostKeyDir}/ssh_host_ed25519_key";
