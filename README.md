@@ -200,7 +200,6 @@ zfs list -r threetbpool/containers       # every node + postgres/immich/arr/open
 ls -ln /var/lib/nixos-containers/nix-postgres/var/lib/postgresql   # small uids, not 100xxx
 systemctl start homelab-container-prepare   # generates the container ssh keys
 homelab-age-keys                         # prints host + every container's age key
-ssh-keygen -t ed25519 -N "" -f /root/.ssh/id_ed25519_hetzner   # storage box (backup)
 ```
 
 `homelab-import-lxc` copies each LXC rootfs from `PVE` (mounted read-only)
@@ -209,8 +208,9 @@ immich, arr, opencloud) into place (`@pre-migration` snapshot first),
 undoing the unprivileged id shift. Afterwards `PVE` can be removed and kept
 on the shelf.
 
-Authorise the new storage box key (Hetzner Robot, or with the password):
-`cat /root/.ssh/id_ed25519_hetzner.pub | ssh -p23 u557074@u557074.your-storagebox.de install-ssh-key`
+Backup: add the host key `/etc/ssh/ssh_host_ed25519_key.pub` to the storage
+box (Hetzner console → SSH keys), then `ssh backup-01 ls` and
+`systemctl start borgmatic`.
 
 ### 4. Re-encrypt and start (laptop)
 

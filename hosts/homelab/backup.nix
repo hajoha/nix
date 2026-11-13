@@ -18,14 +18,16 @@ in
     sopsFile = ../../secrets/pve2.enc.yaml;
   };
 
-  # Hetzner storage box. New key on the host, authorised once (README):
-  #   ssh-keygen -t ed25519 -N "" -f /root/.ssh/id_ed25519_hetzner
+  # Hetzner storage box. Logs in with the host's ssh key, whose public part
+  # (/etc/ssh/ssh_host_ed25519_key.pub) is added to the box in the Hetzner
+  # console (SSH keys).
   programs.ssh.extraConfig = ''
     Host backup-01
       HostName u557074.your-storagebox.de
       User u557074
       Port 23
-      IdentityFile /root/.ssh/id_ed25519_hetzner
+      IdentityFile /etc/ssh/ssh_host_ed25519_key
+      IdentitiesOnly yes
       StrictHostKeyChecking accept-new
   '';
 
