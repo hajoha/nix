@@ -1,5 +1,5 @@
 {
-  description = "Homelab NixOS LXC Infrastructure";
+  description = "Homelab: NixOS host with service containers, plus workstations";
   nixConfig = {
     extra-substituters = [
       "https://noctalia.cachix.org"
@@ -97,11 +97,10 @@
       };
       deployLib = deployPkgs.deploy-rs.lib;
 
-      lxc = import ./flake/lxc.nix {
+      homelab = import ./flake/homelab.nix {
         inherit
           self
           inputs
-          system
           inventory
           deployLib
           ;
@@ -114,10 +113,17 @@
     {
       nixosModules.ssh-client = import ./modules/nixos/ssh-client.nix;
 
-      nixosConfigurations = hosts.nixosConfigurations // lxc.nixosConfigurations;
+      nixosConfigurations = hosts.nixosConfigurations // {
+        homelab = homelab.nixosConfiguration;
+      };
       inherit (hosts) homeConfigurations;
 
-      deploy.nodes = lxc.deployNodes;
+      deploy.nodes.homelab = homelab.deployNode;
+
+      # One container's system, e.g. `nix build .#containers.nix-paperless`
+      legacyPackages.${system}.containers = lib.mapAttrs (
+        _: c: c.config.system.build.toplevel
+      ) self.nixosConfigurations.homelab.config.containers;
       checks =
         lib.recursiveUpdate
           (builtins.mapAttrs (_: deployLib': deployLib'.deployChecks self.deploy) inputs.deploy-rs.lib)
@@ -131,23 +137,11 @@
             '';
           };
 
-      packages.${system} = {
-        pve-zfs-backup = import ./pkgs/pve-zfs-backup.nix {
-          inherit pkgs;
-          sopsFile = ./secrets/pve2.enc.yaml;
-        };
-        sd-image-pi3 = self.nixosConfigurations.pi3-sendspin.config.system.build.sdImage;
-      };
+      packages.${system}.sd-image-pi3 = self.nixosConfigurations.pi3-sendspin.config.system.build.sdImage;
       packages.aarch64-linux.sd-image-pi3 =
         self.nixosConfigurations.pi3-sendspin.config.system.build.sdImage;
 
       apps.${system} = {
-        pve-zfs-backup-install = {
-          type = "app";
-          program = "${self.packages.${system}.pve-zfs-backup}/bin/pve-zfs-backup-install";
-        };
-        default = self.apps.${system}.pve-zfs-backup-install;
-
         # Regenerate .sops.yaml from the inventory (run from the repo root).
         sops-config = {
           type = "app";

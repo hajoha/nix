@@ -1,5 +1,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Homelab inventory: one entry per LXC node. This is the ONLY place to add one.
+# Homelab inventory: one entry per container on the homelab host
+# (hosts/homelab). This is the ONLY place to add one.
 #
 #   ip        address on the "service" VLAN (10.60.1.0/24)
 #   hostname  default public name   -> <hostname>.<baseDomain>
@@ -13,9 +14,9 @@
 #   tcp, udp  firewall ports to open (default: none)
 #
 #   service   directory under ./services   (default: name without "nix-";
-#             null = inventory-only node, no nixosConfiguration is built)
-#   deploy    deploy-rs overrides attrset, or false to skip deploy-rs
-#             (default: {} = deployed with defaults)
+#             null = inventory-only node, no container is built)
+#   autoStart false -> the container is built but not started at boot
+#             (default: true). Start by hand: systemctl start container@<name>
 #
 #   gateway   false  -> no default gateway   (default: service VLAN gateway)
 #   dns       list of nameservers, or null to leave unset (default: adguard)
@@ -99,7 +100,6 @@
     sub = "sso";
     port = 8080;
     tcp = [ 8080 ];
-    deploy.activationTimeout = 600;
   };
 
   # Retired; kept so its IP stays reserved.
@@ -182,7 +182,6 @@
     sub = "sure";
     port = 3000;
     tcp = [ 3000 ];
-    deploy.activationTimeout = 600; # db:prepare on first boot is slow
   };
 
   nix-opencloud = {
@@ -201,7 +200,7 @@
     sub = "pds"; # -> pds.hackler.io, handles at <name>.pds.hackler.io
     port = 3000;
     tcp = [ 3000 ];
-    deploy = false;
+    autoStart = false; # CT was stopped on pve2
   };
 
   nix-sparkyfitness = {
@@ -251,7 +250,7 @@
     # Outbound-only crawler; nothing listens unless the web UI is enabled
     # (then add `tcp = [ 8080 ];` and a `sub`).
     port = 8080;
-    deploy = false;
+    autoStart = false; # CT was stopped on pve2
   };
 
   # --- Smart Home ---
@@ -307,12 +306,6 @@
           via = "fd00:60:1::1";
         }
       ];
-      interfaces.wireguard.ipv4.addresses = [
-        {
-          address = "10.60.99.33";
-          prefixLength = 24;
-        }
-      ];
       firewall.allowedUDPPortRanges = [
         {
           from = 6001;
@@ -360,7 +353,6 @@
       9096 # Loki gRPC
       12345
     ];
-    deploy = false;
   };
 
   nix-grafana = {
@@ -373,7 +365,6 @@
       3000
       3100
     ];
-    deploy = false;
   };
 
   nix-influx = {
@@ -384,15 +375,17 @@
     service = "influxv2";
     sopsReaders = [ "nix-grafana" ];
     tcp = [ 8086 ];
-    deploy = false;
+    autoStart = false; # had no CT on pve2: starts empty, enable when ready
   };
 
   # --- Infra ---
+  # Retired: the homelab host builds for itself now. Kept so its IP stays
+  # reserved (and so its age key can still read services/build secrets).
   nix-build = {
     ip = "10.60.1.15";
     age = "age1wnyjcxf6jjc60tdgaf4eaf3hcmpkvx25mjtc6tmhy8j9689tp9lq7nw262";
     hostname = "build";
     port = 0;
-    deploy = false;
+    service = null;
   };
 }

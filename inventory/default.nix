@@ -1,6 +1,6 @@
-# Turns the plain data in ./nodes.nix into the `nodes` attrset that every
-# service module receives via specialArgs. Each node keeps its original
-# fields (ip, hostname, sub, port, …) and gains a generated `networking`.
+# Turns the plain data in ./nodes.nix into `nodes` (one per container on the
+# homelab host). Each node keeps its original fields (ip, hostname, sub,
+# port, …) and gains a generated `networking`.
 { lib }:
 let
   inherit (lib) optionalAttrs recursiveUpdate foldl';
@@ -8,7 +8,7 @@ let
   baseDomain = "hackler.io";
   keycloakRealm = "main";
 
-  # The "service" VLAN every LXC sits on.
+  # The "service" VLAN every container sits on.
   serviceNet = {
     interface = "service";
     prefixLength = 24;
@@ -55,20 +55,41 @@ let
       "gateway"
       "dns"
       "extraNetworking"
+      "autoStart"
     ]
     // {
       inherit name;
       networking = mkNetworking n;
       service = if n ? service then n.service else lib.removePrefix "nix-" name;
-      deploy = n.deploy or { };
+      autoStart = n.autoStart or true;
     };
   nodes = lib.mapAttrs mkNode raw;
-in
-{
-  inherit baseDomain keycloakRealm nodes;
 
   # Service names that get a database on nix-postgres (see `db` in nodes.nix).
   databases = lib.mapAttrsToList (name: _: nodes.${name}.service) (
     lib.filterAttrs (_: n: n.db or false) raw
   );
+in
+{
+  inherit
+    baseDomain
+    keycloakRealm
+    nodes
+    databases
+    ;
+
+  # Module that fills the typed `homelab.*` options (modules/nixos/homelab.nix)
+  # in every container.
+  homelabConfig.homelab = {
+    domain = baseDomain;
+    sso.realm = keycloakRealm;
+    inherit databases;
+    nodes = lib.mapAttrs (
+      _: n:
+      {
+        inherit (n) ip port hostname;
+      }
+      // lib.optionalAttrs (n ? sub) { inherit (n) sub; }
+    ) nodes;
+  };
 }
