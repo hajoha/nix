@@ -94,6 +94,11 @@ in
         # Provides the base domain so Headplane can construct /admin/oidc/callback
         public_url = nodes.nix-headscale.url;
         api_key_path = config.sops.secrets."headplane/oidcHeadscaleApiKey".path;
+        # Same path as the module default, but as a string: the headplane
+        # module walks its settings with filterAttrsRecursive, which would
+        # otherwise descend into the config-file derivation and trip every
+        # deprecated `stdenv.is*` alias.
+        config_path = "${config.services.headscale.configFile}";
       };
 
       oidc = {

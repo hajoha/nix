@@ -249,5 +249,9 @@ in
   documentation.nixos.enable = false;
   boot.tmp.useTmpfs = false;
 
+  # ZFS is pulled in by the sd-image base module; the root here is ext4, so
+  # the legacy force-import has nothing to do. Opt in to the 26.11 default.
+  boot.zfs.forceImportRoot = false;
+
   system.stateVersion = "25.11";
 }
