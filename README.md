@@ -23,6 +23,8 @@ hosts/homelab/
   containers.nix        per-container extras: devices, capabilities, data binds
   data-volumes.nix      container data that lives on the HDD pool
   backup.nix            borgmatic to backup-01 (ZFS snapshots)
+  container-keys.nix    installs container ssh keys from container-keys.enc.json
+  secrets.enc.yaml      host secrets (borg passphrase)
   disko.nix             NVMe layout
 modules/
   nixos/homelab-host.nix   inventory -> containers.<name>, datasets, keys, VLANs
@@ -55,9 +57,9 @@ secrets/                secrets not tied to a service
   inventory IP. The router sees each container as its own machine. (The host itself cannot talk to its containers over macvlan;
   use `nixos-container root-login <node>` or go via the router.)
 - Secrets: every container has its own ssh host key
-  (`/var/lib/homelab/keys/<node>`, bind-mounted read-only), generated on
-  first start; its age recipient is the
-  node's `age` in `nodes.nix` (`homelab-age-keys` prints them all).
+  (`/var/lib/homelab/keys/<node>`, bind-mounted read-only) as its sops
+  identity; its age recipient is the node's `age` in `nodes.nix`. See
+  [Container keys](#container-keys).
 
 ```bash
 nixos-container list
@@ -146,6 +148,41 @@ sops updatekeys services/hedgedoc/secrets.enc.yaml   # after recipients changed
 nix flake check                               # also fails if .sops.yaml is stale
 ```
 
+### Container keys
+
+Each container decrypts its secrets with its own ssh host key, so a
+compromised container can only read its own secrets. The keys come from
+one of two places:
+
+- **From the repo** (all new containers): `nix run .#new-node-key <node>`
+  generates the key on the laptop. The private key is stored sops-encrypted
+  in `hosts/homelab/container-keys.enc.json` (one JSON entry per node,
+  readable by the homelab host and the admins), the matching `age` goes into
+  `nodes.nix`. On the host, sops-nix decrypts it to
+  `/run/secrets/container-key-<node>` and `homelab-container-prepare` copies
+  it to `/var/lib/homelab/keys/<node>/` before the container starts.
+- **Generated on the host** (containers that are not in that file):
+  `homelab-container-prepare` creates the key on first start; read its age key
+  on the host with `homelab-age-keys`, then add it to `nodes.nix` and deploy
+  again.
+
+```bash
+nix run .#new-node-key nix-foo                       # new key for a node in nodes.nix
+
+# move an existing host-generated key into the repo (age stays the same)
+sops set hosts/homelab/container-keys.enc.json '["nix-foo"]' \
+  "$(ssh root@10.60.0.4 cat /var/lib/homelab/keys/nix-foo/ssh_host_ed25519_key | jq -Rs .)"
+
+# rotate a key: drop it, create a new one, re-encrypt the node's secrets
+sops unset hosts/homelab/container-keys.enc.json '["nix-foo"]'
+nix run .#new-node-key nix-foo
+sops updatekeys -y services/foo/*.enc.yaml
+deploy .#homelab && ssh root@10.60.0.4 systemctl restart container@nix-foo
+```
+
+Keys from the repo survive a reinstall of the host; only
+`container-keys.enc.json` itself has to be re-encrypted for the new host key.
+
 ## (Re)installing the homelab host
 
 Boot a NixOS installer from USB **in UEFI mode** on the box, ssh into it and
@@ -164,11 +201,12 @@ efibootmgr        # "Linux Boot Manager" must be there and first
 - The board (Fujitsu D3417-A) only boots the NVMe through a firmware boot
   entry. `nixos-install` writes it, but only from an installer booted in
   UEFI mode. CSM off, Secure Boot off.
-- The new host and containers get fresh ssh keys, so the secrets have to be
-  re-encrypted: set `startContainers = false` before installing, then on the
-  host `systemctl start homelab-container-prepare; homelab-age-keys`, put the
-  keys into `inventory/keys.nix` (`hosts.homelab`) and `inventory/nodes.nix`
-  (`age`), `nix run .#sops-config`,
+- The host gets a fresh ssh key, and so does every container whose key is
+  not in `container-keys.enc.json`; their secrets have to be re-encrypted:
+  set `startContainers = false` before installing, then on the host
+  `systemctl start homelab-container-prepare; homelab-age-keys`, put the keys
+  into `inventory/keys.nix` (`hosts.homelab`) and `inventory/nodes.nix`
+  (`age`, only the host-generated ones), `nix run .#sops-config`,
   `for f in $(git ls-files '*.enc.*'); do sops updatekeys -y "$f"; done`,
   set `startContainers = true` and deploy.
 - Storage box: add `/etc/ssh/ssh_host_ed25519_key.pub` of the new host with
