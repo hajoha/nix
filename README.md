@@ -111,11 +111,21 @@ deploy .#homelab                    # host + all containers
 deploy .#homelab --dry-activate
 nix build .#containers.nix-paperless  # build/eval a single container
 
-# or on the box itself
-nixos-rebuild switch --flake .#homelab
+sudo nixos-rebuild switch --flake .#nixmaschine --accept-flake-config
+home-manager switch --flake .#haa --accept-flake-config
+```
 
-sudo nixos-rebuild switch --flake .#nixmaschine
-home-manager switch --flake .#haa
+`--accept-flake-config` makes nix use the binary caches from `nixConfig` in
+`flake.nix` (tranquil, noctalia); without it those packages are built from
+source.
+
+Evaluating the homelab host with all containers needs ~16 GB RAM. If the
+machine you deploy from has less, build on the box itself (no git there):
+
+```bash
+rsync -a --delete --exclude '/result*' --exclude '/homelab*' --exclude '/.git' --exclude '/.direnv' \
+  ./ root@10.60.0.4:/root/home-nix/
+ssh root@10.60.0.4 nixos-rebuild switch --accept-flake-config --flake path:/root/home-nix#homelab
 ```
 
 ## Secrets (sops-nix)
