@@ -22,7 +22,7 @@
   # false for the first boot: containers stay off until the LXC data is
   # imported (homelab-import-lxc) and the secrets are re-encrypted for the
   # new keys. Then set true and deploy.
-  startContainers = false;
+  startContainers = true;
 
   # ZFS data pool on the 4 HDDs (stays as it is, gets imported at boot).
   pool = "threetbpool";
