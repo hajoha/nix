@@ -1,34 +1,26 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Everything about the physical box that the rest of the config needs.
-# Values read off pve2 (Proxmox VE 9.2, Xeon E3-1275 v5, 32 GB) on
-# 2026-11-13; see the "Migrating from Proxmox" section in README.md.
+# Everything about the physical box that the rest of the config needs
+# (Fujitsu D3417-A, Xeon E3-1275 v5, 32 GB).
 # ─────────────────────────────────────────────────────────────────────────────
 {
   hostName = "homelab";
 
-  # 8 hex chars, required by ZFS. Reusing the Proxmox value (`hostid` on pve2)
-  # lets the pool import without `-f`.
+  # 8 hex chars, required by ZFS; the pool was last imported with this id.
   hostId = "c78d3ae7";
 
-  # The NVMe that disko wipes and partitions (hosts/homelab/disko.nix): the
-  # spare Samsung PM9A1 512G. The Proxmox NVMe (nvme-WD_BLACK_SN770_1TB_
-  # 24453G405540) stays untouched as fallback and import source.
-  # by-id so a second disk can never be picked. Name as seen in the server's
-  # M.2 slot; in the PC's adapter the same disk shows up as
-  # ata-SAMSUNG_MZVL4512HBLU-00BL7_S67VNF1TB39494.
-  # (Only disko formatting uses this; the image mounts by partition label.)
+  # The NVMe that disko partitions (hosts/homelab/disko.nix), Samsung PM9A1
+  # 512G. by-id so no other disk can be picked; the system mounts its
+  # partitions by label, this is only used when (re)installing.
   rootDisk = "/dev/disk/by-id/nvme-SAMSUNG_MZVL4512HBLU-00BL7_S67VNF1TB39494";
 
-  # false for the first boot: containers stay off until the LXC data is
-  # imported (homelab-import-lxc) and the secrets are re-encrypted for the
-  # new keys. Then set true and deploy.
+  # false keeps all containers off, e.g. after a reinstall until the secrets
+  # are re-encrypted for the new keys (README).
   startContainers = true;
 
   # ZFS data pool on the 4 HDDs (stays as it is, gets imported at boot).
   pool = "threetbpool";
 
-  # The NIC that carries the VLAN trunk (onboard I219-LM). Renamed to this
-  # name by MAC address, so it is the same as on Proxmox.
+  # The NIC that carries the VLAN trunk (onboard I219-LM), named by MAC.
   trunk = "nic0";
   trunkMac = "90:1b:0e:fc:1f:0a";
 
@@ -45,7 +37,7 @@
   # the host over their macvlans; go through the router or use
   # `nixos-container root-login <name>`.
   management = {
-    vlan = null; # untagged on `trunk` (Proxmox: vmbr0)
+    vlan = null; # untagged on `trunk`
     address = "10.60.0.4";
     prefixLength = 24;
     gateway = "10.60.0.1";

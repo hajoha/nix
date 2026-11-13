@@ -47,7 +47,7 @@ in
             echo "${p}: ZFS dataset not mounted (pool locked? zfs load-key ${params.pool} && zfs mount -a)" >&2
             exit 1
           }
-        '') (lib.attrNames vols)
+        '') vols
       );
     }
   ) dataVolumes;

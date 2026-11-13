@@ -1,12 +1,11 @@
 # Shared base for every service container on the homelab host
 # (systemd-nspawn via `containers.<name>`, see modules/nixos/homelab-host.nix).
 #
-# Differences to the old Proxmox LXC base:
 #   - no own Nix store / nix-daemon / GC: /nix/store is the host's (read-only)
 #   - the ssh host key (= the sops age identity) is bind-mounted from the host
-#   - nspawn names macvlans "mv-<parent>"; they are renamed back to the VLAN
-#     name ("service", "iot", ...) before networking starts, so service
-#     modules keep using the same interface names as before
+#   - nspawn names macvlans "mv-<parent>"; they are renamed to the VLAN name
+#     ("service", "iot", ...) before networking starts, so service modules
+#     use the plain interface names
 {
   config,
   lib,

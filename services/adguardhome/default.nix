@@ -71,7 +71,7 @@ in
   # Disable systemd-resolved to prevent port 53 conflicts
   services.resolved.enable = false;
 
-  # Note: networking.firewall is now handled by mkLXC + network.nix
+  # Firewall ports come from the inventory (tcp/udp in nodes.nix)
   # so it is omitted here to keep the service file clean.
 
   system.stateVersion = "25.11";

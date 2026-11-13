@@ -139,8 +139,6 @@
 
       packages.${system} = {
         sd-image-pi3 = self.nixosConfigurations.pi3-sendspin.config.system.build.sdImage;
-        # Raw NVMe image of the homelab host (hosts/homelab/image.nix)
-        homelab-image = self.nixosConfigurations.homelab.config.system.build.diskoImages;
       };
       packages.aarch64-linux.sd-image-pi3 =
         self.nixosConfigurations.pi3-sendspin.config.system.build.sdImage;

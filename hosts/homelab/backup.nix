@@ -1,7 +1,6 @@
-# Off-site backup with borgmatic (replaces pkgs/pve-zfs-backup.nix, which was
-# installed by hand on Proxmox). Same borg repository and passphrase; the
-# `zfs` hook snapshots the datasets behind source_directories, so the backup
-# is consistent without stopping the containers.
+# Off-site backup with borgmatic to the Hetzner storage box. The `zfs` hook
+# snapshots the datasets behind source_directories, so the backup is
+# consistent without stopping the containers.
 #
 #   systemctl start borgmatic          run now
 #   borgmatic list / borgmatic info
@@ -15,7 +14,7 @@ let
 in
 {
   sops.secrets.borg_passphrase = {
-    sopsFile = ../../secrets/pve2.enc.yaml;
+    sopsFile = ./secrets.enc.yaml;
   };
 
   # Hetzner storage box. Logs in with the host's ssh key, whose public part
@@ -34,10 +33,9 @@ in
   services.borgmatic = {
     enable = true;
     settings = {
-      # Same data as the old Proxmox backup (postgres, immich, opencloud),
-      # plus the container roots and their ssh keys, which live on the
-      # unredundant NVMe now (one_file_system: the roots without the ZFS
-      # data mounts inside them, those are listed separately).
+      # The container roots and their ssh keys (on the unredundant NVMe;
+      # one_file_system: without the ZFS data mounts inside them) and the
+      # data datasets, listed separately.
       source_directories = [
         "/var/lib/nixos-containers"
         "/var/lib/homelab/keys"
@@ -47,14 +45,14 @@ in
       ];
       repositories = [
         {
-          path = "ssh://backup-01/./pve2";
+          path = "ssh://backup-01/./pve2"; # repository name from the old host
           label = "backup-01";
         }
       ];
       encryption_passcommand = "cat ${config.sops.secrets.borg_passphrase.path}";
       archive_name_format = "{hostname}-{now:%Y-%m-%d-%H%M}";
-      # One series with the archives from Proxmox (pve2-…): list and prune
-      # all of them, not only the ones matching the current hostname.
+      # Older archives are named pve2-…: list and prune all of them as one
+      # series, not only the ones matching the current hostname.
       match_archives = "*";
       compression = "lz4";
       one_file_system = true;

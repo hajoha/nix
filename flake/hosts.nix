@@ -1,4 +1,4 @@
-# Real machines (not inventory LXCs): workstation, VPS, Pi, and the
+# Real machines (not inventory containers): workstation, VPS, Pi, and the
 # standalone home-manager config for the work laptop.
 {
   inputs,

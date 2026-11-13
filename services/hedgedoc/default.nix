@@ -92,6 +92,6 @@ in
     };
   };
 
-  # Firewall is now handled by mkLXC + network.nix
+  # Firewall ports come from the inventory (tcp/udp in nodes.nix)
   system.stateVersion = "25.11";
 }

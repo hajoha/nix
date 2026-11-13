@@ -1,5 +1,4 @@
-# The system NVMe (Samsung PM9A1 512G), whole disk for NixOS. Proxmox stays
-# untouched on its own NVMe (WD SN770 1TB), see README.
+# The system NVMe (Samsung PM9A1 512G), whole disk for NixOS.
 #
 # Only this disk is managed by disko. The data pool on the 4 HDDs
 # (threetbpool) is deliberately NOT declared here, so `disko --mode destroy`

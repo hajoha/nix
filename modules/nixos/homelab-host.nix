@@ -132,6 +132,23 @@ in
     }
   ) serviceNodes;
 
+  # Prints the age recipient of the host and of every container key, for
+  # inventory/keys.nix (hosts.homelab) and nodes.nix (`age`).
+  environment.systemPackages = [
+    (pkgs.writeShellApplication {
+      name = "homelab-age-keys";
+      runtimeInputs = [ pkgs.ssh-to-age ];
+      text = ''
+        printf '%-24s %s\n' "host (keys.hosts.homelab)" "$(ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub)"
+        for d in ${keyRoot}/*/; do
+          n=$(basename "$d")
+          [ -f "$d/ssh_host_ed25519_key.pub" ] || continue
+          printf '%-24s %s\n' "$n" "$(ssh-to-age < "$d/ssh_host_ed25519_key.pub")"
+        done
+      '';
+    })
+  ];
+
   # Local snapshots of the container data datasets (sanoid prunes them).
   services.sanoid = {
     enable = true;

@@ -12,7 +12,7 @@ let
   iface = if m.vlan == null then params.trunk else "mgmt";
 in
 {
-  # Same NIC name as on Proxmox, independent of PCI path / kernel naming.
+  # Stable NIC name, independent of PCI path / kernel naming.
   systemd.network.links."10-trunk" = {
     matchConfig.PermanentMACAddress = params.trunkMac;
     linkConfig.Name = params.trunk;

@@ -1,4 +1,4 @@
-# pve2: Xeon E3-1275 v5, NVMe Samsung PM9A1 512G (whole disk NixOS, see disko.nix),
+# Fujitsu D3417-A, Xeon E3-1275 v5, NVMe Samsung PM9A1 512G (whole disk NixOS, see disko.nix),
 # 4x WD Red 3TB raidz2 (threetbpool).
 # Compare with `nixos-generate-config --show-hardware-config` from the
 # installer and adjust if it differs.

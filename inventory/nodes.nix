@@ -200,7 +200,7 @@
     sub = "pds"; # -> pds.hackler.io, handles at <name>.pds.hackler.io
     port = 3000;
     tcp = [ 3000 ];
-    autoStart = false; # CT was stopped on pve2
+    autoStart = false;
   };
 
   nix-arr = {
@@ -237,7 +237,7 @@
     # Outbound-only crawler; nothing listens unless the web UI is enabled
     # (then add `tcp = [ 8080 ];` and a `sub`).
     port = 8080;
-    autoStart = false; # CT was stopped on pve2
+    autoStart = false;
   };
 
   # --- Smart Home ---
@@ -362,7 +362,7 @@
     service = "influxv2";
     sopsReaders = [ "nix-grafana" ];
     tcp = [ 8086 ];
-    autoStart = false; # had no CT on pve2: starts empty, enable when ready
+    autoStart = false; # starts empty, enable when ready
   };
 
   # --- Infra ---
