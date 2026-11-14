@@ -1,0 +1,18 @@
+# CVEs that vulnix reports but that don't apply here (checked by hand).
+# They no longer count in the PR previews (homelab-preview); the report
+# shows how many were whitelisted. Takes effect once deployed.
+#
+# Format (vulnix): one section per package, "pname" or "pname-version",
+# or "*" for any package (then `cve` is required).
+#
+#   ["openssl"]                       # every CVE of any openssl version
+#   comment = "only used for ..."
+#
+#   ["curl-8.11.1"]                   # only these CVEs of this version
+#   cve = [ "CVE-2024-11053", "CVE-2025-0167" ]
+#   comment = "fixed by a nixpkgs patch, see https://github.com/NixOS/nixpkgs/pull/..."
+#
+#   ["*"]                             # these CVEs, whatever the package
+#   cve = [ "CVE-2023-12345" ]
+#   until = "2027-01-01"              # check again after this date
+#   comment = "disputed"

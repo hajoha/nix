@@ -325,6 +325,21 @@ in
           };
         };
 
+        # --- GitHub webhooks → nix-hooks (services/hooks) ---
+        # Public (GitHub calls it); nix-hooks checks the signature.
+        "${nodes.nix-hooks.fqdn}" =
+          let
+            hook = proxy nodes.nix-hooks.addr ''
+              client_max_body_size 25m;
+              limit_except POST { deny all; }
+            '';
+          in
+          vhost {
+            locations."= /hooks/deploy" = hook;
+            locations."= /hooks/preview" = hook;
+            locations."/".return = "444";
+          };
+
         "${nodes.nix-hedgedoc.fqdn}" = vhost {
           http2 = true;
           locations."/" = proxy nodes.nix-hedgedoc.addr "";

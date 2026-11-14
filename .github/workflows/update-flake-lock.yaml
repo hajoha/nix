@@ -1,0 +1,30 @@
+# Every Monday: `nix flake update` as a PR. The homelab host gets the PR
+# webhook and comments the deploy preview (versions, CVEs); merging it
+# deploys it (hosts/homelab/ci.nix). This job runs on GitHub's machines and
+# only touches the repo.
+#
+# Needs: Settings → Actions → General → Workflow permissions →
+# "Allow GitHub Actions to create and approve pull requests".
+name: update flake.lock
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/update-flake-lock@main
+        with:
+          branch: update-flake-lock
+          pr-title: "flake.lock: update"
+          pr-labels: dependencies
+          commit-msg: "flake.lock: update"

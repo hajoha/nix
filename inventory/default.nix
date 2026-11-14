@@ -50,6 +50,7 @@ let
     name: n:
     removeAttrs n [
       "db"
+      "sso"
       "tcp"
       "udp"
       "gateway"
@@ -62,6 +63,16 @@ let
       networking = mkNetworking n;
       service = if n ? service then n.service else lib.removePrefix "nix-" name;
       autoStart = n.autoStart or true;
+      # nodes that must be up first (see `needs` in nodes.nix)
+      needs = lib.unique (
+        lib.optional (n.db or false) "nix-postgres"
+        ++ lib.optionals (n.sso or false) [
+          "nix-keycloak"
+          "nix-nginx"
+          "nix-adguard"
+        ]
+        ++ (n.needs or [ ])
+      );
     };
   nodes = lib.mapAttrs mkNode raw;
 

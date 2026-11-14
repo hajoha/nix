@@ -6,6 +6,7 @@
 #   - nspawn names macvlans "mv-<parent>"; they are renamed to the VLAN name
 #     ("service", "iot", ...) before networking starts, so service modules
 #     use the plain interface names
+#   - services wait for the addresses (container-network-ready.nix)
 {
   config,
   lib,
@@ -20,6 +21,7 @@ in
   imports = [
     ../../user/root.nix
     ../../services/ssh/root.nix
+    ./container-network-ready.nix
   ];
 
   # Generated on the host by homelab-container-prepare; its age recipient is
