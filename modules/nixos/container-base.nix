@@ -20,6 +20,20 @@ in
   imports = [
     ../../user/root.nix
     ../../services/ssh/root.nix
+    {
+      # On a container restart the previous instance's macvlan (same MAC) can
+      # outlive it for a moment, until the kernel has torn down its netns; until
+      # then `ip link set up` fails with "Address already in use". Retry instead
+      # of leaving the container without its address.
+      systemd.services = lib.genAttrs (map (i: "network-addresses-${i}") ifaces) (_: {
+        startLimitIntervalSec = 120;
+        startLimitBurst = 30;
+        serviceConfig = {
+          Restart = "on-failure";
+          RestartSec = 2;
+        };
+      });
+    }
   ];
 
   # Generated on the host by homelab-container-prepare; its age recipient is
