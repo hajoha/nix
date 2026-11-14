@@ -71,6 +71,12 @@ creation_rules:
       - age1wj67p0vyn4tractla52dzq8spjz4gn34j20e94ds4zg24vxcea8qnu0vpa # nix-homeassistant
       - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
       - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
+- path_regex: services/hooks/.*\.enc\.yaml$
+  key_groups:
+    - age:
+      - age1sdwqmnuy2r946rka3zl868g2vwu39kqycqk59w7w8hhe7nsn9ucs4rzecy # nix-hooks
+      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
+      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
 - path_regex: services/immich/postgres\.enc\.yaml$
   key_groups:
     - age:

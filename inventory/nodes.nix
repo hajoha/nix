@@ -372,6 +372,7 @@
     ip = "10.60.1.18";
     hostname = "hooks";
     port = 9000;
+    age = "age1sdwqmnuy2r946rka3zl868g2vwu39kqycqk59w7w8hhe7nsn9ucs4rzecy";
   };
 
   # Retired: the homelab host builds for itself now (services/build is
