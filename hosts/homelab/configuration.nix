@@ -35,7 +35,8 @@
   boot.zfs.forceImportRoot = false;
   # The pool is encrypted (passphrase). Import it at boot without asking, so
   # the box comes up headless; unlock over ssh:
-  #   zfs load-key threetbpool && zfs mount -a && systemctl start machines.target
+  #   zfs load-key threetbpool && zfs mount -a
+  # Containers with data on it wait until then (hosts/homelab/containers.nix).
   boot.zfs.requestEncryptionCredentials = false;
   services.zfs.autoScrub.enable = true;
   services.zfs.trim.enable = true;

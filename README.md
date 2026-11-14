@@ -50,8 +50,15 @@ secrets/                secrets not tied to a service
   on the HDD pool as `<pool>/containers/<node>/<name>`, mounted inside the
   root; sanoid snapshots those (hourly 24, daily 14, monthly 3).
 - The pool is encrypted and unlocked by hand after every boot; until then
-  the containers with data volumes refuse to start:
-  `zfs load-key threetbpool && zfs mount -a && systemctl start machines.target`.
+  the containers with data volumes (and those that need them) wait:
+  `zfs load-key threetbpool && zfs mount -a`.
+- Start order: inside a container, its services start only once every
+  interface is up and has its address (`homelab-network-ready`). Between
+  containers, a node starts after the nodes it needs (`needs` in
+  `nodes.nix`; `db = true` → nix-postgres, `sso = true` → nix-keycloak,
+  nix-nginx, nix-adguard). A container counts as up once its boot has
+  finished, i.e. its services run. Everything else starts right away. So:
+  network → postgres (after the pool) → keycloak → the services using them.
 - Networking: the host has one VLAN interface per network (`service`, `iot`,
   `dmz`, `wireguard`, ids in `params.nix`) without an address. Every container
   gets a macvlan on each VLAN it uses, renamed inside to the VLAN name, and its
@@ -290,10 +297,12 @@ efibootmgr        # "Linux Boot Manager" must be there and first
 ### After every reboot
 
 The HDD pool is encrypted and not unlocked automatically; containers with
-data volumes wait for it:
+data volumes (postgres, immich, arr, opencloud) and everything that needs
+them wait for it and start by themselves afterwards:
 
 ```bash
-zfs load-key threetbpool && zfs mount -a && systemctl start machines.target
+zfs load-key threetbpool && zfs mount -a
+journalctl -u 'homelab-data-*' -u 'container@*' -f     # watch them come up
 ```
 
 ## Housekeeping

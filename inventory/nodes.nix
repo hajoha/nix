@@ -11,6 +11,11 @@
 #   sopsReaders  other nodes that may also decrypt this service's secrets
 #   db        true -> nix-postgres creates database + user "<service>" and
 #             syncs its password from services/<service>/postgres.enc.yaml
+#   sso       true -> logs in via Keycloak; starts after nix-keycloak (and
+#             nix-nginx + nix-adguard, the issuer URL goes through them)
+#   needs     other nodes that must be up before this one starts (default:
+#             none; `db` adds nix-postgres, `sso` the above). A node is up
+#             when its container has finished booting, i.e. its services run.
 #   tcp, udp  firewall ports to open (default: none)
 #
 #   service   directory under ./services   (default: name without "nix-";
@@ -114,6 +119,7 @@
   # --- VPN & Mesh (Headscale) ---
   nix-headscale = {
     ip = "10.60.1.30";
+    sso = true;
     age = "age18fc6sktrdeuh0zdkg8wamp4n2gasynjmyzmxehtw8mdmyhr8xy5s6z3j5h";
     hostname = "headscale";
     port = 8080;
@@ -128,6 +134,7 @@
   # --- Apps ---
   nix-hedgedoc = {
     ip = "10.60.1.23";
+    sso = true;
     age = "age15a7p5ltx5kv94ftkepwffwyungaryv3ny55c5fs5ukmx95jmfvesezfr5u";
     db = true; # database + user on nix-postgres
     hostname = "hedgedoc";
@@ -147,6 +154,7 @@
 
   nix-paperless = {
     ip = "10.60.1.32";
+    sso = true;
     age = "age1zuvatjt9fl08tuye2e5vz2j2q9yt59607rza00dleygr559294gqavxert";
     db = true; # database + user on nix-postgres
     hostname = "paperless";
@@ -156,6 +164,7 @@
 
   nix-immich = {
     ip = "10.60.1.35";
+    sso = true;
     age = "age19htsz09n6jkpvl58nwqkuqq6yutckg8jnq7nfcv6wqtsz2eeuvfsvs6gjr";
     db = true; # database + user on nix-postgres
     hostname = "immich";
@@ -176,6 +185,7 @@
 
   nix-sure = {
     ip = "10.60.1.37";
+    sso = true;
     age = "age1qx8eum7sdfv8935tps0dnhysq3h7q3fjqep9usr6clpyajpc8gyqqmq404";
     db = true; # database + user on nix-postgres
     hostname = "sure";
@@ -186,6 +196,7 @@
 
   nix-opencloud = {
     ip = "10.60.1.14";
+    sso = true;
     age = "age1va00gwuz7fkjpctd6zvx45t87e8cg86r5xs0gae2022nzx93fv2sr35df6";
     hostname = "opencloud";
     port = 9200;
@@ -194,6 +205,7 @@
 
   nix-tranquil = {
     ip = "10.60.1.39";
+    sso = true;
     age = "age1xs3c6d6kujddr8s2qxkk22z50fu8gevt2qhf4zyljrl73tx52y0s069ptc";
     db = true; # database + user on nix-postgres
     hostname = "tranquil";
@@ -205,6 +217,7 @@
 
   nix-arr = {
     ip = "10.60.1.31";
+    sso = true;
     age = "age1qszselhewckzku7657c48upl77xexwj2j4eascwlk9ju8sstpq7s5znpvw";
     hostname = "nixarr";
     # Nixarr has no single port; Jellyfin is the primary UI.
@@ -243,6 +256,7 @@
   # --- Smart Home ---
   nix-homeassistant = {
     ip = "10.60.1.33";
+    sso = true;
     age = "age1wj67p0vyn4tractla52dzq8spjz4gn34j20e94ds4zg24vxcea8qnu0vpa";
     db = true; # database + user on nix-postgres
     hostname = "homeassistant";
@@ -344,6 +358,7 @@
 
   nix-grafana = {
     ip = "10.60.1.25";
+    sso = true;
     sopsReaders = [ "nix-influx" ];
     age = "age1knduw4awu7sycxvv7dcajldcwts7ppxgctasvecuw2xfx33fccasqrmut4";
     hostname = "grafana";

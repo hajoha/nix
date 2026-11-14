@@ -37,20 +37,43 @@ in
   # The pool is unlocked by hand after boot. A container whose data dataset is
   # not mounted must not start: it would initialise an empty postgres/immich
   # on the NVMe underneath the mount point.
-  systemd.services = lib.mapAttrs' (
-    node: vols:
-    lib.nameValuePair "container@${node}" {
-      after = [ "zfs-mount.service" ];
-      preStart = lib.mkBefore (
-        lib.concatMapStrings (p: ''
-          ${pkgs.util-linux}/bin/mountpoint -q /var/lib/nixos-containers/${node}${p} || {
-            echo "${p}: ZFS dataset not mounted (pool locked? zfs load-key ${params.pool} && zfs mount -a)" >&2
-            exit 1
-          }
-        '') vols
-      );
-    }
-  ) dataVolumes;
+  # Containers with data on the pool wait until it is unlocked and their
+  # datasets are mounted (homelab-data-<node>), instead of failing; after
+  # `zfs load-key … && zfs mount -a` they (and whoever needs them) start.
+  systemd.services = lib.mkMerge (
+    lib.mapAttrsToList (node: vols: {
+      "homelab-data-${node}" = {
+        description = "Wait for the ZFS data of ${node}";
+        after = [ "zfs-mount.service" ];
+        # a switch must not stop it (that would stop the container)
+        restartIfChanged = false;
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          TimeoutStartSec = "infinity";
+        };
+        path = [ pkgs.util-linux ];
+        script = ''
+          paths="${lib.concatMapStringsSep " " (p: "/var/lib/nixos-containers/${node}${p}") vols}"
+          said=
+          while :; do
+            missing=
+            for p in $paths; do mountpoint -q "$p" || missing="$missing $p"; done
+            [ -z "$missing" ] && break
+            if [ -z "$said" ]; then
+              echo "waiting for:$missing (pool locked? zfs load-key ${params.pool} && zfs mount -a)"
+              said=1
+            fi
+            sleep 5
+          done
+        '';
+      };
+      "container@${node}" = {
+        after = [ "homelab-data-${node}.service" ];
+        requires = [ "homelab-data-${node}.service" ];
+      };
+    }) dataVolumes
+  );
 
   containers = {
     # Thread/Zigbee radio + the wpan0 tun device of the OpenThread border

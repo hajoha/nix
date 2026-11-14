@@ -9,6 +9,10 @@
 #     its age key is the node's sops recipient)
 #   - one macvlan per VLAN interface the node uses (on the host VLAN
 #     interface of the same name), see container-base.nix
+#   - starts after the containers it `needs` (inventory) are up; a container
+#     is up once it has finished booting (--notify-ready), i.e. its own
+#     services run. Inside, services wait for the interfaces to have their
+#     addresses (container-base.nix).
 #
 # Hardware and host-specific extras (devices, capabilities, data binds) are
 # plain `containers.<name>.*` definitions in hosts/homelab/containers.nix.
@@ -54,6 +58,9 @@ let
 
   mkContainer = name: node: {
     autoStart = node.autoStart && params.startContainers;
+    # finishing the boot includes waiting for the network and slow
+    # services (keycloak, immich); the default 1min kills those
+    timeoutStartSec = "10min";
     privateNetwork = true;
     macvlans = vlansOf node;
     specialArgs = { inherit inputs self; };
@@ -87,10 +94,18 @@ let
   };
 in
 {
-  assertions = map (v: {
-    assertion = params.vlans ? ${v};
-    message = "hosts/homelab/params.nix: no VLAN id for interface `${v}` (used by a container)";
-  }) usedVlans;
+  assertions =
+    map (v: {
+      assertion = params.vlans ? ${v};
+      message = "hosts/homelab/params.nix: no VLAN id for interface `${v}` (used by a container)";
+    }) usedVlans
+    ++ concatMap (
+      name:
+      map (d: {
+        assertion = serviceNodes ? ${d} && d != name;
+        message = "inventory/nodes.nix: ${name} needs `${d}`, which is not another container";
+      }) serviceNodes.${name}.needs
+    ) (attrNames serviceNodes);
 
   containers = mapAttrs mkContainer serviceNodes;
 
@@ -126,10 +141,16 @@ in
   }
   // mapAttrs' (
     name: _:
-    nameValuePair "container@${name}" {
-      after = [ "homelab-container-prepare.service" ];
-      requires = [ "homelab-container-prepare.service" ];
-    }
+    nameValuePair "container@${name}" (
+      let
+        deps = map (d: "container@${d}.service") serviceNodes.${name}.needs;
+      in
+      {
+        after = [ "homelab-container-prepare.service" ] ++ deps;
+        requires = [ "homelab-container-prepare.service" ];
+        wants = deps;
+      }
+    )
   ) serviceNodes;
 
   # Prints the age recipient of the host and of every container key, for
