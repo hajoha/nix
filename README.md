@@ -162,6 +162,10 @@ and asks the GitHub API itself, and never builds PRs from forks.
   - the version changes of the whole system,
   - CVEs fixed / new / still open (`vulnix`; matched by package name and
     version, so a hint: false positives and backported patches happen).
+    Still open ones are grouped by package with their severity, critical
+    and high (CVSS ≥ 7) listed. CVEs checked by hand and found irrelevant
+    go into `hosts/homelab/ci/vulnix-whitelist.toml` (format in the file);
+    they stop counting once that is deployed.
 
   The commit gets the status `homelab/preview` (red if it does not build).
 - **Every push to `main`** (e.g. merging a PR): `homelab-deploy` builds

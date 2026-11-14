@@ -98,6 +98,8 @@ let
       pkgs.gawk
       pkgs.gnugrep
     ];
+    # CVEs checked by hand, see the file
+    runtimeEnv.VULNIX_WHITELIST = "${./ci/vulnix-whitelist.toml}";
     text = builtins.readFile ./ci/preview.sh;
   };
 
