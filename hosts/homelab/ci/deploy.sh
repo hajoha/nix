@@ -5,7 +5,7 @@
 last=
 rc=0
 while :; do
-  rev=$(git ls-remote "$REPO_URL" refs/heads/main | cut -f1)
+  rev=$(git ls-remote "$GIT_URL" refs/heads/main | cut -f1)
   [[ $rev =~ ^[0-9a-f]{40}$ ]] || { echo "cannot resolve main: '$rev'" >&2; exit 1; }
   [ "$rev" = "$last" ] && break
   last=$rev
