@@ -46,14 +46,6 @@ in
       filtering = {
         rewrites = [
           {
-            domain = "*.johann-hackler.com";
-            answer = "${nodes.nix-nginx.ip}";
-          }
-          {
-            domain = "johann-hackler.com";
-            answer = "${nodes.nix-nginx.ip}";
-          }
-          {
             domain = "*.hackler.io";
             answer = "${nodes.nix-nginx.ip}";
           }

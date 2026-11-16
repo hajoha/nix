@@ -271,6 +271,7 @@
       8095
       8097
       8081
+      8927 # Music Assistant Sendspin server
     ];
     udp = [
       1900

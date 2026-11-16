@@ -9,7 +9,7 @@
 let
   inherit (config.homelab) nodes sso;
   node = nodes.nix-sure;
-  domain = node.fqdn; # sure.johann-hackler.com
+  domain = node.fqdn; # sure.hackler.io
   surePkgs = inputs.nixpkgs-sure.legacyPackages.${pkgs.stdenv.hostPlatform.system};
 
   sureUnits = [
