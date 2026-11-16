@@ -215,8 +215,8 @@ in
     enable = true;
     openFirewall = true;
     providers = [
-      "tidal"
       "soundcloud"
+      "audiobookshelf"
       "hass"
       "jellyfin"
       "airplay"

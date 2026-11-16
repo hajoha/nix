@@ -540,7 +540,7 @@ in
         hosts = [
           {
             name = "xhain";
-            address = "johann-hackler.com";
+            address = "hackler.io";
           }
         ];
         intervalSeconds = 5;

@@ -33,7 +33,8 @@ let
   hooksDir = "/var/lib/homelab/hooks";
 
   repo = "hajoha/nix";
-  repoUrl = "git+https://github.com/${repo}.git";
+  gitUrl = "https://github.com/${repo}.git"; # for git
+  repoUrl = "git+${gitUrl}"; # for nix
 
   # "<node> <port>" for every container that is started automatically
   nodesFile = pkgs.writeText "homelab-health-nodes" (
@@ -47,6 +48,7 @@ let
   env = {
     REPO = repo;
     REPO_URL = repoUrl;
+    GIT_URL = gitUrl;
   };
   githubLib = builtins.readFile ./ci/github.sh;
 
