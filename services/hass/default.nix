@@ -188,6 +188,7 @@ in
     ];
     customLovelaceModules = [
       pkgs.home-assistant-custom-lovelace-modules.valetudo-map-card
+      pkgs.home-assistant-custom-lovelace-modules.mini-graph-card
     ];
 
     config = {
