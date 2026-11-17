@@ -4,6 +4,9 @@
 # Everything here is read-only in the HA UI (traces still work). Edit it here
 # and redeploy. `initial_state = true` makes sure every automation comes up
 # enabled after a restart / redeploy.
+#
+# Naming: alias = "<Room>: <Trigger> <Target>", id = "<room>_<trigger>_<target>",
+# so the automation list in the UI sorts by room.
 { ... }:
 
 let
@@ -125,7 +128,7 @@ in
     "automation manual" = [
       (windowHeating {
         id = "bathroom_window_heating";
-        alias = "Bathroom Window Heating";
+        alias = "Bathroom: Window Heating";
         window = "binary_sensor.bathroom_myggbett_door_window_sensor_door";
         thermostat = "climate.radiator_thermostat_w600_2";
         helper = "input_text.bathroom_heating_previous_mode";
@@ -133,7 +136,7 @@ in
 
       (windowHeating {
         id = "bedroom_window_heating";
-        alias = "Bedroom Window Heating";
+        alias = "Bedroom: Window Heating";
         window = bedroomWindow;
         thermostat = "climate.bedroom_bedroom";
         helper = "input_text.bedroom_heating_previous_mode";
@@ -142,7 +145,7 @@ in
       # Window open -> light off (if it was on); window closed -> fade back on over 10 s.
       {
         id = "bedroom_window_light";
-        alias = "Bedroom Window Light";
+        alias = "Bedroom: Window Light";
         description = "Light off while the window is open (only if it was on), fades back on over 10 s when it closes. Stored in input_boolean.bedroom_light_was_on.";
         mode = "queued";
         initial_state = true;
@@ -227,8 +230,8 @@ in
 
       # BILRESA button 1 toggles the bedroom light.
       {
-        id = "sleep_room_licht";
-        alias = "sleep room licht";
+        id = "bedroom_button_light";
+        alias = "Bedroom: Button Light";
         description = "BILRESA button 1 toggles the bedroom light.";
         mode = "single";
         initial_state = true;
@@ -261,9 +264,9 @@ in
       # /var/lib/hass/blueprints/automation/Blackshome/appliance-notifications.yaml
       # and the input_number helpers below (both already exist from the UI).
       {
-        id = "washing_machine_notify";
-        alias = "washing_machine_notify";
-        description = "used for washing machine cycles";
+        id = "bathroom_washing_machine_notify";
+        alias = "Bathroom: Washing Machine Notify";
+        description = "Start/end notifications for washing machine cycles, with energy cost.";
         initial_state = true;
         use_blueprint = {
           path = "Blackshome/appliance-notifications.yaml";
