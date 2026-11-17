@@ -31,6 +31,7 @@ let
     });
 in
 {
+  imports = [ ./automations.nix ];
   sops.secrets."hass_db_user" = {
     owner = "hass";
     sopsFile = ./secrets.enc.yaml;
