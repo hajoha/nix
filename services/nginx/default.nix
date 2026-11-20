@@ -485,7 +485,8 @@ in
       reloadServices = [ "nginx.service" ];
 
       environmentFile = config.sops.secrets."acme-inwx-env".path;
-      dnsPropagationCheck = false;
+      dnsAuthoritativePropagationCheck = false;
+      dnsRecursivePropagationCheck = false;
     };
   };
   networking.firewall.allowedTCPPorts = [
