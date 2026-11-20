@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }:
 
@@ -148,7 +149,8 @@ in
     recommendedGzipSettings = true;
     recommendedOptimisation = true;
     recommendedTlsSettings = true;
-    package = pkgs.nginxMainline;
+    package = inputs.nixpkgs-freecad.legacyPackages.${pkgs.stdenv.hostPlatform.system}.nginxMainline;
+    # package = pkgs.nginxMainline;
     appendHttpConfig = ''
       map ''$http_upgrade ''$connection_upgrade {
           default upgrade;
