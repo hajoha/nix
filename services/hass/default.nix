@@ -13,10 +13,10 @@ let
   # for Tidal, TheAudioDB, ...). The nixpkgs build is from source and lacks it,
   # so the file is taken unchanged from the wheel of the same version. It is not
   # redistributable: never push this build to a public binary cache.
-  maVersion = "2.10.9";
+  maVersion = "2.10.12";
   maOfficialWheel = pkgs.fetchurl {
     url = "https://github.com/music-assistant/server/releases/download/${maVersion}/music_assistant-${maVersion}-py3-none-any.whl";
-    hash = "sha256-MRW5zlTeje1iPgKFq9feTNXAKgCRpUS4lcxGDDaXxSs=";
+    hash = "sha256-ny6/igiH3m1zGNGTJdC7OzOh0wvarSKaMQvRlnQ4zKA=";
   };
   musicAssistant =
     assert lib.assertMsg (pkgs.music-assistant.version == maVersion)
