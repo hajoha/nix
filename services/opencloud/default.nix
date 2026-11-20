@@ -256,6 +256,7 @@ in
       PROXY_TLS = "false";
       PROXY_USER_OIDC_CLAIM = "sub";
       PROXY_USER_CS3_CLAIM = "username";
+      WEB_OPTION_DISABLE_SPONSOR_LINK="true";
       PROXY_AUTOPROVISION_CLAIM_EMAIL = "email";
       PROXY_AUTOPROVISION_CLAIM_GROUPS = "groups";
       PROXY_ROLE_ASSIGNMENT_DRIVER = "oidc";
