@@ -7,8 +7,31 @@
 
 let
   inherit (config.homelab) nodes sso;
+
+  # The official Music Assistant release wheel is the only artifact that carries
+  # the project's bundled provider credentials (helpers/app_secrets.json, needed
+  # for Tidal, TheAudioDB, ...). The nixpkgs build is from source and lacks it,
+  # so the file is taken unchanged from the wheel of the same version. It is not
+  # redistributable: never push this build to a public binary cache.
+  maVersion = "2.10.9";
+  maOfficialWheel = pkgs.fetchurl {
+    url = "https://github.com/music-assistant/server/releases/download/${maVersion}/music_assistant-${maVersion}-py3-none-any.whl";
+    hash = "sha256-MRW5zlTeje1iPgKFq9feTNXAKgCRpUS4lcxGDDaXxSs=";
+  };
+  musicAssistant =
+    assert lib.assertMsg (pkgs.music-assistant.version == maVersion)
+      "music-assistant is now ${pkgs.music-assistant.version}: update maVersion and the wheel hash in services/hass/default.nix";
+    # overrideAttrs (not overridePythonAttrs) survives the module's .override { providers }
+    pkgs.music-assistant.overrideAttrs (old: {
+      nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.unzip ];
+      postInstall = (old.postInstall or "") + ''
+        unzip -p ${maOfficialWheel} music_assistant/helpers/app_secrets.json \
+          > "$(echo $out/lib/python3*/site-packages)/music_assistant/helpers/app_secrets.json"
+      '';
+    });
 in
 {
+  imports = [ ./automations.nix ];
   sops.secrets."hass_db_user" = {
     owner = "hass";
     sopsFile = ./secrets.enc.yaml;
@@ -165,6 +188,7 @@ in
     ];
     customLovelaceModules = [
       pkgs.home-assistant-custom-lovelace-modules.valetudo-map-card
+      pkgs.home-assistant-custom-lovelace-modules.mini-graph-card
     ];
 
     config = {
@@ -213,8 +237,10 @@ in
   # 6. Music Assistant & Discovery
   services.music-assistant = {
     enable = true;
+    package = musicAssistant;
     openFirewall = true;
     providers = [
+      "tidal"
       "soundcloud"
       "audiobookshelf"
       "hass"
