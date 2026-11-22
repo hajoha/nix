@@ -72,6 +72,21 @@
     };
   };
 
+  services.fail2ban = {
+    enable = true;
+    maxretry = 5; # aggressive mode also counts your own aborted logins
+    bantime = "1h";
+    bantime-increment = {
+      enable = true;
+      maxtime = "168h";
+    };
+    ignoreIP = [ "10.100.0.0/24" ];
+    jails.sshd.settings = {
+      mode = "aggressive";
+      findtime = "1d"; # the bots retry every 12-17 min, the default window is 10 min
+    };
+  };
+
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"
