@@ -5,6 +5,10 @@
   ...
 }:
 
+let
+  # Managed with ./wg-peer.sh, keys in sops (wireguard.enc.yaml by default)
+  wgPeers = lib.importJSON ./wireguard-peers.json;
+in
 {
   imports = [
     ./hardware-configuration.nix
@@ -21,11 +25,12 @@
       # though usually root-read is fine for networking.wireguard.
       owner = "root";
     };
-    "cudy-lt300/psk" = {
-      owner = "root";
-    };
-    "home-openwrt/psk".sopsFile = ./wireguard.enc.yaml;
-  };
+  }
+  // lib.listToAttrs (
+    map (
+      p: lib.nameValuePair "${p.name}/psk" { sopsFile = ./. + "/${p.sopsFile or "wireguard.enc.yaml"}"; }
+    ) wgPeers
+  );
   users.users.mng = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
@@ -44,22 +49,12 @@
       # Path to your private key file on the server
       privateKeyFile = config.sops.secrets."wg.privat".path;
 
-      peers = [
-        {
-          # The single peer you want to connect
-          publicKey = "SkqSN2q0aFfDz4d8MmCJU+S83m4oV/3QtgbuCn9q0Fc=";
-          presharedKeyFile = config.sops.secrets."cudy-lt300/psk".path;
-          # Only allow traffic to/from this specific internal tunnel IP
-          allowedIPs = [ "10.60.71.2/32" ];
-        }
-        {
-          # keys in wireguard.enc.yaml, reaches only this box
-          name = "home-openwrt";
-          publicKey = "cKD9d75j7xI992GYtgZRAg4QhCjxYqGpHPAUJU3XKT4=";
-          presharedKeyFile = config.sops.secrets."home-openwrt/psk".path;
-          allowedIPs = [ "10.60.71.3/32" ];
-        }
-      ];
+      # Only allow traffic to/from each peer's own tunnel IP
+      peers = map (p: {
+        inherit (p) name publicKey;
+        presharedKeyFile = config.sops.secrets."${p.name}/psk".path;
+        allowedIPs = [ "${p.ip}/32" ];
+      }) wgPeers;
     };
   };
 
