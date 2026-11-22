@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-# WireGuard peers of hetzner-vps-01 (wg0, 10.60.71.0/24). Peers reach only
-# the VPS. Needs your age key for sops.
-#
-#   wg-peer.sh list
-#   wg-peer.sh add <name> [ip]      new keys into sops, entry in wireguard-peers.json
-#   wg-peer.sh conf <name> [file]   client config to stdout, or to a file (mode 600)
-#   wg-peer.sh qr <name>            the same config as a QR code
-#
-# After `add`, commit and deploy hetzner-vps-01.
+# WireGuard peers of hetzner-vps-01 (wg0, 10.60.71.0/24), see usage below.
+# In `nix develop` this is `wg-peer`; run it anywhere inside the repo.
 set -euo pipefail
 
 for t in sops wg jq qrencode; do
@@ -18,8 +11,14 @@ for t in sops wg jq qrencode; do
   fi
 done
 
+me=$(basename "$0")
 here=$PWD
-cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" # sops reads .sops.yaml here
+root=$(git rev-parse --show-toplevel 2>/dev/null) ||
+  root=$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null) ||
+  { echo "error: run $me inside the home-nix repo" >&2; exit 1; }
+[ -f "$root/hosts/hetzner-vps-01/wireguard-peers.json" ] ||
+  { echo "error: $root is not the home-nix repo" >&2; exit 1; }
+cd "$root" # sops reads .sops.yaml here
 host=hosts/hetzner-vps-01
 peers=$host/wireguard-peers.json
 keys=wireguard.enc.yaml
@@ -32,7 +31,17 @@ die() {
   exit 1
 }
 usage() {
-  sed -n '2,10s/^# \{0,1\}//p' "$0" >&2
+  cat >&2 <<EOF
+WireGuard peers of hetzner-vps-01. Peers reach only the VPS ($serverIp).
+Needs your age key for sops.
+
+  $me list
+  $me add <name> [ip]      new keys into sops, entry in wireguard-peers.json
+  $me conf <name> [file]   client config to stdout, or to a file (mode 600)
+  $me qr <name>            the same config as a QR code
+
+After add: commit and deploy hetzner-vps-01.
+EOF
   exit 1
 }
 has() { jq -e --arg k "$1" --arg v "$2" 'any(.[]; .[$k] == $v)' "$peers" >/dev/null; }
@@ -41,7 +50,7 @@ secret() { sops decrypt --extract "$2" "$host/$1"; }
 # Each step checked by hand: `set -e` does not catch failures inside $(...).
 conf() {
   local p file ip priv psk vps
-  p=$(jq -e --arg n "$1" '.[] | select(.name == $n)' "$peers") || die "no peer '$1', see: $0 list"
+  p=$(jq -e --arg n "$1" '.[] | select(.name == $n)' "$peers") || die "no peer '$1', see: $me list"
   file=$(jq -r --arg d "$keys" '.sopsFile // $d' <<<"$p")
   ip=$(jq -r .ip <<<"$p")
   priv=$(secret "$file" "[\"$1\"][\"private\"]") || die "cannot decrypt $1's private key"
@@ -78,7 +87,7 @@ add() {
   jq --arg n "$name" --arg ip "$ip" --arg k "$pub" '. + [{name: $n, ip: $ip, publicKey: $k}]' \
     "$peers" >"$peers.tmp"
   mv "$peers.tmp" "$peers"
-  echo "added $name ($ip). Commit and deploy hetzner-vps-01, then: $0 conf $name   or   $0 qr $name"
+  echo "added $name ($ip). Commit and deploy hetzner-vps-01, then: $me conf $name   or   $me qr $name"
 }
 
 case ${1:-} in

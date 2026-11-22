@@ -227,6 +227,19 @@
           ssh-to-age
           nixos-rebuild
           pkgs.deploy-rs
+          # WireGuard peers of hetzner-vps-01: wg-peer list|add|conf|qr
+          (writeShellApplication {
+            name = "wg-peer";
+            runtimeInputs = [
+              sops
+              wireguard-tools
+              jq
+              qrencode
+              git
+              coreutils
+            ];
+            text = builtins.readFile ./hosts/hetzner-vps-01/wg-peer.sh;
+          })
         ];
       };
     };
