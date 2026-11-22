@@ -5,6 +5,10 @@
   ...
 }:
 
+let
+  # Managed with ./wg-peer.sh, keys in sops (wireguard.enc.yaml by default)
+  wgPeers = lib.importJSON ./wireguard-peers.json;
+in
 {
   imports = [
     ./hardware-configuration.nix
@@ -21,10 +25,12 @@
       # though usually root-read is fine for networking.wireguard.
       owner = "root";
     };
-    "cudy-lt300/psk" = {
-      owner = "root";
-    };
-  };
+  }
+  // lib.listToAttrs (
+    map (
+      p: lib.nameValuePair "${p.name}/psk" { sopsFile = ./. + "/${p.sopsFile or "wireguard.enc.yaml"}"; }
+    ) wgPeers
+  );
   users.users.mng = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
@@ -37,21 +43,18 @@
   networking.firewall.allowedUDPPorts = [ 51820 ]; # Open the WireGuard port
   networking.wireguard.interfaces = {
     wg0 = {
-      ips = [ "10.100.0.1/24" ];
+      ips = [ "10.60.71.1/24" ];
       listenPort = 51820;
 
       # Path to your private key file on the server
       privateKeyFile = config.sops.secrets."wg.privat".path;
 
-      peers = [
-        {
-          # The single peer you want to connect
-          publicKey = "SkqSN2q0aFfDz4d8MmCJU+S83m4oV/3QtgbuCn9q0Fc=";
-          presharedKeyFile = config.sops.secrets."cudy-lt300/psk".path;
-          # Only allow traffic to/from this specific internal tunnel IP
-          allowedIPs = [ "10.100.0.2/32" ];
-        }
-      ];
+      # Only allow traffic to/from each peer's own tunnel IP
+      peers = map (p: {
+        inherit (p) name publicKey;
+        presharedKeyFile = config.sops.secrets."${p.name}/psk".path;
+        allowedIPs = [ "${p.ip}/32" ];
+      }) wgPeers;
     };
   };
 
@@ -80,7 +83,7 @@
       enable = true;
       maxtime = "168h";
     };
-    ignoreIP = [ "10.100.0.0/24" ];
+    ignoreIP = [ "10.60.71.0/24" ];
     jails.sshd.settings = {
       findtime = "1d"; # the bots retry every 12-17 min, the default window is 10 min
     };

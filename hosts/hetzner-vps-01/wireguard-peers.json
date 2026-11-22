@@ -1,0 +1,18 @@
+[
+  {
+    "name": "cudy-lt300",
+    "ip": "10.60.71.2",
+    "publicKey": "SkqSN2q0aFfDz4d8MmCJU+S83m4oV/3QtgbuCn9q0Fc=",
+    "sopsFile": "secrets.enc.yaml"
+  },
+  {
+    "name": "home-openwrt",
+    "ip": "10.60.71.3",
+    "publicKey": "cKD9d75j7xI992GYtgZRAg4QhCjxYqGpHPAUJU3XKT4="
+  },
+  {
+    "name": "t14-arbeit",
+    "ip": "10.60.71.4",
+    "publicKey": "gvbL6VA8UvLXdZ+OwxIz9Gh0SHvco4wcLaZ4FljndDc="
+  }
+]
