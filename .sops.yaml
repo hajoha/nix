@@ -36,7 +36,6 @@ creation_rules:
   key_groups:
     - age:
       - age1knduw4awu7sycxvv7dcajldcwts7ppxgctasvecuw2xfx33fccasqrmut4 # nix-grafana
-      - age1u437e92k3dg0dlkex8sr856yrtz4yqt0w66ey0xu5qk0e4gxxgqqlq9fdd # nix-influx
       - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
       - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
 - path_regex: services/headscale/.*\.enc\.yaml$
@@ -88,13 +87,6 @@ creation_rules:
   key_groups:
     - age:
       - age19htsz09n6jkpvl58nwqkuqq6yutckg8jnq7nfcv6wqtsz2eeuvfsvs6gjr # nix-immich
-      - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
-      - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
-- path_regex: services/influxv2/.*\.enc\.yaml$
-  key_groups:
-    - age:
-      - age1u437e92k3dg0dlkex8sr856yrtz4yqt0w66ey0xu5qk0e4gxxgqqlq9fdd # nix-influx
-      - age1knduw4awu7sycxvv7dcajldcwts7ppxgctasvecuw2xfx33fccasqrmut4 # nix-grafana
       - age1cag8j93g8jjw860fwecrcl4qvvmk7k9e00puehxacy6dl55ye5eqsg7h7a # fokus
       - age1vm9pqxhup6gkekltk4j8k6kzxzpz5kugmtytzmc8vcphd70t73ssycmm4t # private
 - path_regex: services/keycloak/postgres\.enc\.yaml$

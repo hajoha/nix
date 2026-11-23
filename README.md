@@ -25,12 +25,14 @@ hosts/homelab/
   backup.nix            borgmatic to backup-01 (ZFS snapshots)
   container-keys.nix    installs container ssh keys from container-keys.enc.json
   ci.nix, ci/           GitHub webhooks: PR preview, deploy with health check + rollback
+  monitoring.nix        the one Alloy: host + all container journals/metrics, probes
   secrets.enc.yaml      host secrets (borg passphrase)
   disko.nix             NVMe layout
 modules/
   nixos/homelab-host.nix   inventory -> containers.<name>, datasets, keys, VLANs
   nixos/container-base.nix base for every container
   nixos/homelab.nix        typed inventory (config.homelab), ssh-client, vm
+  nixos/alloy-agent.nix    Alloy agent (journal -> Loki, node metrics/probes -> Thanos)
   home/profiles/        base.nix (every machine), desktop.nix (niri/noctalia desktop)
   home/…                browser, mail, desktop, editor, programs
 services/<name>/        one per container: default.nix + its *.enc.yaml secrets
@@ -308,6 +310,28 @@ them wait for it and start by themselves afterwards:
 zfs load-key threetbpool && zfs mount -a
 journalctl -u 'homelab-data-*' -u 'container@*' -f     # watch them come up
 ```
+
+## Monitoring
+
+```
+homelab host: Alloy ──logs──▶ nix-loki   (30 days)
+  host + every container journal,     ──▶ nix-grafana (dashboards, alerts)
+  node/cAdvisor/SMART metrics, probes
+                  ──metrics──▶ nix-thanos (raw 15d, 5m 90d, 1h 5y)
+hetzner-vps-01: Alloy ── over WireGuard ──▲  (+ probes the public vhosts)
+```
+
+- Containers run no agent: the host's Alloy reads their journals from
+  `/var/lib/nixos-containers/<name>/var/log/journal` and their resources from
+  their cgroups (`machine=<name>`). Logs carry `instance`, `unit`, `level`.
+- Grafana provisions the datasources (Thanos, Loki), the dashboards
+  (`services/grafana/dashboards.nix`) and the alert rules
+  (`services/grafana/alerts.nix`); notifications go to the contact point of
+  the default policy.
+- New containers are picked up automatically (journal, tcp probe, alerts);
+  new nginx vhosts get an https probe.
+- Pipeline UI: `ssh -L 12345:127.0.0.1:12345 root@10.60.0.4`, then
+  http://localhost:12345.
 
 ## Housekeeping
 

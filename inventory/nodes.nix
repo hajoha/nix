@@ -353,32 +353,51 @@
     tcp = [
       3100 # Loki HTTP (Alloy ingestion & Grafana queries)
       9096 # Loki gRPC
-      12345
+    ];
+    # no default route, but answers the senders outside the service VLAN:
+    # the homelab host (management) and the VPS (WireGuard)
+    extraNetworking.interfaces.service.ipv4.routes = [
+      {
+        address = "10.60.0.0";
+        prefixLength = 24;
+        via = "10.60.1.1";
+      }
+      {
+        address = "10.60.71.0";
+        prefixLength = 24;
+        via = "10.60.1.1";
+      }
+    ];
+  };
+
+  # Metrics (Thanos): Alloy remote-writes to :19291, Grafana queries :10902.
+  # Raw 15d, 5m 90d, 1h 5y (services/thanos).
+  nix-thanos = {
+    ip = "10.60.1.28";
+    hostname = "thanos";
+    port = 10902;
+    dns = null;
+    tcp = [
+      10902 # Thanos Query (Grafana)
+      19291 # Thanos Receive (remote write from Alloy)
     ];
   };
 
   nix-grafana = {
     ip = "10.60.1.25";
     sso = true;
-    sopsReaders = [ "nix-influx" ];
     age = "age1knduw4awu7sycxvv7dcajldcwts7ppxgctasvecuw2xfx33fccasqrmut4";
     hostname = "grafana";
     port = 3000;
-    tcp = [
-      3000
-      3100
-    ];
+    tcp = [ 3000 ];
   };
 
+  # Retired (metrics are in nix-thanos); kept so its IP stays reserved.
   nix-influx = {
     ip = "10.60.1.26";
-    age = "age1u437e92k3dg0dlkex8sr856yrtz4yqt0w66ey0xu5qk0e4gxxgqqlq9fdd";
     hostname = "influxv2";
     port = 8086;
-    service = "influxv2";
-    sopsReaders = [ "nix-grafana" ];
-    tcp = [ 8086 ];
-    autoStart = false; # starts empty, enable when ready
+    service = null;
   };
 
   # --- Infra ---

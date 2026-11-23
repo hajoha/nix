@@ -16,6 +16,7 @@
     ./backup.nix
     ./container-keys.nix
     ./ci.nix
+    ./monitoring.nix
     ../../modules/nixos/homelab-host.nix
     ../../services/build/default.nix
     ../../user/root.nix

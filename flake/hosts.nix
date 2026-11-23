@@ -9,6 +9,20 @@ let
   inherit (inputs) nixpkgs home-manager sops-nix;
   inherit (inputs) nixgl;
   inherit (inventory) baseDomain;
+
+  # Public (not LAN-only) vhosts of nix-nginx, probed from the VPS.
+  publicVhosts =
+    let
+      vhosts = inputs.self.nixosConfigurations.homelab.config.containers.nix-nginx.config.services.nginx.virtualHosts;
+    in
+    builtins.attrNames (
+      nixpkgs.lib.filterAttrs (
+        name: v:
+        nixpkgs.lib.hasSuffix ".${baseDomain}" name
+        && !nixpkgs.lib.hasPrefix "*" name
+        && !nixpkgs.lib.hasInfix "deny all;" (v.extraConfig or "")
+      ) vhosts
+    );
 in
 {
   nixosConfigurations = {
@@ -38,6 +52,7 @@ in
 
     hetzner-vps-01 = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
+      specialArgs = { inherit inventory publicVhosts; };
       modules = [
         ../hosts/hetzner-vps-01/configuration.nix
         inputs.disko.nixosModules.disko

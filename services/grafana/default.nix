@@ -42,28 +42,56 @@ in
 
     provision = {
       enable = true;
-      datasources.settings.datasources = [
-        # Remote InfluxDB (via SSH Tunnel)
+      datasources.settings = {
+        datasources = [
+          # Metrics: Thanos Query (raw 15d, 5m 90d, 1h 5y; picks the
+          # resolution from the graph's step)
+          {
+            name = "Thanos";
+            uid = "thanos";
+            type = "prometheus";
+            url = nodes.nix-thanos.addr;
+            access = "proxy";
+            isDefault = true;
+            jsonData = {
+              prometheusType = "Thanos";
+              timeInterval = "15s"; # Alloy's scrape interval
+              httpMethod = "POST";
+            };
+          }
+          # Logs: dedicated Loki host
+          {
+            name = "Loki";
+            uid = "loki";
+            type = "loki";
+            url = "http://${nodes.nix-loki.ip}:3100";
+            access = "proxy"; # Grafana fetches logs on behalf of the user
+            jsonData.maxLines = 1000;
+          }
+        ];
+        # nix-influx is retired
+        deleteDatasources = [
+          {
+            name = "InfluxDB_v2";
+            orgId = 1;
+          }
+        ];
+      };
+
+      dashboards.settings.providers = [
         {
-          name = "InfluxDB_v2";
-          type = "influxdb";
-          url = nodes.nix-influx.addr;
-          isDefault = true;
-          jsonData = {
-            version = "Flux";
-            organization = "main";
-            defaultBucket = "default";
-            tlsSkipVerify = true;
-          };
-        }
-        # Dedicated Loki Host
-        {
-          name = "Loki";
-          type = "loki";
-          url = "http://${nodes.nix-loki.ip}:3100";
-          access = "proxy"; # Important: Grafana fetches logs on behalf of the user
+          name = "homelab";
+          folder = "Homelab";
+          type = "file";
+          allowUiUpdates = false;
+          options.path = import ./dashboards.nix { inherit pkgs lib; };
         }
       ];
+
+      alerting.rules.settings = import ./alerts.nix {
+        inherit lib;
+        inventory = import ../../inventory { inherit lib; };
+      };
     };
 
     settings = {

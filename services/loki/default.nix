@@ -59,9 +59,19 @@ in
         }
       ];
 
+      # Deletes logs older than limits_config.retention_period.
+      compactor = {
+        working_directory = "/var/lib/loki/compactor";
+        compaction_interval = "10m";
+        retention_enabled = true;
+        retention_delete_delay = "2h";
+        delete_request_store = "filesystem";
+      };
+
       limits_config = {
+        retention_period = "720h"; # 30 days of logs
         reject_old_samples = true;
-        reject_old_samples_max_age = "672h"; # 28 days of log retention
+        reject_old_samples_max_age = "168h"; # accept a week of backlog
         allow_structured_metadata = true;
         # Limits to prevent a single spammy LXC from crashing Loki
         ingestion_rate_mb = 10;
@@ -86,9 +96,6 @@ in
     };
   };
 
-  # 4. Networking
-  # Open 3100 for Alloy clients and Grafana
-  networking.firewall.allowedTCPPorts = [ 3100 ];
-
+  # Firewall ports come from the inventory (tcp in nodes.nix)
   system.stateVersion = "25.11";
 }

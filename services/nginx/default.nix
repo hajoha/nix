@@ -290,10 +290,6 @@ in
           };
         };
 
-        "${nodes.nix-influx.fqdn}" = vhost {
-          http2 = true;
-          locations."/" = proxy nodes.nix-influx.addr "proxy_set_header X-Forwarded-Port 443;";
-        };
         "${nodes.nix-grafana.fqdn}" = vhost {
           http2 = true;
           locations."/" = proxy nodes.nix-grafana.addr "proxy_set_header X-Forwarded-Port 443;";
