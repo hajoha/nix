@@ -255,6 +255,18 @@ in
     listenAddress = "127.0.0.1";
     maxInterval = "5m";
   };
+  # nixpkgs grants the exporter access to /dev/nvme* with a udev rule that
+  # only runs when the device is added (boot). Set the ACL before every
+  # start too, so it also works right after the first deploy, without a
+  # reboot ("+": as root).
+  systemd.services.prometheus-smartctl-exporter.serviceConfig.ExecStartPre = [
+    "+${pkgs.writeShellScript "smartctl-nvme-acl" ''
+      for d in /dev/nvme[0-9]*; do
+        [ -c "$d" ] || [ -b "$d" ] || continue
+        ${pkgs.acl}/bin/setfacl -m g:smartctl-exporter-access:rw "$d"
+      done
+    ''}"
+  ];
 
   systemd.services.homelab-container-units = {
     description = "Export failed units of the containers for Alloy";
