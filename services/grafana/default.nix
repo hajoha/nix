@@ -63,9 +63,11 @@ in
               httpMethod = "POST";
             };
           }
-          # Logs: dedicated Loki host
+          # Logs: dedicated Loki host. Not named "Loki": that name belongs to
+          # the old datasource with a generated uid, and provisioning cannot
+          # change a uid ("data source not found"); prune removes the old one.
           {
-            name = "Loki";
+            name = "Logs (Loki)";
             uid = "loki";
             type = "loki";
             url = "http://${nodes.nix-loki.ip}:3100";

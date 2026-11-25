@@ -94,8 +94,10 @@ in
         # samples dated in the future (clock skew) are rejected beyond this
         "--tsdb.too-far-in-future.time-window=5m"
         "--objstore.config-file=${objstore}"
-        # external label of this block stream (must stay the same)
-        ''--label=receive="nix-thanos"''
+        # external label of this block stream (must stay the same); single
+        # quotes for systemd, which would otherwise strip the inner ones
+        # (thanos: "unquote label value")
+        "'--label=receive=\"nix-thanos\"'"
       ];
     };
 
