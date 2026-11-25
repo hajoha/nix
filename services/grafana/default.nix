@@ -63,11 +63,11 @@ in
               httpMethod = "POST";
             };
           }
-          # Logs: dedicated Loki host. Not named "Loki": that name belongs to
-          # the old datasource with a generated uid, and provisioning cannot
-          # change a uid ("data source not found"); prune removes the old one.
+          # Logs: dedicated Loki host. (Provisioning cannot change the uid of
+          # an existing datasource: "data source not found". Rename it or
+          # start with an empty database.)
           {
-            name = "Logs (Loki)";
+            name = "Loki";
             uid = "loki";
             type = "loki";
             url = "http://${nodes.nix-loki.ip}:3100";
@@ -162,13 +162,27 @@ in
         token_url = "${sso.issuer}/protocol/openid-connect/token";
         api_url = "${sso.issuer}/protocol/openid-connect/userinfo";
 
-        # RBAC: Map Keycloak groups to Grafana roles
-        role_attribute_path = "contains(groups, 'grafana-admin') && 'Admin' || contains(groups, 'grafana-editor') && 'Editor' || 'Viewer'";
+        # RBAC: Map Keycloak groups to Grafana roles, on every login.
+        # grafana-admin also becomes Grafana server admin, so a fresh
+        # database needs no local admin to set anything up.
+        role_attribute_path = "contains(groups, 'grafana-admin') && 'GrafanaAdmin' || contains(groups, 'grafana-editor') && 'Editor' || 'Viewer'";
+        allow_assign_grafana_admin = true;
         login_attribute_path = "preferred_username";
         email_attribute_path = "email";
         name_attribute_path = "preferred_username";
 
+        use_pkce = true;
+        use_refresh_token = true;
+        # straight to Keycloak; the local login form stays reachable at
+        # /login?disableAutoLogin=true (admin + GRAFANA_ADMIN_PASSWORD, for
+        # when Keycloak is down)
+        auto_login = true;
+        signout_redirect_url = "${sso.issuer}/protocol/openid-connect/logout?post_logout_redirect_uri=${lib.escapeURL "${nodes.nix-grafana.url}/login"}&client_id=grafana-oauth";
       };
+
+      # no local sign-ups, no password resets; accounts come from Keycloak
+      users.allow_sign_up = false;
+      auth.oauth_allow_insecure_email_lookup = false;
 
       security = {
         secret_key = "$__file{${config.sops.secrets."GRAFANA_SECRET_KEY".path}}";

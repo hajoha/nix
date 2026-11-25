@@ -222,9 +222,17 @@ The same vhost probed from both sides tells you where a problem is:
 
 ## Grafana: dashboards
 
-`https://grafana.<domain>` (Keycloak login: group `grafana-admin` → Admin,
-`grafana-editor` → Editor, everyone else → Viewer). Everything provisioned
-is in the folder **Homelab**:
+`https://grafana.<domain>` goes straight to Keycloak (OIDC, configured in
+`services/grafana/default.nix`, nothing to click in the UI). Roles are set
+on every login: group `grafana-admin` → Admin and server admin,
+`grafana-editor` → Editor, everyone else → Viewer. Grafana holds no state
+of its own worth keeping, since datasources, dashboards, alerts and the
+contact point are all provisioned. If its database is ever in the way,
+delete it (`/var/lib/grafana` in nix-grafana) and restart. The local login
+(`admin`, `GRAFANA_ADMIN_PASSWORD`) stays reachable at
+`/login?disableAutoLogin=true` for when Keycloak is down.
+
+Everything provisioned is in the folder **Homelab**:
 
 - **Homelab** (`uid homelab`), the overview:
   - stats: services down, containers running, failed units (host and
