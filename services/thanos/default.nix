@@ -156,5 +156,4 @@ in
   environment.systemPackages = [ config.services.thanos.package ];
 
   # Firewall ports come from the inventory (tcp in nodes.nix)
-  system.stateVersion = "26.05";
 }
