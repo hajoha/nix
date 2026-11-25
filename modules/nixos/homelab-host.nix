@@ -75,7 +75,6 @@ let
         ./homelab.nix
         inventory.homelabConfig
         ./container-base.nix
-        ../../services/alloy/default.nix
         ../../services/${node.service}/default.nix
         inputs.sops-nix.nixosModules.sops
         {

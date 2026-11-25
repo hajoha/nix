@@ -21,6 +21,10 @@ in
     "GRAFANA_KEYCLOAK_SECRET" = {
       owner = "grafana";
     };
+    # token of the ntfy user "alerts" (hosts/hetzner-vps-01/notify.nix)
+    "NTFY_TOKEN" = {
+      owner = "grafana";
+    };
     "dsp25-ssh" = {
       path = "/etc/ssh/dsp25_ssh_config";
     };
@@ -42,28 +46,98 @@ in
 
     provision = {
       enable = true;
-      datasources.settings.datasources = [
-        # Remote InfluxDB (via SSH Tunnel)
+      datasources.settings = {
+        datasources = [
+          # Metrics: Thanos Query (raw 15d, 5m 90d, 1h 5y; picks the
+          # resolution from the graph's step)
+          {
+            name = "Thanos";
+            uid = "thanos";
+            type = "prometheus";
+            url = nodes.nix-thanos.addr;
+            access = "proxy";
+            isDefault = true;
+            jsonData = {
+              prometheusType = "Thanos";
+              timeInterval = "15s"; # Alloy's scrape interval
+              httpMethod = "POST";
+            };
+          }
+          # Logs: dedicated Loki host
+          {
+            name = "Loki";
+            uid = "loki";
+            type = "loki";
+            url = "http://${nodes.nix-loki.ip}:3100";
+            access = "proxy"; # Grafana fetches logs on behalf of the user
+            jsonData.maxLines = 1000;
+          }
+        ];
+        # nix-influx is retired
+        deleteDatasources = [
+          {
+            name = "InfluxDB_v2";
+            orgId = 1;
+          }
+        ];
+      };
+
+      dashboards.settings.providers = [
         {
-          name = "InfluxDB_v2";
-          type = "influxdb";
-          url = nodes.nix-influx.addr;
-          isDefault = true;
-          jsonData = {
-            version = "Flux";
-            organization = "main";
-            defaultBucket = "default";
-            tlsSkipVerify = true;
-          };
-        }
-        # Dedicated Loki Host
-        {
-          name = "Loki";
-          type = "loki";
-          url = "http://${nodes.nix-loki.ip}:3100";
-          access = "proxy"; # Important: Grafana fetches logs on behalf of the user
+          name = "homelab";
+          folder = "Homelab";
+          type = "file";
+          allowUiUpdates = false;
+          options.path = import ./dashboards.nix { inherit pkgs lib; };
         }
       ];
+
+      alerting.rules.settings = import ./alerts.nix {
+        inherit lib;
+        inventory = import ../../inventory { inherit lib; };
+      };
+
+      # Every alert goes to ntfy on the VPS, topic "homelab"
+      # (hosts/hetzner-vps-01/notify.nix). ntfy turns Grafana's JSON into
+      # title + message with its inline template (tpl=yes, t=, m=).
+      alerting.contactPoints.settings = {
+        apiVersion = 1;
+        contactPoints = [
+          {
+            orgId = 1;
+            name = "ntfy";
+            receivers = [
+              {
+                uid = "ntfy";
+                type = "webhook";
+                disableResolveMessage = false;
+                settings = {
+                  url = "https://notify.monitor.${config.homelab.domain}/homelab?tpl=yes&t=%7B%7B.title%7D%7D&m=%7B%7B.message%7D%7D";
+                  httpMethod = "POST";
+                  authorization_scheme = "Bearer";
+                  authorization_credentials = "$__file{${config.sops.secrets."NTFY_TOKEN".path}}";
+                };
+              }
+            ];
+          }
+        ];
+      };
+      alerting.policies.settings = {
+        apiVersion = 1;
+        policies = [
+          {
+            orgId = 1;
+            receiver = "ntfy";
+            group_by = [
+              "grafana_folder"
+              "alertname"
+            ];
+            group_wait = "30s";
+            group_interval = "5m";
+            repeat_interval = "4h";
+          }
+        ];
+      };
     };
 
     settings = {

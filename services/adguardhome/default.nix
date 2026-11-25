@@ -53,6 +53,25 @@ in
             domain = "hackler.io";
             answer = "${nodes.nix-nginx.ip}";
           }
+          # exceptions to the wildcard: monitor.<domain> is served by the
+          # VPS, not by nix-nginx ("A"/"AAAA" = keep the public answer from
+          # upstream)
+          {
+            domain = "monitor.hackler.io";
+            answer = "A";
+          }
+          {
+            domain = "monitor.hackler.io";
+            answer = "AAAA";
+          }
+          {
+            domain = "*.monitor.hackler.io";
+            answer = "A";
+          }
+          {
+            domain = "*.monitor.hackler.io";
+            answer = "AAAA";
+          }
         ];
         protection_enabled = true;
         filtering_enabled = true;

@@ -13,6 +13,8 @@ in
   imports = [
     ./hardware-configuration.nix
     ./disko-config.nix
+    ./monitoring.nix
+    ./notify.nix
     ../../user/root.nix
   ];
 
@@ -49,11 +51,13 @@ in
       # Path to your private key file on the server
       privateKeyFile = config.sops.secrets."wg.privat".path;
 
-      # Only allow traffic to/from each peer's own tunnel IP
+      # Only allow traffic to/from each peer's own tunnel IP, plus the
+      # networks a peer routes for (`routes`, e.g. home-openwrt: the
+      # monitoring hosts at home)
       peers = map (p: {
         inherit (p) name publicKey;
         presharedKeyFile = config.sops.secrets."${p.name}/psk".path;
-        allowedIPs = [ "${p.ip}/32" ];
+        allowedIPs = [ "${p.ip}/32" ] ++ (p.routes or [ ]);
       }) wgPeers;
     };
   };
