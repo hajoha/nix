@@ -584,6 +584,13 @@ windows.** This is expected, because only 5m/1h data exists there. Use
 `$__rate_interval` and see
 [Storage and retention](#storage-and-retention).
 
+**Panels and alert rules fail with "plugin not registered".** Since
+Grafana 13, the Prometheus and Loki datasources are separate plugins. They
+are pinned in `services/grafana/default.nix` (`declarativePlugins`). After a
+Grafana upgrade, check that they are still compatible
+(`https://grafana.com/api/plugins/prometheus/versions` shows
+`grafanaDependency`) and bump version and hash.
+
 **Thanos compact stopped.** `thanos_compact_halted 1` on `:10912/metrics`
 and an error in `journalctl -M nix-thanos -u thanos-compact`. Without
 compact there is no downsampling and no retention, so the bucket only grows.

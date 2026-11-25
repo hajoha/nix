@@ -44,6 +44,35 @@ in
   services.grafana = {
     enable = true;
 
+    # Since Grafana 13 the Prometheus and Loki datasources are no longer
+    # built in but separate plugins, which Grafana would download from
+    # grafana.com on start (preinstall, disabled below). Pinned here instead;
+    # without them every query fails with "plugin not registered". Newer
+    # versions: https://grafana.com/api/plugins/<pname>/versions
+    declarativePlugins =
+      map
+        (
+          p:
+          pkgs.grafanaPlugins.grafanaPlugin (
+            p
+            // {
+              meta.platforms = [ "x86_64-linux" ];
+            }
+          )
+        )
+        [
+          {
+            pname = "prometheus";
+            version = "13.2.7";
+            zipHash.x86_64-linux = "sha256-Cnwd2dlJBXJO7IEa0tmFLeIxxlwI+BOYnneZlKwu/Sg=";
+          }
+          {
+            pname = "loki";
+            version = "13.2.5";
+            zipHash.x86_64-linux = "sha256-mCz7gZdzUttlQEzsZxlSRTRUZDvZpsiDBBw4vlGadOo=";
+          }
+        ];
+
     provision = {
       enable = true;
       datasources.settings = {
