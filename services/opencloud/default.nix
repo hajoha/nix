@@ -311,8 +311,5 @@ in
     };
   };
 
-  networking.firewall.allowedTCPPorts = [
-    9200
-    9980
-  ];
+  # Firewall ports come from the inventory (tcp in nodes.nix)
 }

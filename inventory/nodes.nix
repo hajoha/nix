@@ -200,7 +200,10 @@
     age = "age1va00gwuz7fkjpctd6zvx45t87e8cg86r5xs0gae2022nzx93fv2sr35df6";
     hostname = "opencloud";
     port = 9200;
-    tcp = [ 9100 ];
+    tcp = [
+      9200 # OpenCloud (nix-nginx)
+      9980 # Collabora (nix-nginx)
+    ];
   };
 
   nix-tranquil = {
