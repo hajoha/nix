@@ -270,6 +270,11 @@ let
   snapBytes = ''sum by (service) (label_replace(homelab_zfs_dataset_snapshots_bytes{machine=~"$service"}, "service", "$1", "machine", "(.+)"))'';
 
   # --- tabs -----------------------------------------------------------------
+  #
+  # Tables built from several queries ("merge" transformation) join rows
+  # whose shared columns are equal. Every such query is aggregated
+  # (max/sum by ...) down to the label columns the table shows, otherwise
+  # __name__, instance, receive, ... differ and nothing is joined.
 
   servicesTab = {
     title = "Services";
@@ -614,15 +619,15 @@ let
         title = "Pool datasets";
         viz = "table";
         queries = [
-          (q ''homelab_zfs_dataset_used_bytes{machine=~"$service"}'' {
+          (q ''max by (dataset, machine, volume) (homelab_zfs_dataset_used_bytes{machine=~"$service"})'' {
             instant = true;
             table = true;
           })
-          (q ''homelab_zfs_dataset_snapshots_bytes{machine=~"$service"}'' {
+          (q ''max by (dataset, machine, volume) (homelab_zfs_dataset_snapshots_bytes{machine=~"$service"})'' {
             instant = true;
             table = true;
           })
-          (q ''homelab_zfs_dataset_available_bytes{machine=~"$service"}'' {
+          (q ''max by (dataset, machine, volume) (homelab_zfs_dataset_available_bytes{machine=~"$service"})'' {
             instant = true;
             table = true;
           })
@@ -637,6 +642,7 @@ let
             options.include.names = [
               "dataset"
               "machine"
+              "volume"
               "Value #A"
               "Value #B"
               "Value #C"
@@ -647,6 +653,7 @@ let
             options.renameByName = {
               dataset = "Dataset";
               machine = "Service";
+              volume = "Volume";
               "Value #A" = "Used";
               "Value #B" = "Snapshots";
               "Value #C" = "Available";
@@ -707,7 +714,7 @@ let
         viz = "table";
         description = "One row per disk. Damage = sum of the raw counters that should stay 0 (reallocated / pending / uncorrectable sectors, CRC errors) and NVMe media errors.";
         queries = [
-          (q "smartctl_device" {
+          (q "max by (device, model_name, serial_number, firmware_version) (smartctl_device)" {
             instant = true;
             table = true;
           })
@@ -1074,15 +1081,15 @@ let
         title = "Error and self-test logs";
         viz = "table";
         queries = [
-          (q "smartctl_device_error_log_count" {
+          (q "max by (device, error_log_type) (smartctl_device_error_log_count)" {
             instant = true;
             table = true;
           })
-          (q "smartctl_device_self_test_log_error_count" {
+          (q "max by (device, self_test_log_type) (smartctl_device_self_test_log_error_count)" {
             instant = true;
             table = true;
           })
-          (q "smartctl_device_num_err_log_entries" {
+          (q "max by (device) (smartctl_device_num_err_log_entries)" {
             instant = true;
             table = true;
           })

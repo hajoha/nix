@@ -95,7 +95,7 @@ let
       # pool missing or locked: no dataset metrics, the rest still works
       datasets=$(zfs list -Hp -t filesystem -o name,used,usedbysnapshots,available -r ${params.pool}/containers 2>/dev/null || true)
       pools=$(zpool list -Hp -o name,size,allocated,free 2>/dev/null || true)
-      roots=$(zfs list -Hp -d 0 -o name,used,available 2>/dev/null || true)
+      roots=$(zfs list -Hp -o name,used,available ${params.pool} 2>/dev/null || true)
 
       ds() { # <metric> <column>
         awk -F'\t' -v m="$1" -v c="$2" '{ n = split($1, p, "/"); if (n == 4)
