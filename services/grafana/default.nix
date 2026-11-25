@@ -73,13 +73,10 @@ in
             jsonData.maxLines = 1000;
           }
         ];
-        # nix-influx is retired
-        deleteDatasources = [
-          {
-            name = "InfluxDB_v2";
-            orgId = 1;
-          }
-        ];
+        # Removes provisioned datasources that are no longer listed here
+        # (InfluxDB_v2 of the retired nix-influx). deleteDatasources would
+        # fail every start after the first: "data source not found".
+        prune = true;
       };
 
       dashboards.settings.providers = [
@@ -178,6 +175,8 @@ in
       };
 
       analytics.reporting_enabled = false;
+      # no background downloads from grafana.com; plugins come from Nix
+      plugins.preinstall_disabled = true;
     };
   };
 
