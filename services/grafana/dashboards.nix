@@ -1,348 +1,1016 @@
-# Provisioned dashboards (folder "Homelab", read-only in the UI; copy one
-# to edit it):
+# Provisioned dashboards (folder "Homelab", read-only in the UI; "Save as"
+# to experiment):
 #
-#   homelab.json     overview: probes, containers, host, logs
+#   homelab.json     the overview, in tabs (dashboard schema v2, Grafana 12+):
+#                    Services   what runs, what does not and why, space per
+#                               service, history, logs of one service
+#                    Storage    NVMe / pool usage, per service over time
+#                    Host       CPU, memory, temperatures, disks, network
+#                    Containers CPU / memory / IO per container
+#                    Probes     every probe, from inside and outside, certs
+#                    Logs       errors of everything
 #   node-full.json   "Node Exporter Full" (grafana.com 1860), per machine
-{ pkgs, lib }:
+#
+# The v2 format here is what Grafana itself produces when it converts a
+# classic dashboard (GET /apis/dashboard.grafana.app/v2beta1/...), plus a
+# TabsLayout.
+{
+  pkgs,
+  lib,
+  inventory,
+}:
 let
-  prom = {
-    type = "prometheus";
-    uid = "thanos";
-  };
-  loki = {
-    type = "loki";
-    uid = "loki";
+  inherit (lib)
+    concatMap
+    concatStringsSep
+    filterAttrs
+    attrNames
+    imap0
+    optionalAttrs
+    ;
+
+  serviceNodes = filterAttrs (_: n: n.service != null) inventory.nodes;
+  running = attrNames (filterAttrs (_: n: n.autoStart) serviceNodes);
+  # PromQL regex of the container units that should be running
+  runningUnits = "container@(${concatStringsSep "|" running})\\\\.service";
+
+  fsFilter = ''fstype!~"tmpfs|ramfs|squashfs|overlay"'';
+
+  # --- building blocks ----------------------------------------------------
+
+  refIds = [
+    "A"
+    "B"
+    "C"
+    "D"
+    "E"
+    "F"
+  ];
+
+  # one query; `source` is "thanos" (PromQL) or "loki" (LogQL)
+  q =
+    expr:
+    {
+      legend ? null,
+      instant ? false,
+      table ? false,
+      source ? "thanos",
+    }:
+    {
+      inherit
+        expr
+        legend
+        instant
+        table
+        source
+        ;
+    };
+
+  mkQuery = refId: x: {
+    kind = "PanelQuery";
+    spec = {
+      inherit refId;
+      hidden = false;
+      query = {
+        kind = "DataQuery";
+        group = if x.source == "loki" then "loki" else "prometheus";
+        version = "v0";
+        datasource.name = x.source;
+        spec = {
+          inherit (x) expr;
+        }
+        // optionalAttrs (x.legend != null) { legendFormat = x.legend; }
+        // optionalAttrs x.instant {
+          instant = true;
+          range = false;
+        }
+        // optionalAttrs x.table { format = "table"; }
+        // optionalAttrs (x.source == "loki") { queryType = "range"; };
+      };
+    };
   };
 
-  q = expr: legend: {
-    datasource = prom;
-    inherit expr;
-    legendFormat = legend;
-    refId = "A";
-  };
-
+  # a panel; returns a function of its id (assigned when laid out)
   panel =
     {
       title,
-      type ? "timeseries",
-      x,
-      y,
-      w ? 12,
-      h ? 8,
-      targets,
+      viz ? "timeseries",
+      queries,
+      description ? "",
       unit ? null,
-      extra ? { },
+      defaults ? { },
+      overrides ? [ ],
+      options ? { },
+      transformations ? [ ],
     }:
-    lib.recursiveUpdate {
-      inherit title type targets;
-      datasource = prom;
-      gridPos = { inherit x y w h; };
-      fieldConfig = {
-        defaults = lib.optionalAttrs (unit != null) { inherit unit; };
-        overrides = [ ];
+    id: {
+      kind = "Panel";
+      spec = {
+        inherit id title description;
+        links = [ ];
+        data = {
+          kind = "QueryGroup";
+          spec = {
+            queries = imap0 (i: mkQuery (builtins.elemAt refIds i)) queries;
+            transformations = map (t: {
+              kind = t.id;
+              spec = t;
+            }) transformations;
+            queryOptions = { };
+          };
+        };
+        vizConfig = {
+          kind = "VizConfig";
+          group = viz;
+          version = "";
+          spec = {
+            inherit options;
+            fieldConfig = {
+              defaults = defaults // optionalAttrs (unit != null) { inherit unit; };
+              inherit overrides;
+            };
+          };
+        };
       };
-      options = { };
-    } extra;
+    };
+
+  at = x: y: w: h: p: {
+    inherit
+      x
+      y
+      w
+      h
+      p
+      ;
+  };
+
+  thresholds = steps: {
+    mode = "absolute";
+    steps = map (s: {
+      color = builtins.elemAt s 0;
+      value = builtins.elemAt s 1;
+    }) steps;
+  };
 
   stat =
     args:
     panel (
       args
       // {
-        type = "stat";
-        h = 4;
-        w = 4;
-        extra = lib.recursiveUpdate {
-          options = {
-            reduceOptions.calcs = [ "lastNotNull" ];
-            colorMode = "background";
-            graphMode = "none";
+        viz = "stat";
+        options = {
+          reduceOptions = {
+            calcs = [ "lastNotNull" ];
+            fields = "";
+            values = false;
           };
-        } (args.extra or { });
+          colorMode = "background";
+          graphMode = "none";
+          textMode = "auto";
+          justifyMode = "auto";
+          orientation = "auto";
+          wideLayout = true;
+        }
+        // (args.options or { });
       }
     );
 
-  thresholds = steps: {
-    fieldConfig.defaults.thresholds = {
-      mode = "absolute";
-      steps = map (s: {
-        color = s.c;
-        value = s.v;
-      }) steps;
+  stacked = {
+    custom.stacking = {
+      mode = "normal";
+      group = "A";
     };
   };
 
-  okIfZero = thresholds [
+  # --- service state ------------------------------------------------------
+  #
+  # 1 running, 0.5 running with failed units inside, 0 down (container not
+  # active or its port not answering). Only containers with autoStart.
+
+  serviceState = ''
+    min by (service) (
+        label_replace(node_systemd_unit_state{instance="homelab", state="active", name=~"${runningUnits}"}, "service", "$1", "name", "container@(.+)\\.service")
+      or
+        label_replace(probe_success{prober="homelab", module="tcp_connect"}, "service", "$1", "probe", "(.+)")
+      or
+        label_replace(0.5 * (count by (machine) (homelab_container_unit_failed) > bool 0), "service", "$1", "machine", "(.+)")
+    )'';
+
+  stateMappings = [
     {
-      c = "green";
-      v = null;
-    }
-    {
-      c = "red";
-      v = 1;
+      type = "value";
+      options = {
+        "1" = {
+          text = "running";
+          color = "green";
+          index = 0;
+        };
+        "0.5" = {
+          text = "degraded";
+          color = "orange";
+          index = 1;
+        };
+        "0" = {
+          text = "DOWN";
+          color = "red";
+          index = 2;
+        };
+      };
     }
   ];
 
-  homelab = {
-    uid = "homelab";
-    title = "Homelab";
-    tags = [ "homelab" ];
-    timezone = "browser";
-    schemaVersion = 39;
-    refresh = "1m";
-    time = {
-      from = "now-24h";
-      to = "now";
-    };
-    panels = lib.imap1 (i: p: p // { id = i; }) [
-      (stat {
-        title = "Services down";
-        x = 0;
-        y = 0;
-        targets = [ (q "count(probe_success == 0) or vector(0)" "") ];
-        extra = okIfZero;
-      })
-      (stat {
-        title = "Containers running";
-        x = 4;
-        y = 0;
-        targets = [
-          (q ''sum(node_systemd_unit_state{instance="homelab", name=~"container@.+", state="active"})'' "")
-        ];
-      })
-      (stat {
-        title = "Failed units";
-        x = 8;
-        y = 0;
-        targets = [
-          (q ''(count(node_systemd_unit_state{state="failed"} == 1) or vector(0)) + (count(homelab_container_unit_failed) or vector(0))'' "")
-        ];
-        extra = okIfZero;
-      })
-      (stat {
-        title = "Hottest sensor";
-        x = 12;
-        y = 0;
-        unit = "celsius";
-        targets = [ (q ''max(node_hwmon_temp_celsius{instance="homelab"})'' "") ];
-        extra = thresholds [
-          {
-            c = "green";
-            v = null;
-          }
-          {
-            c = "orange";
-            v = 70;
-          }
-          {
-            c = "red";
-            v = 85;
-          }
-        ];
-      })
-      (stat {
-        title = "Fullest filesystem";
-        x = 16;
-        y = 0;
-        unit = "percent";
-        targets = [
-          (q ''max(100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"}))'' "")
-        ];
-        extra = thresholds [
-          {
-            c = "green";
-            v = null;
-          }
-          {
-            c = "orange";
-            v = 80;
-          }
-          {
-            c = "red";
-            v = 90;
-          }
-        ];
-      })
-      (stat {
-        title = "Uptime (host)";
-        x = 20;
-        y = 0;
-        unit = "s";
-        targets = [ (q ''time() - node_boot_time_seconds{instance="homelab"}'' "") ];
-        extra = thresholds [
-          {
-            c = "blue";
-            v = null;
-          }
-        ];
-      })
+  # one row per problem: service, reason, detail
+  #   rl dst replacement src regex expr   = label_replace(expr, ...)
+  rl =
+    dst: repl: src: regex: expr:
+    ''label_replace(${expr}, "${dst}", "${repl}", "${src}", "${regex}")'';
+  set = dst: value: rl dst value "" "";
+  copy = dst: src: rl dst "$1" src "(.+)";
+  problems = concatStringsSep "\nor\n" [
+    # container not active: its state (failed, inactive, activating, ...)
+    (copy "detail" "name" (
+      rl "reason" "container is $1" "state" "(.+)" (
+        rl "service" "$1" "name" "container@(.+)\\\\.service"
+          ''node_systemd_unit_state{instance="homelab", name=~"${runningUnits}", state!="active"} == 1''
+      )
+    ))
+    (copy "detail" "unit" (
+      set "reason" "unit failed inside the container" (copy "service" "machine" "homelab_container_unit_failed")
+    ))
+    (set "detail" "systemctl -M <service> list-units did not answer" (
+      set "reason" "units inside could not be listed" (
+        copy "service" "machine" "homelab_container_scrape_ok == 0"
+      )
+    ))
+    (copy "detail" "instance" (
+      set "reason" "port not answering" (
+        copy "service" "probe" ''probe_success{module="tcp_connect"} == 0''
+      )
+    ))
+    (copy "detail" "instance" (
+      rl "reason" "website down, seen from $1" "prober" "(.+)" (
+        copy "service" "probe" ''probe_success{module="http_up"} == 0''
+      )
+    ))
+    (copy "detail" "name" (
+      set "reason" "unit failed" (
+        copy "service" "instance" ''node_systemd_unit_state{state="failed", name!~"container@.+"} == 1''
+      )
+    ))
+  ];
 
-      (panel {
-        title = "Probes";
-        type = "state-timeline";
-        x = 0;
-        y = 4;
-        w = 24;
-        h = 12;
-        targets = [ (q "probe_success" "{{probe}} ({{prober}})") ];
-        extra = {
-          fieldConfig.defaults = {
-            mappings = [
+  # --- space ----------------------------------------------------------------
+
+  rootBytes = ''sum by (service) (label_replace(homelab_container_root_bytes, "service", "$1", "machine", "(.+)"))'';
+  poolBytes = ''sum by (service) (label_replace(homelab_zfs_dataset_used_bytes, "service", "$1", "machine", "(.+)"))'';
+  snapBytes = ''sum by (service) (label_replace(homelab_zfs_dataset_snapshots_bytes, "service", "$1", "machine", "(.+)"))'';
+
+  # --- tabs -----------------------------------------------------------------
+
+  servicesTab = {
+    title = "Services";
+    items = [
+      (at 0 0 6 4 (stat {
+        title = "Down";
+        queries = [ (q "count(${serviceState} == 0) or vector(0)" { instant = true; }) ];
+        defaults.thresholds = thresholds [
+          [
+            "green"
+            null
+          ]
+          [
+            "red"
+            1
+          ]
+        ];
+      }))
+      (at 6 0 6 4 (stat {
+        title = "Degraded";
+        description = "Running, but with failed units inside";
+        queries = [ (q "count(${serviceState} == 0.5) or vector(0)" { instant = true; }) ];
+        defaults.thresholds = thresholds [
+          [
+            "green"
+            null
+          ]
+          [
+            "orange"
+            1
+          ]
+        ];
+      }))
+      (at 12 0 6 4 (stat {
+        title = "Running";
+        queries = [ (q "count(${serviceState} == 1) or vector(0)" { instant = true; }) ];
+        defaults.thresholds = thresholds [
+          [
+            "blue"
+            null
+          ]
+        ];
+      }))
+      (at 18 0 6 4 (stat {
+        title = "Problems";
+        description = "Rows in the table below";
+        queries = [ (q "count(${problems}) or vector(0)" { instant = true; }) ];
+        defaults.thresholds = thresholds [
+          [
+            "green"
+            null
+          ]
+          [
+            "red"
+            1
+          ]
+        ];
+      }))
+
+      (at 0 4 24 7 (stat {
+        title = "Service status";
+        description = "Every container that starts at boot: container active, its port answers (probe from the host), no failed units inside.";
+        queries = [
+          (q serviceState {
+            legend = "{{service}}";
+            instant = true;
+          })
+        ];
+        defaults = {
+          mappings = stateMappings;
+          color.mode = "thresholds";
+          thresholds = thresholds [
+            [
+              "red"
+              null
+            ]
+            [
+              "orange"
+              0.5
+            ]
+            [
+              "green"
+              1
+            ]
+          ];
+        };
+        options = {
+          textMode = "value_and_name";
+          text.titleSize = 14;
+        };
+      }))
+
+      (at 0 11 24 8 (panel {
+        title = "What is wrong, and why";
+        viz = "table";
+        description = "Empty when everything runs. Details: the failed unit, the address that does not answer, or the container state. The logs below show the errors.";
+        queries = [
+          (q problems {
+            instant = true;
+            table = true;
+          })
+        ];
+        transformations = [
+          {
+            id = "filterFieldsByName";
+            options.include.names = [
+              "service"
+              "reason"
+              "detail"
+            ];
+          }
+          {
+            id = "organize";
+            options = {
+              indexByName = {
+                service = 0;
+                reason = 1;
+                detail = 2;
+              };
+              renameByName = {
+                service = "Service";
+                reason = "Problem";
+                detail = "Detail";
+              };
+            };
+          }
+          {
+            id = "sortBy";
+            options.sort = [ { field = "Service"; } ];
+          }
+        ];
+        defaults.noValue = "Everything is running";
+        options = {
+          showHeader = true;
+          cellHeight = "sm";
+        };
+      }))
+
+      (at 0 19 24 8 (panel {
+        title = "History";
+        viz = "state-timeline";
+        queries = [ (q serviceState { legend = "{{service}}"; }) ];
+        defaults = {
+          mappings = stateMappings;
+          color.mode = "thresholds";
+          thresholds = thresholds [
+            [
+              "red"
+              null
+            ]
+            [
+              "orange"
+              0.5
+            ]
+            [
+              "green"
+              1
+            ]
+          ];
+        };
+        options = {
+          showValue = "never";
+          mergeValues = true;
+          rowHeight = 0.8;
+          legend.showLegend = false;
+        };
+      }))
+
+      (at 0 27 24 9 (panel {
+        title = "Space per service";
+        viz = "table";
+        description = "System disk: the container root on the NVMe (without the pool datasets mounted inside). Pool: its datasets on the HDD pool, including snapshots. Updated every 15 minutes.";
+        queries = [
+          (q rootBytes {
+            instant = true;
+            table = true;
+          })
+          (q poolBytes {
+            instant = true;
+            table = true;
+          })
+          (q snapBytes {
+            instant = true;
+            table = true;
+          })
+        ];
+        transformations = [
+          {
+            id = "merge";
+            options = { };
+          }
+          {
+            id = "organize";
+            options = {
+              excludeByName.Time = true;
+              renameByName = {
+                service = "Service";
+                "Value #A" = "System disk (NVMe)";
+                "Value #B" = "HDD pool";
+                "Value #C" = "of which snapshots";
+              };
+            };
+          }
+          {
+            id = "sortBy";
+            options.sort = [
               {
-                type = "value";
-                options = {
-                  "0" = {
-                    text = "down";
-                    color = "red";
-                  };
-                  "1" = {
-                    text = "up";
-                    color = "green";
-                  };
-                };
+                field = "System disk (NVMe)";
+                desc = true;
               }
             ];
-            color.mode = "thresholds";
-          };
-          options = {
-            showValue = "never";
-            mergeValues = true;
-          };
-        };
-      })
-
-      (panel {
-        title = "CPU";
-        x = 0;
-        y = 16;
-        unit = "percent";
-        targets = [
-          (q ''100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[$__rate_interval])))'' "{{instance}}")
-        ];
-      })
-      (panel {
-        title = "Memory used";
-        x = 12;
-        y = 16;
-        unit = "percent";
-        targets = [
-          (q "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)" "{{instance}}")
-        ];
-      })
-      (panel {
-        title = "Temperatures";
-        x = 0;
-        y = 24;
-        unit = "celsius";
-        targets = [
-          (q ''node_hwmon_temp_celsius{instance="homelab"}'' "{{chip}} {{sensor}}")
-          ((q ''smartctl_device_temperature{temperature_type="current"}'' "disk {{device}}") // { refId = "B"; })
-        ];
-      })
-      (panel {
-        title = "Filesystems used";
-        type = "bargauge";
-        x = 12;
-        y = 24;
-        unit = "percent";
-        targets = [
-          (
-            (q ''100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"})'' "{{instance}} {{mountpoint}}")
-            // {
-              instant = true;
-            }
-          )
-        ];
-        extra = lib.recursiveUpdate (thresholds [
-          {
-            c = "green";
-            v = null;
           }
-          {
-            c = "orange";
-            v = 80;
-          }
-          {
-            c = "red";
-            v = 90;
-          }
-        ]) {
-          fieldConfig.defaults = {
-            min = 0;
-            max = 100;
-          };
-          options = {
-            displayMode = "lcd";
-            orientation = "horizontal";
-          };
-        };
-      })
-
-      (panel {
-        title = "Container CPU";
-        x = 0;
-        y = 32;
-        unit = "percentunit";
-        targets = [
-          (q "sum by (machine) (rate(container_cpu_usage_seconds_total{machine!=\"\"}[$__rate_interval]))" "{{machine}}")
         ];
-        extra.fieldConfig.defaults.custom.stacking.mode = "normal";
-      })
-      (panel {
-        title = "Container memory";
-        x = 12;
-        y = 32;
         unit = "bytes";
-        targets = [
-          (q "sum by (machine) (container_memory_working_set_bytes{machine!=\"\"})" "{{machine}}")
-        ];
-        extra.fieldConfig.defaults.custom.stacking.mode = "normal";
-      })
-      (panel {
-        title = "Disk IO";
-        x = 0;
-        y = 40;
-        unit = "Bps";
-        targets = [
-          (q ''sum by (device) (rate(node_disk_read_bytes_total{instance="homelab"}[$__rate_interval]))'' "{{device}} read")
-          ((q ''-sum by (device) (rate(node_disk_written_bytes_total{instance="homelab"}[$__rate_interval]))'' "{{device}} write") // { refId = "B"; })
-        ];
-      })
-      (panel {
-        title = "Network";
-        x = 12;
-        y = 40;
-        unit = "bps";
-        targets = [
-          (q ''8 * rate(node_network_receive_bytes_total{device!~"lo|veth.*|mv-.*"}[$__rate_interval])'' "{{instance}} {{device}} in")
-          ((q ''-8 * rate(node_network_transmit_bytes_total{device!~"lo|veth.*|mv-.*"}[$__rate_interval])'' "{{instance}} {{device}} out") // { refId = "B"; })
-        ];
-      })
-
-      (panel {
-        title = "Errors in the logs";
-        type = "logs";
-        x = 0;
-        y = 48;
-        w = 24;
-        h = 12;
-        targets = [
-          {
-            datasource = loki;
-            expr = ''{job="systemd-journal", level=~"emerg|alert|crit|error"}'';
-            refId = "A";
-          }
-        ];
-        extra = {
-          datasource = loki;
-          options = {
-            showTime = true;
-            wrapLogMessage = true;
-            sortOrder = "Descending";
+        defaults.custom = {
+          cellOptions = {
+            type = "gauge";
+            mode = "basic";
+            valueDisplayMode = "text";
           };
         };
-      })
+        overrides = [
+          {
+            matcher = {
+              id = "byName";
+              options = "Service";
+            };
+            properties = [
+              {
+                id = "custom.cellOptions";
+                value.type = "auto";
+              }
+            ];
+          }
+        ];
+        options.showHeader = true;
+      }))
+
+      (at 0 36 24 12 (panel {
+        title = "Logs of $service (warnings and worse)";
+        viz = "logs";
+        queries = [
+          (q ''{job="systemd-journal", instance=~"$service", level=~"emerg|alert|crit|error|warning"}'' {
+            source = "loki";
+          })
+        ];
+        options = {
+          showTime = true;
+          wrapLogMessage = true;
+          sortOrder = "Descending";
+          enableLogDetails = true;
+        };
+      }))
     ];
+  };
+
+  storageTab = {
+    title = "Storage";
+    items = [
+      (at 0 0 12 5 (panel {
+        title = "Filesystems";
+        viz = "bargauge";
+        unit = "percent";
+        queries = [
+          (q ''100 * (1 - node_filesystem_avail_bytes{${fsFilter}} / node_filesystem_size_bytes{${fsFilter}})'' {
+            legend = "{{instance}} {{mountpoint}}";
+            instant = true;
+          })
+        ];
+        defaults = {
+          min = 0;
+          max = 100;
+          thresholds = thresholds [
+            [
+              "green"
+              null
+            ]
+            [
+              "orange"
+              80
+            ]
+            [
+              "red"
+              90
+            ]
+          ];
+        };
+        options = {
+          displayMode = "lcd";
+          orientation = "horizontal";
+          showUnfilled = true;
+        };
+      }))
+      (at 12 0 12 5 (panel {
+        title = "ZFS pools";
+        viz = "bargauge";
+        unit = "bytes";
+        queries = [
+          (q "homelab_zpool_allocated_bytes" {
+            legend = "{{zpool}} used";
+            instant = true;
+          })
+          (q "homelab_zpool_free_bytes" {
+            legend = "{{zpool}} free";
+            instant = true;
+          })
+        ];
+        options = {
+          displayMode = "basic";
+          orientation = "horizontal";
+        };
+      }))
+      (at 0 5 12 10 (panel {
+        title = "System disk per service";
+        unit = "bytes";
+        queries = [ (q rootBytes { legend = "{{service}}"; }) ];
+        defaults = stacked;
+      }))
+      (at 12 5 12 10 (panel {
+        title = "HDD pool per service";
+        unit = "bytes";
+        queries = [ (q poolBytes { legend = "{{service}}"; }) ];
+        defaults = stacked;
+      }))
+      (at 0 15 24 8 (panel {
+        title = "Pool datasets";
+        viz = "table";
+        queries = [
+          (q "homelab_zfs_dataset_used_bytes" {
+            instant = true;
+            table = true;
+          })
+          (q "homelab_zfs_dataset_snapshots_bytes" {
+            instant = true;
+            table = true;
+          })
+          (q "homelab_zfs_dataset_available_bytes" {
+            instant = true;
+            table = true;
+          })
+        ];
+        transformations = [
+          {
+            id = "merge";
+            options = { };
+          }
+          {
+            id = "filterFieldsByName";
+            options.include.names = [
+              "dataset"
+              "machine"
+              "Value #A"
+              "Value #B"
+              "Value #C"
+            ];
+          }
+          {
+            id = "organize";
+            options.renameByName = {
+              dataset = "Dataset";
+              machine = "Service";
+              "Value #A" = "Used";
+              "Value #B" = "Snapshots";
+              "Value #C" = "Available";
+            };
+          }
+        ];
+        unit = "bytes";
+      }))
+    ];
+  };
+
+  hostTab = {
+    title = "Host";
+    items = [
+      (at 0 0 6 4 (stat {
+        title = "Hottest sensor";
+        unit = "celsius";
+        queries = [ (q ''max(node_hwmon_temp_celsius{instance="homelab"})'' { instant = true; }) ];
+        defaults.thresholds = thresholds [
+          [
+            "green"
+            null
+          ]
+          [
+            "orange"
+            70
+          ]
+          [
+            "red"
+            85
+          ]
+        ];
+      }))
+      (at 6 0 6 4 (stat {
+        title = "Uptime";
+        unit = "s";
+        queries = [ (q ''time() - node_boot_time_seconds{instance="homelab"}'' { instant = true; }) ];
+        defaults.thresholds = thresholds [
+          [
+            "blue"
+            null
+          ]
+        ];
+      }))
+      (at 12 0 6 4 (stat {
+        title = "Load (5m)";
+        queries = [ (q ''node_load5{instance="homelab"}'' { instant = true; }) ];
+        defaults.thresholds = thresholds [
+          [
+            "blue"
+            null
+          ]
+        ];
+      }))
+      (at 18 0 6 4 (stat {
+        title = "Failed units (host)";
+        queries = [
+          (q ''count(node_systemd_unit_state{instance="homelab", state="failed"} == 1) or vector(0)'' {
+            instant = true;
+          })
+        ];
+        defaults.thresholds = thresholds [
+          [
+            "green"
+            null
+          ]
+          [
+            "red"
+            1
+          ]
+        ];
+      }))
+      (at 0 4 12 8 (panel {
+        title = "CPU";
+        unit = "percent";
+        queries = [
+          (q ''100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[$__rate_interval])))'' {
+            legend = "{{instance}}";
+          })
+        ];
+      }))
+      (at 12 4 12 8 (panel {
+        title = "Memory used";
+        unit = "percent";
+        queries = [
+          (q "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)" {
+            legend = "{{instance}}";
+          })
+        ];
+      }))
+      (at 0 12 12 8 (panel {
+        title = "Temperatures";
+        unit = "celsius";
+        queries = [
+          (q ''node_hwmon_temp_celsius{instance="homelab"}'' { legend = "{{chip}} {{sensor}}"; })
+          (q ''smartctl_device_temperature{temperature_type="current"}'' { legend = "disk {{device}}"; })
+        ];
+      }))
+      (at 12 12 12 8 (panel {
+        title = "Disk IO";
+        unit = "Bps";
+        queries = [
+          (q ''sum by (device) (rate(node_disk_read_bytes_total{instance="homelab"}[$__rate_interval]))'' {
+            legend = "{{device}} read";
+          })
+          (q ''-sum by (device) (rate(node_disk_written_bytes_total{instance="homelab"}[$__rate_interval]))'' {
+            legend = "{{device}} write";
+          })
+        ];
+      }))
+      (at 0 20 24 8 (panel {
+        title = "Network";
+        unit = "bps";
+        queries = [
+          (q ''8 * rate(node_network_receive_bytes_total{device!~"lo|veth.*|mv-.*"}[$__rate_interval])'' {
+            legend = "{{instance}} {{device}} in";
+          })
+          (q ''-8 * rate(node_network_transmit_bytes_total{device!~"lo|veth.*|mv-.*"}[$__rate_interval])'' {
+            legend = "{{instance}} {{device}} out";
+          })
+        ];
+      }))
+    ];
+  };
+
+  containersTab = {
+    title = "Containers";
+    items = [
+      (at 0 0 12 10 (panel {
+        title = "CPU per container";
+        unit = "percentunit";
+        queries = [
+          (q ''sum by (machine) (rate(container_cpu_usage_seconds_total{machine!=""}[$__rate_interval]))'' {
+            legend = "{{machine}}";
+          })
+        ];
+        defaults = stacked;
+      }))
+      (at 12 0 12 10 (panel {
+        title = "Memory per container";
+        unit = "bytes";
+        queries = [
+          (q ''sum by (machine) (container_memory_working_set_bytes{machine!=""})'' {
+            legend = "{{machine}}";
+          })
+        ];
+        defaults = stacked;
+      }))
+      (at 0 10 24 9 (panel {
+        title = "Disk IO per container";
+        unit = "Bps";
+        queries = [
+          (q ''sum by (machine) (rate(container_fs_reads_bytes_total{machine!=""}[$__rate_interval]))'' {
+            legend = "{{machine}} read";
+          })
+          (q ''-sum by (machine) (rate(container_fs_writes_bytes_total{machine!=""}[$__rate_interval]))'' {
+            legend = "{{machine}} write";
+          })
+        ];
+      }))
+    ];
+  };
+
+  probesTab = {
+    title = "Probes";
+    items = [
+      (at 0 0 24 14 (panel {
+        title = "Probes";
+        viz = "state-timeline";
+        description = "tcp: each container's port, from the host. https: each vhost, from the host (inside) and from the VPS (outside).";
+        queries = [ (q "probe_success" { legend = "{{probe}} ({{prober}})"; }) ];
+        defaults = {
+          mappings = [
+            {
+              type = "value";
+              options = {
+                "0" = {
+                  text = "down";
+                  color = "red";
+                  index = 0;
+                };
+                "1" = {
+                  text = "up";
+                  color = "green";
+                  index = 1;
+                };
+              };
+            }
+          ];
+          color.mode = "thresholds";
+        };
+        options = {
+          showValue = "never";
+          mergeValues = true;
+          legend.showLegend = false;
+        };
+      }))
+      (at 0 14 12 9 (panel {
+        title = "Response time";
+        unit = "s";
+        queries = [ (q "probe_duration_seconds" { legend = "{{probe}} ({{prober}})"; }) ];
+      }))
+      (at 12 14 12 9 (panel {
+        title = "Certificates: days left";
+        viz = "bargauge";
+        unit = "d";
+        queries = [
+          (q "min by (instance) ((probe_ssl_earliest_cert_expiry - time()) / 86400)" {
+            legend = "{{instance}}";
+            instant = true;
+          })
+        ];
+        defaults.thresholds = thresholds [
+          [
+            "red"
+            null
+          ]
+          [
+            "orange"
+            14
+          ]
+          [
+            "green"
+            30
+          ]
+        ];
+        options = {
+          displayMode = "basic";
+          orientation = "horizontal";
+        };
+      }))
+    ];
+  };
+
+  logsTab = {
+    title = "Logs";
+    items = [
+      (at 0 0 24 8 (panel {
+        title = "Log lines per machine";
+        viz = "timeseries";
+        queries = [
+          (q ''sum by (instance) (count_over_time({job="systemd-journal"}[$__auto]))'' {
+            legend = "{{instance}}";
+            source = "loki";
+          })
+        ];
+        defaults = stacked // {
+          custom = stacked.custom // {
+            drawStyle = "bars";
+            fillOpacity = 80;
+          };
+        };
+      }))
+      (at 0 8 24 16 (panel {
+        title = "Errors everywhere";
+        viz = "logs";
+        queries = [
+          (q ''{job="systemd-journal", level=~"emerg|alert|crit|error"}'' {
+            source = "loki";
+          })
+        ];
+        options = {
+          showTime = true;
+          wrapLogMessage = true;
+          sortOrder = "Descending";
+          enableLogDetails = true;
+        };
+      }))
+    ];
+  };
+
+  tabs = [
+    servicesTab
+    storageTab
+    hostTab
+    containersTab
+    probesTab
+    logsTab
+  ];
+
+  # panel ids 1.. across all tabs
+  numbered =
+    (lib.foldl'
+      (acc: t: {
+        next = acc.next + builtins.length t.items;
+        tabs = acc.tabs ++ [ (t // { items = imap0 (j: it: it // { id = acc.next + j; }) t.items; }) ];
+      })
+      {
+        next = 1;
+        tabs = [ ];
+      }
+      tabs
+    ).tabs;
+
+  name = id: "panel-${toString id}";
+
+  homelab = {
+    apiVersion = "dashboard.grafana.app/v2beta1";
+    kind = "Dashboard";
+    metadata.name = "homelab";
+    spec = {
+      title = "Homelab";
+      tags = [ "homelab" ];
+      editable = true;
+      liveNow = false;
+      preload = false;
+      cursorSync = "Crosshair";
+      links = [ ];
+      annotations = [ ];
+      timeSettings = {
+        from = "now-24h";
+        to = "now";
+        timezone = "browser";
+        autoRefresh = "1m";
+        autoRefreshIntervals = [
+          "30s"
+          "1m"
+          "5m"
+          "15m"
+          "1h"
+        ];
+        hideTimepicker = false;
+        fiscalYearStartMonth = 0;
+      };
+      variables = [
+        {
+          kind = "CustomVariable";
+          spec = {
+            name = "service";
+            label = "Service (logs)";
+            query = concatStringsSep "," (
+              attrNames serviceNodes
+              ++ [
+                "homelab"
+                "hetzner-vps-01"
+              ]
+            );
+            current = {
+              text = [ "All" ];
+              value = [ "$__all" ];
+            };
+            options = [ ];
+            multi = true;
+            includeAll = true;
+            hide = "dontHide";
+            skipUrlSync = false;
+            allowCustomValue = true;
+          };
+        }
+      ];
+      elements = builtins.listToAttrs (
+        concatMap (
+          t:
+          map (it: {
+            name = name it.id;
+            value = it.p it.id;
+          }) t.items
+        ) numbered
+      );
+      layout = {
+        kind = "TabsLayout";
+        spec.tabs = map (t: {
+          kind = "TabsLayoutTab";
+          spec = {
+            inherit (t) title;
+            layout = {
+              kind = "GridLayout";
+              spec.items = map (it: {
+                kind = "GridLayoutItem";
+                spec = {
+                  inherit (it) x y;
+                  width = it.w;
+                  height = it.h;
+                  element = {
+                    kind = "ElementReference";
+                    name = name it.id;
+                  };
+                };
+              }) t.items;
+            };
+          };
+        }) numbered;
+      };
+    };
   };
 
   nodeFull = pkgs.fetchurl {

@@ -96,6 +96,7 @@ such as the host's `homelab.alloy`, can use these components.
 | Journal of each container | host | read from `/var/lib/nixos-containers/<name>/var/log/journal` | live |
 | `prometheus.exporter.unix` (node exporter) | host, VPS | CPU, memory, load, filesystems, disk IO, network, hwmon temperatures, ZFS, systemd units (`*.service`, `*.timer`, `*.mount`), textfile `*.prom` | 15s |
 | cAdvisor | host | CPU, memory and disk IO of each `container@<name>.service` cgroup (`job="cadvisor"`) | 15s |
+| `homelab-disk-usage` (systemd timer, idle IO) | host | `homelab_container_root_bytes{machine}` (`du -sx` of each container root, without the pool datasets inside), `homelab_zfs_dataset_{used,snapshots,available}_bytes{machine,volume,dataset}` (`zfs list` under `<pool>/containers`), `homelab_zpool_{size,allocated,free}_bytes`, written to `/var/lib/homelab-metrics/disk.prom` | 15m |
 | `homelab-container-units` (systemd timer) | host | `homelab_container_unit_failed{machine,unit}` and `homelab_container_scrape_ok{machine}`, from `systemctl -M <name> list-units --state=failed`, written to `/var/lib/homelab-metrics/containers.prom` | 1m |
 | smartctl exporter (`127.0.0.1:9633`) | host | SMART health, disk temperatures, counters (`job="smartctl"`) | 60s scrape, smartctl at most every 5m |
 | Blackbox probes | host, VPS | `probe_success`, durations, TLS expiry (`job="blackbox"`) | 30s |
@@ -234,15 +235,35 @@ delete it (`/var/lib/grafana` in nix-grafana) and restart. The local login
 
 Everything provisioned is in the folder **Homelab**:
 
-- **Homelab** (`uid homelab`), the overview:
-  - stats: services down, containers running, failed units (host and
-    containers), hottest sensor, fullest filesystem, host uptime;
-  - a probe timeline per probe and prober;
-  - CPU and memory per machine;
-  - temperatures (hwmon and disks), filesystem usage;
-  - CPU and memory per container (stacked);
-  - disk IO, network;
-  - the newest log lines with level `error` or worse.
+- **Homelab** (`uid homelab`), the overview, in tabs:
+  - **Services**: what runs and what doesn't, and why.
+    - Counters: down, degraded, running, open problems.
+    - One tile per container that starts at boot: *running*, *degraded*
+      (failed units inside) or *DOWN* (container not active, or its port
+      doesn't answer).
+    - **What is wrong, and why**: one row per problem with service, problem
+      and detail. Covers a container that is failed or inactive (with its
+      state), the failed unit inside a container, a port that doesn't answer
+      (with the address), a website that is down (seen from inside or from
+      the VPS), and failed units on the host or VPS.
+    - History of every service (state timeline), so you can see when it
+      was down.
+    - **Space per service**: system disk (container root on the NVMe) and
+      HDD pool (its datasets, with snapshots).
+    - Logs of the services picked in the `service` variable, warnings and
+      worse.
+  - **Storage**: filesystems, ZFS pools, space per service over time,
+    every pool dataset.
+  - **Host**: temperature, uptime, load, failed units, CPU, memory,
+    temperatures, disk IO, network.
+  - **Containers**: CPU, memory and disk IO per container.
+  - **Probes**: every probe over time, response times, days left on each
+    certificate.
+  - **Logs**: log volume per machine, errors everywhere.
+
+  The dashboard uses Grafana's schema v2 (`dashboard.grafana.app/v2beta1`),
+  which is needed for tabs. `services/grafana/dashboards.nix` has small
+  helpers (`panel`, `stat`, `q`, `at`) that generate it.
 - **Node Exporter Full** (grafana.com 1860, revision 46): every node metric
   of one machine. Pick the machine with the job and host variables at the
   top.

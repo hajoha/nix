@@ -7,7 +7,8 @@
 #   metrics  host: CPU, memory, temperatures, disks, ZFS, systemd units
 #            containers: CPU/memory/IO per container (cAdvisor on their
 #            cgroups, label machine=<name>), failed units inside them
-#            (textfile below), SMART of the disks
+#            (textfile below), SMART of the disks, disk space per
+#            container: its root on the NVMe and its datasets on the pool
 #            -> nix-thanos
 #   probes   every container's primary port (tcp) and every nginx vhost
 #            (https), label probe=<name>
@@ -19,6 +20,7 @@
   lib,
   pkgs,
   inventory,
+  params,
   ...
 }:
 let
@@ -64,6 +66,63 @@ let
             echo "homelab_container_scrape_ok{machine=\"$m\"} 0"
           fi
         done
+      } > "$tmp"
+      chmod 644 "$tmp"
+      mv "$tmp" "$out"
+    '';
+  };
+
+  # Space per container, for the node textfile collector (every 15 min):
+  #   homelab_container_root_bytes{machine}       its root on the NVMe (du -x:
+  #                                               without the pool datasets
+  #                                               mounted inside it)
+  #   homelab_zfs_dataset_{used,snapshots,available}_bytes{machine,volume,dataset}
+  #                                               <pool>/containers/<machine>/<volume>
+  #   homelab_zpool_{size,allocated,free}_bytes{zpool}
+  diskUsage = pkgs.writeShellApplication {
+    name = "homelab-disk-usage";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gawk
+      config.boot.zfs.package
+    ];
+    text = ''
+      out=${textfileDir}/disk.prom
+      tmp=$(mktemp -p ${textfileDir} .disk.XXXXXX)
+      trap 'rm -f "$tmp"' EXIT
+
+      # pool missing or locked: no dataset metrics, the rest still works
+      datasets=$(zfs list -Hp -t filesystem -o name,used,usedbysnapshots,available -r ${params.pool}/containers 2>/dev/null || true)
+      pools=$(zpool list -Hp -o name,size,allocated,free 2>/dev/null || true)
+
+      ds() { # <metric> <column>
+        awk -F'\t' -v m="$1" -v c="$2" '{ n = split($1, p, "/"); if (n == 4)
+          printf "%s{machine=\"%s\",volume=\"%s\",dataset=\"%s\"} %s\n", m, p[3], p[4], $1, $c }' <<<"$datasets"
+      }
+      zp() {
+        awk -F'\t' -v m="$1" -v c="$2" 'NF { printf "%s{zpool=\"%s\"} %s\n", m, $1, $c }' <<<"$pools"
+      }
+
+      {
+        echo "# TYPE homelab_container_root_bytes gauge"
+        for m in ${lib.concatStringsSep " " (lib.attrNames serviceNodes)}; do
+          d=/var/lib/nixos-containers/$m
+          [ -d "$d" ] || continue
+          b=$(du -sxb "$d" 2>/dev/null | cut -f1) || true
+          [ -n "$b" ] && echo "homelab_container_root_bytes{machine=\"$m\"} $b"
+        done
+        echo "# TYPE homelab_zfs_dataset_used_bytes gauge"
+        ds homelab_zfs_dataset_used_bytes 2
+        echo "# TYPE homelab_zfs_dataset_snapshots_bytes gauge"
+        ds homelab_zfs_dataset_snapshots_bytes 3
+        echo "# TYPE homelab_zfs_dataset_available_bytes gauge"
+        ds homelab_zfs_dataset_available_bytes 4
+        echo "# TYPE homelab_zpool_size_bytes gauge"
+        zp homelab_zpool_size_bytes 2
+        echo "# TYPE homelab_zpool_allocated_bytes gauge"
+        zp homelab_zpool_allocated_bytes 3
+        echo "# TYPE homelab_zpool_free_bytes gauge"
+        zp homelab_zpool_free_bytes 4
       } > "$tmp"
       chmod 644 "$tmp"
       mv "$tmp" "$out"
@@ -198,6 +257,23 @@ in
       ExecStart = lib.getExe containerUnits;
     };
   };
+  systemd.services.homelab-disk-usage = {
+    description = "Export disk space per container for Alloy";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = lib.getExe diskUsage;
+      Nice = 19;
+      IOSchedulingClass = "idle";
+    };
+  };
+  systemd.timers.homelab-disk-usage = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5m";
+      OnUnitActiveSec = "15m";
+    };
+  };
+
   systemd.timers.homelab-container-units = {
     wantedBy = [ "timers.target" ];
     timerConfig = {

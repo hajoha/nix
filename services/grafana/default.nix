@@ -97,7 +97,10 @@ in
           folder = "Homelab";
           type = "file";
           allowUiUpdates = false;
-          options.path = import ./dashboards.nix { inherit pkgs lib; };
+          options.path = import ./dashboards.nix {
+            inherit pkgs lib;
+            inventory = import ../../inventory { inherit lib; };
+          };
         }
       ];
 
