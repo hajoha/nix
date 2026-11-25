@@ -112,9 +112,10 @@ in
       cache-duration = "72h";
       attachment-total-size-limit = "1G";
       attachment-file-size-limit = "15M";
-      # iOS only gets instant pushes through ntfy.sh's relay; uncomment if
-      # you use the iOS app (sends the topic hash to ntfy.sh, no content):
-      # upstream-base-url = "https://ntfy.sh";
+      # iOS only gets instant pushes through ntfy.sh's relay (Apple push):
+      # for every message, ntfy.sh gets a "poll" with the topic's hash, the
+      # app then fetches the message from here. No content leaves the VPS.
+      upstream-base-url = "https://ntfy.sh";
     };
   };
 
