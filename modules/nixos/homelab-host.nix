@@ -17,6 +17,12 @@
 # Hardware and host-specific extras (devices, capabilities, data binds) are
 # plain `containers.<name>.*` definitions in hosts/homelab/containers.nix.
 #
+#   - before it starts, shells into a previous instance that has gone
+#     (`nixos-container root-login` left open over a restart) are killed:
+#     they keep the old network namespace and its macvlan alive, the new
+#     macvlan has the same MAC and cannot come up ("Address already in
+#     use"), and the container hangs 5 min waiting for its address
+#
 #   nixos-container root-login nix-paperless     shell inside
 #   systemctl restart container@nix-paperless
 #   journalctl -M nix-paperless -u paperless-web
@@ -46,6 +52,37 @@ let
   keyRoot = "/var/lib/homelab/keys";
 
   serviceNodes = filterAttrs (_: n: n.service != null) inventory.nodes;
+
+  # Kills every host-side `nsenter -t <pid>` session (nixos-container
+  # root-login) whose target is no longer the process it entered, i.e. whose container instance is gone, together with all
+  # processes in that orphaned network namespace (its su/bash children).
+  # Live containers and their shells are untouched: there the target's
+  # netns is the session's netns.
+  killStaleShells = pkgs.writeShellScript "homelab-kill-stale-container-shells" ''
+    export PATH=${lib.makeBinPath [ pkgs.procps pkgs.coreutils ]}
+    hostns=$(readlink /proc/1/ns/net)
+    hostpid=$(readlink /proc/1/ns/pid)
+    for p in $(pgrep -x nsenter); do
+      # only sessions started on the host (pids below are host pids)
+      [ "$(readlink "/proc/$p/ns/pid" 2>/dev/null)" = "$hostpid" ] || continue
+      ns=$(readlink "/proc/$p/ns/net" 2>/dev/null) || continue
+      [ "$ns" = "$hostns" ] && continue
+      # target pid: "-t N", "--target N" or "--target=N"
+      t=""; prev=""
+      while IFS= read -r -d "" a; do
+        case $prev in -t | --target) t=$a ;; esac
+        case $a in --target=*) t=''${a#--target=} ;; esac
+        prev=$a
+      done < "/proc/$p/cmdline"
+      [ -n "$t" ] || continue
+      [ "$(readlink "/proc/$t/ns/net" 2>/dev/null)" = "$ns" ] && continue
+      echo "stale container shell: nsenter $p (target $t gone), killing everything in $ns"
+      for q in /proc/[0-9]*; do
+        [ "$(readlink "$q/ns/net" 2>/dev/null)" = "$ns" ] && kill -9 "''${q#/proc/}" 2>/dev/null
+      done
+    done
+    exit 0
+  '';
 
   # Flake modules a service needs on top of the shared base.
   extraModules = {
@@ -148,6 +185,8 @@ in
         after = [ "homelab-container-prepare.service" ] ++ deps;
         requires = [ "homelab-container-prepare.service" ];
         wants = deps;
+        # "-": never keep a container from starting
+        serviceConfig.ExecStartPre = [ "-${killStaleShells}" ];
       }
     )
   ) serviceNodes;

@@ -319,10 +319,23 @@ down. Details are in [Notifications and outside checks](#notifications-and-outsi
 
   | ntfy user | Role | Used by |
   |---|---|---|
-  | `hajoha` (`adminUser`) | admin | phone app and web app: subscribe to `homelab`. Also the status page login |
+  | `hajoha` (`adminUser`) | admin | phone app: subscribe to `homelab`. Also the status page login |
   | `alerts` | user, write-only on `homelab` | Grafana and Gatus, with the token `tk_…` |
 
   Messages are cached for 72h for clients that were offline.
+  The web app is disabled (`web-root = "disable"`). Only the phone app and
+  the API answer.
+- **fail2ban** (jail `traefik-auth`) reads Traefik's access log from the
+  journal. 10 failed logins (HTTP 401) within 10 minutes, on either
+  `notify.` or `status.`, ban that address for http/https. The ban time
+  grows the same way as for ssh. SSH is not affected, and WireGuard
+  addresses are never banned. A phone with an old password keeps failing
+  and bans itself, so update the app after changing the password.
+
+  ```bash
+  fail2ban-client status traefik-auth
+  fail2ban-client set traefik-auth unbanip <ip>
+  ```
 - **Gatus** is the outside ping check. It runs on the VPS, alerts through the
   local ntfy (not through Traefik, so a broken certificate still gets
   reported), and needs nothing at home to work:

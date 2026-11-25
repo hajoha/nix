@@ -106,6 +106,8 @@ in
       auth-default-access = "deny-all";
       enable-login = true;
       enable-signup = false;
+      # no web app: only the phone app and the API (curl, Grafana, Gatus)
+      web-root = "disable";
       # keep messages for clients that were offline
       cache-duration = "72h";
       attachment-total-size-limit = "1G";
@@ -184,6 +186,31 @@ in
     80
     443
   ];
+
+  # --- fail2ban: failed logins on notify. / status. --------------------------
+  #
+  # Traefik's access log (CLF, in the journal) shows every 401: a wrong
+  # ntfy password/token or a wrong status page login. 10 within 10 minutes
+  # ban the address for http/https only (ssh keeps its own jail), with the
+  # same growing ban time as sshd (configuration.nix). WireGuard clients
+  # are never banned (ignoreIP there).
+  #
+  #   fail2ban-client status traefik-auth
+  #   fail2ban-client set traefik-auth unbanip <ip>
+
+  services.fail2ban.jails.traefik-auth = {
+    filter.Definition = {
+      # <client> - <user> [<time>] "<method> <path> <proto>" 401 …
+      failregex = ''^<HOST> - \S+ \[[^\]]+\] "[A-Z]+ [^"]*" 401 '';
+      journalmatch = "_SYSTEMD_UNIT=traefik.service";
+    };
+    settings = {
+      backend = "systemd";
+      port = "http,https";
+      maxretry = 10;
+      findtime = "10m";
+    };
+  };
 
   # --- Gatus: the ping checks from outside ---------------------------------
 

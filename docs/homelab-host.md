@@ -23,6 +23,12 @@
   gets a macvlan on each VLAN it uses, renamed inside to the VLAN name, and its
   inventory IP. The router sees each container as its own machine. (The host itself cannot talk to its containers over macvlan;
   use `nixos-container root-login <node>` or go via the router.)
+  A `root-login` shell that is still open while its container restarts
+  keeps the old network namespace and macvlan alive. The new macvlan has
+  the same MAC and cannot come up ("Address already in use"), and the
+  container would wait 5 minutes for its address. Before every container
+  start, the host therefore kills shells whose container instance is gone
+  (`homelab-kill-stale-container-shells`, `modules/nixos/homelab-host.nix`).
 - Secrets: every container has its own ssh host key
   (`/var/lib/homelab/keys/<node>`, bind-mounted read-only) as its sops
   identity; its age recipient is the node's `age` in `nodes.nix`. See
