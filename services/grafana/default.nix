@@ -7,6 +7,8 @@
 
 let
   inherit (config.homelab) nodes sso;
+  secretFile = name: "$__file{${config.sops.secrets.${name}.path}}";
+  mailPort = 587; # STARTTLS; same in hosts/hetzner-vps-01/notify.nix
 in
 {
   sops.defaultSopsFile = ./secrets.enc.yaml;
@@ -28,6 +30,24 @@ in
     "dsp25-ssh" = {
       path = "/etc/ssh/dsp25_ssh_config";
     };
+  }
+  # Alert channels besides ntfy (same values as on the VPS, which sends
+  # Gatus' alerts; hosts/hetzner-vps-01/{notify,signal}.nix):
+  #   SIGNAL_TOKEN   bearer token of the Signal bridge (signal/token there)
+  #   mail/{host,user,password,from,to}
+  // lib.genAttrs [
+    "SIGNAL_TOKEN"
+    "mail/host"
+    "mail/user"
+    "mail/password"
+    "mail/from"
+    "mail/to"
+  ] (_: { owner = "grafana"; });
+
+  # Grafana wants the SMTP server as host:port in one value
+  sops.templates."grafana-smtp-host" = {
+    owner = "grafana";
+    content = "${config.sops.placeholder."mail/host"}:${toString mailPort}";
   };
 
   # 2. SSH Tunnel for Remote InfluxDB
@@ -109,15 +129,16 @@ in
         inventory = import ../../inventory { inherit lib; };
       };
 
-      # Every alert goes to ntfy on the VPS, topic "homelab"
-      # (hosts/hetzner-vps-01/notify.nix). ntfy turns Grafana's JSON into
-      # title + message with its inline template (tpl=yes, t=, m=).
+      # Every alert goes out three ways: ntfy (phone push), Signal and mail.
+      # ntfy and the Signal bridge run on the VPS
+      # (hosts/hetzner-vps-01/{notify,signal}.nix); ntfy turns Grafana's
+      # JSON into title + message with its inline template (tpl=yes, t=, m=).
       alerting.contactPoints.settings = {
         apiVersion = 1;
         contactPoints = [
           {
             orgId = 1;
-            name = "ntfy";
+            name = "homelab";
             receivers = [
               {
                 uid = "ntfy";
@@ -127,7 +148,27 @@ in
                   url = "https://notify.monitor.${config.homelab.domain}/homelab?tpl=yes&t=%7B%7B.title%7D%7D&m=%7B%7B.message%7D%7D";
                   httpMethod = "POST";
                   authorization_scheme = "Bearer";
-                  authorization_credentials = "$__file{${config.sops.secrets."NTFY_TOKEN".path}}";
+                  authorization_credentials = secretFile "NTFY_TOKEN";
+                };
+              }
+              {
+                uid = "signal";
+                type = "webhook";
+                disableResolveMessage = false;
+                settings = {
+                  url = "https://signal.monitor.${config.homelab.domain}/v2/send";
+                  httpMethod = "POST";
+                  authorization_scheme = "Bearer";
+                  authorization_credentials = secretFile "SIGNAL_TOKEN";
+                };
+              }
+              {
+                uid = "email";
+                type = "email";
+                disableResolveMessage = false;
+                settings = {
+                  addresses = secretFile "mail/to"; # several: separated by "," (Gatus needs ",")
+                  singleEmail = true;
                 };
               }
             ];
@@ -139,7 +180,7 @@ in
         policies = [
           {
             orgId = 1;
-            receiver = "ntfy";
+            receiver = "homelab";
             group_by = [
               "grafana_folder"
               "alertname"
@@ -201,6 +242,17 @@ in
         secret_key = "$__file{${config.sops.secrets."GRAFANA_SECRET_KEY".path}}";
         admin_password = "$__file{${config.sops.secrets."GRAFANA_ADMIN_PASSWORD".path}}";
         allow_embedding = true;
+      };
+
+      # for the "email" receiver above
+      smtp = {
+        enabled = true;
+        host = "$__file{${config.sops.templates."grafana-smtp-host".path}}";
+        user = secretFile "mail/user";
+        password = secretFile "mail/password";
+        from_address = secretFile "mail/from";
+        from_name = "Homelab";
+        startTLS_policy = "MandatoryStartTLS";
       };
 
       analytics.reporting_enabled = false;

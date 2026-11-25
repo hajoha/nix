@@ -15,6 +15,7 @@ in
     ./disko-config.nix
     ./monitoring.nix
     ./notify.nix
+    ./signal.nix
     ../../user/root.nix
   ];
 

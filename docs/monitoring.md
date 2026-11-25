@@ -79,8 +79,9 @@ containers and the Hetzner VPS.
 | Grafana: datasources, dashboard provider, SSO | `services/grafana/default.nix` |
 | Dashboards | `services/grafana/dashboards.nix` |
 | Alert rules | `services/grafana/alerts.nix` |
-| Contact point and policy (ntfy) | `services/grafana/default.nix` |
+| Contact point and policy (ntfy, Signal, mail) | `services/grafana/default.nix` |
 | ntfy, Traefik, Gatus (outside checks) on the VPS | `hosts/hetzner-vps-01/notify.nix` |
+| Signal sender (signal-cli + bridge) on the VPS | `hosts/hetzner-vps-01/signal.nix` |
 | Containers, IPs, firewall ports | `inventory/nodes.nix` (`nix-loki`, `nix-thanos`, `nix-grafana`) |
 
 Alloy loads every `/etc/alloy/*.alloy` file as one configuration.
@@ -327,19 +328,24 @@ then clear by themselves. A disk that keeps getting worse keeps them firing.
 
 ### Notifications
 
-Alerts go to **ntfy** on the VPS (`https://notify.monitor.<domain>`, topic
-`homelab`). It runs there so notifications still arrive when the homelab is
-down. Details are in [Notifications and outside checks](#notifications-and-outside-checks-vps).
+Every alert goes out three ways: **ntfy** (phone push), **Signal** and
+**mail**. ntfy and the Signal sender run on the VPS, so they still work
+when the homelab is down. Details are in
+[Notifications and outside checks](#notifications-and-outside-checks-vps).
 
-- Contact point `ntfy` (a webhook, provisioned in
-  `services/grafana/default.nix`) is the default policy's only receiver.
-  Alerts are grouped by folder and alert name and repeated every 4h while
+- Contact point `homelab` (provisioned in `services/grafana/default.nix`)
+  is the default policy's only receiver. It has three receivers:
+
+  | Receiver | Goes to | Credentials (`services/grafana/secrets.enc.yaml`) |
+  |---|---|---|
+  | `ntfy` (webhook) | `notify.monitor.<domain>/homelab`. ntfy's inline template (`?tpl=yes&t={{.title}}&m={{.message}}`) turns Grafana's JSON into a title and a message | `NTFY_TOKEN`, the token of the ntfy user `alerts` (may only publish to `homelab`) |
+  | `signal` (webhook) | `signal.monitor.<domain>/v2/send`, the Signal bridge on the VPS | `SIGNAL_TOKEN` |
+  | `email` | Grafana's own SMTP (`smtp` settings) | `mail/{host,user,password,from,to}` |
+
+- Alerts are grouped by folder and alert name and repeated every 4h while
   they fire. A message is sent when they resolve.
-- ntfy's inline template (`?tpl=yes&t={{.title}}&m={{.message}}`) turns
-  Grafana's JSON into a title and a message.
-- Grafana authenticates with the token of the ntfy user `alerts`. That user
-  may only publish to `homelab`. The token is `NTFY_TOKEN` in
-  `services/grafana/secrets.enc.yaml`.
+- Grafana checks `mail/from` at startup. If it isn't a valid email
+  address, Grafana doesn't start.
 
 ## Notifications and outside checks (VPS)
 
@@ -440,6 +446,75 @@ That alert cannot arrive through ntfy, but it is visible in Grafana.
 
 To get a notification from a script anywhere, use the same `curl` (or a
 separate ntfy user with its own token and topic).
+
+### Signal
+
+`hosts/hetzner-vps-01/signal.nix`: signal-cli with **its own Signal
+account**, behind a small HTTP bridge (`127.0.0.1:9922`). Grafana reaches it
+through Traefik at `https://signal.monitor.<domain>`, and Gatus calls it
+locally. Every request needs `Authorization: Bearer <signal/token>`, and
+failed attempts count for fail2ban like those on ntfy.
+
+- **The sender needs its own number**, for example a second SIM or a
+  landline that can receive the verification call. A device linked to your
+  own account would send "as you", and your phone doesn't notify you
+  about your own messages.
+- In sops: `signal/number` (sender), `signal/recipients` (comma
+  separated, default recipients) and `signal/token`. signal-cli's key
+  store changes with every message, so it can't live in sops. It is in
+  `/var/lib/signal-cli` on the VPS (back it up if you don't want to
+  register again).
+- `signal-receive.timer` fetches pending messages daily. Signal drops
+  accounts that never do.
+
+Register once on the VPS, after the deploy:
+
+```bash
+# captcha: open https://signalcaptchas.org/registration/generate.html, solve it,
+# copy the "signalcaptcha://…" link (right-click "Open Signal")
+sudo -u signal signal-cli --config /var/lib/signal-cli -a +49SENDER register --captcha 'signalcaptcha://…'
+#   no SMS possible (landline)? add --voice, after a first attempt without it
+sudo -u signal signal-cli --config /var/lib/signal-cli -a +49SENDER verify 123-456
+sudo -u signal signal-cli --config /var/lib/signal-cli -a +49SENDER updateProfile --given-name Homelab
+systemctl restart signal-alert-bridge
+```
+
+On your phone, accept the first message from the new number (message
+request), otherwise later ones may not notify. Test:
+
+```bash
+curl -H "Authorization: Bearer $(sops -d --extract '["SIGNAL_TOKEN"]' services/grafana/secrets.enc.yaml)" \
+  -d '{"message":"hello from the bridge"}' https://signal.monitor.hackler.io/v2/send
+```
+
+### Mail
+
+Grafana sends via SMTP itself. Gatus on the VPS sends its own mail with
+the same account. Both read `mail/{host,user,password,from,to}` from their
+own sops file (`services/grafana/secrets.enc.yaml`,
+`hosts/hetzner-vps-01/secrets.enc.yaml`). The port is `mailPort = 587`
+(STARTTLS) in `services/grafana/default.nix` and
+`hosts/hetzner-vps-01/notify.nix`. Several recipients go comma separated in
+`mail/to`.
+
+Gatus inserts the values into its YAML as they are. A password that
+starts with a YAML special character (`@ * & ! % | > ' "`) or contains
+`": "` / `" #"` breaks its config, so pick one without those.
+
+Test from Grafana: Alerting → Contact points → `homelab` → Test (sends to
+all three).
+
+### Setting the secrets
+
+One line, from the repo root. It asks for every value and generates the
+Signal token itself:
+
+```bash
+nix shell nixpkgs#sops nixpkgs#jq -c bash -c 'read -rp "Signal sender (+49…): " sn; read -rp "Signal recipients (+49…,+49…): " sr; read -rp "SMTP host: " mh; read -rp "SMTP user: " mu; read -rsp "SMTP password: " mp; echo; read -rp "Mail from: " mf; read -rp "Mail to (a@x,b@y): " mt; tok=$(LC_ALL=C tr -dc A-Za-z0-9 </dev/urandom | head -c 40); m=$(jq -cn --arg h "$mh" --arg u "$mu" --arg p "$mp" --arg f "$mf" --arg t "$mt" "{host:\$h,user:\$u,password:\$p,from:\$f,to:\$t}"); v=hosts/hetzner-vps-01/secrets.enc.yaml; g=services/grafana/secrets.enc.yaml; sops set $v "[\"signal\"]" "$(jq -cn --arg n "$sn" --arg r "$sr" --arg t "$tok" "{number:\$n,recipients:\$r,token:\$t}")" && sops set $v "[\"mail\"]" "$m" && sops set $g "[\"mail\"]" "$m" && sops set $g "[\"SIGNAL_TOKEN\"]" "\"$tok\"" && echo done'
+```
+
+Set the secrets **before** deploying. sops-nix fails the activation of the
+VPS and of nix-grafana while a secret they expect is missing.
 
 ## Network paths
 

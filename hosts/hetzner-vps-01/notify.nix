@@ -7,12 +7,20 @@
 #   internet ──443──▶ Traefik (Let's Encrypt, HTTP-01, one cert per name)
 #     notify.monitor.<domain>  ──▶ ntfy  127.0.0.1:2586
 #     status.monitor.<domain>  ──▶ Gatus 127.0.0.1:8080 (basic auth, admin login)
+#     signal.monitor.<domain>  ──▶ Signal bridge 127.0.0.1:9922 (bearer token, ./signal.nix)
 #     monitor.<domain>         ──▶ redirect to status.
 #
 #   Grafana (homelab) ──webhook──▶ notify.monitor.<domain>/homelab  alerts from inside
-#   Gatus (here)      ──────────▶ ntfy, topic homelab        alerts from outside:
+#   Gatus (here)      ──────────▶ ntfy, Signal, mail          alerts from outside:
 #     public vhosts (https), home over WireGuard (ping), nix-loki / nix-thanos
 #     (tcp), ntfy itself
+#
+# Mail (Gatus sends it itself; Grafana uses the same account, from its own
+# sops file), all in sops:
+#   mail:
+#     host: smtp.example.com     user: …     password: …
+#     from: alerts@example.com   to: you@example.com
+# Port: `mailPort` below (587 = STARTTLS).
 #
 # ntfy: nobody may read or write without an account (deny-all). The users
 # and the token come from sops (hosts/hetzner-vps-01/secrets.enc.yaml):
@@ -41,6 +49,8 @@ let
   zone = "monitor.${baseDomain}";
   fqdn = "notify.${zone}";
   statusFqdn = "status.${zone}";
+  signalFqdn = "signal.${zone}";
+  mailPort = 587; # STARTTLS; same in services/grafana/default.nix
   ntfyListen = "127.0.0.1:2586";
   gatusPort = 8080;
   topic = "homelab";
@@ -52,7 +62,11 @@ let
   secret = name: config.sops.placeholder."ntfy/${name}";
 
   # Gatus: every endpoint alerts through ntfy after 3 failed checks
-  alerts = [ { type = "ntfy"; } ];
+  alerts = [
+    { type = "ntfy"; }
+    { type = "custom"; } # Signal
+    { type = "email"; }
+  ];
   https = group: name: url: extra: {
     inherit name group url alerts;
     interval = "1m";
@@ -75,7 +89,14 @@ in
     "ntfy/admin-hash" = { };
     "ntfy/alerts-hash" = { };
     "ntfy/alerts-token" = { };
-  };
+  }
+  // lib.genAttrs [
+    "mail/host"
+    "mail/user"
+    "mail/password"
+    "mail/from"
+    "mail/to"
+  ] (_: { });
 
   # systemd EnvironmentFile: no $-expansion, single quotes are stripped
   sops.templates."ntfy.env".content = ''
@@ -85,6 +106,12 @@ in
   '';
   sops.templates."gatus.env".content = ''
     NTFY_TOKEN=${secret "alerts-token"}
+    SIGNAL_TOKEN=${config.sops.placeholder."signal/token"}
+    MAIL_HOST=${config.sops.placeholder."mail/host"}
+    MAIL_USER=${config.sops.placeholder."mail/user"}
+    MAIL_PASSWORD=${config.sops.placeholder."mail/password"}
+    MAIL_FROM=${config.sops.placeholder."mail/from"}
+    MAIL_TO=${config.sops.placeholder."mail/to"}
   '';
   # htpasswd for the status page: the ntfy admin's bcrypt hash, one password
   sops.templates."traefik-status-users" = {
@@ -160,6 +187,7 @@ in
       {
         routers = {
           ntfy = router fqdn { service = "ntfy"; };
+          signal = router signalFqdn { service = "signal"; };
           status = router statusFqdn {
             service = "gatus";
             middlewares = [ "status-auth" ];
@@ -171,6 +199,7 @@ in
         };
         services = {
           ntfy.loadBalancer.servers = [ { url = "http://${ntfyListen}"; } ];
+          signal.loadBalancer.servers = [ { url = config.homelab.signalBridge; } ];
           gatus.loadBalancer.servers = [ { url = "http://127.0.0.1:${toString gatusPort}"; } ];
         };
         middlewares = {
@@ -238,6 +267,44 @@ in
         inherit topic;
         token = "\${NTFY_TOKEN}";
         priority = 4;
+        default-alert = {
+          failure-threshold = 3;
+          success-threshold = 2;
+          send-on-resolved = true;
+        };
+      };
+
+      # Signal through the local bridge (./signal.nix). Gatus fills the
+      # placeholders by plain text replacement, without JSON escaping: only
+      # ones that never contain quotes (no [RESULT_ERRORS]).
+      alerting.custom = {
+        url = "${config.homelab.signalBridge}/v2/send";
+        method = "POST";
+        headers = {
+          Authorization = "Bearer \${SIGNAL_TOKEN}";
+          Content-Type = "application/json";
+        };
+        body = builtins.toJSON {
+          message = "[ALERT_TRIGGERED_OR_RESOLVED] [ENDPOINT_GROUP]/[ENDPOINT_NAME] (seen from the VPS)\n[ENDPOINT_URL]";
+        };
+        placeholders.ALERT_TRIGGERED_OR_RESOLVED = {
+          TRIGGERED = "DOWN:";
+          RESOLVED = "OK again:";
+        };
+        default-alert = {
+          failure-threshold = 3;
+          success-threshold = 2;
+          send-on-resolved = true;
+        };
+      };
+
+      alerting.email = {
+        from = "\${MAIL_FROM}";
+        username = "\${MAIL_USER}";
+        password = "\${MAIL_PASSWORD}";
+        host = "\${MAIL_HOST}";
+        port = mailPort;
+        to = "\${MAIL_TO}";
         default-alert = {
           failure-threshold = 3;
           success-threshold = 2;
