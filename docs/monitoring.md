@@ -96,7 +96,7 @@ such as the host's `homelab.alloy`, can use these components.
 | Journal of each container | host | read from `/var/lib/nixos-containers/<name>/var/log/journal` | live |
 | `prometheus.exporter.unix` (node exporter) | host, VPS | CPU, memory, load, filesystems, disk IO, network, hwmon temperatures, ZFS, systemd units (`*.service`, `*.timer`, `*.mount`), textfile `*.prom` | 15s |
 | cAdvisor | host | CPU, memory and disk IO of each `container@<name>.service` cgroup (`job="cadvisor"`) | 15s |
-| `homelab-disk-usage` (systemd timer, idle IO) | host | `homelab_container_root_bytes{machine}` (`du -sx` of each container root, without the pool datasets inside), `homelab_zfs_dataset_{used,snapshots,available}_bytes{machine,volume,dataset}` (`zfs list` under `<pool>/containers`), `homelab_zpool_{size,allocated,free}_bytes`, written to `/var/lib/homelab-metrics/disk.prom` | 15m |
+| `homelab-disk-usage` (systemd timer, idle IO) | host | `homelab_container_root_bytes{machine}` (`du -sx` of each container root, without the pool datasets inside), `homelab_zfs_dataset_{used,snapshots,available}_bytes{machine,volume,dataset}` (`zfs list` under `<pool>/containers`), `homelab_zfs_pool_{used,available}_bytes` (usable, from the pool's root dataset), `homelab_zpool_{size,allocated,free}_bytes` (raw, with parity), written to `/var/lib/homelab-metrics/disk.prom` | 15m |
 | `homelab-container-units` (systemd timer) | host | `homelab_container_unit_failed{machine,unit}` and `homelab_container_scrape_ok{machine}`, from `systemctl -M <name> list-units --state=failed`, written to `/var/lib/homelab-metrics/containers.prom` | 1m |
 | smartctl exporter (`127.0.0.1:9633`) | host | SMART health, disk temperatures, counters (`job="smartctl"`) | 60s scrape, smartctl at most every 5m |
 | Blackbox probes | host, VPS | `probe_success`, durations, TLS expiry (`job="blackbox"`) | 30s |
@@ -250,10 +250,23 @@ Everything provisioned is in the folder **Homelab**:
       was down.
     - **Space per service**: system disk (container root on the NVMe) and
       HDD pool (its datasets, with snapshots).
-    - Logs of the services picked in the `service` variable, warnings and
-      worse.
-  - **Storage**: filesystems, ZFS pools, space per service over time,
-    every pool dataset.
+    - Logs, warnings and worse.
+
+    The `service` variable at the top filters every per-service panel in
+    all tabs. "All" also includes series without a service, such as the
+    https probes, which are named after the host.
+  - **Storage**: filesystems, ZFS pools (usable space after parity, not
+    `zpool list`'s raw size), space per service over time, every pool
+    dataset.
+  - **Disks (SMART)**:
+    - Per disk: model, serial, firmware, health, temperature, hours powered
+      on, damage counters, NVMe wear.
+    - Damage counters as a matrix: disk × reallocated, pending and
+      uncorrectable sectors, CRC errors, …
+    - The damage counters and temperatures over time, NVMe health.
+    - **every** SMART attribute, with value, worst, threshold, raw and the
+      margin to the threshold.
+    - Error and self-test logs.
   - **Host**: temperature, uptime, load, failed units, CPU, memory,
     temperatures, disk IO, network.
   - **Containers**: CPU, memory and disk IO per container.
@@ -298,6 +311,19 @@ OK.
 | `disk-temperature-high` | a disk is above 55°C | 10m | warning |
 | `smart-failing` | SMART health check failed | 0s | critical |
 | `zpool-degraded` | a ZFS pool is not ONLINE | 0s | critical |
+| `smart-sectors-rising` | reallocated / pending / uncorrectable sectors (5, 196, 197, 198) rose within 24h | 0s | critical |
+| `smart-errors-rising` | reported uncorrectable, command timeouts or CRC errors (187, 188, 199) rose within 24h | 0s | warning |
+| `smart-near-threshold` | a normalized SMART value is less than 10 above its failure threshold | 1h | warning |
+| `smart-selftest-failed` | a SMART self-test failed within 24h | 0s | critical |
+| `smart-errorlog-rising` | new entries in the ATA error log within 24h | 0s | warning |
+| `nvme-media-errors` | NVMe media errors rose within 24h | 0s | critical |
+| `nvme-critical-warning` | NVMe critical warning set | 0s | critical |
+| `nvme-wear` | NVMe used more than 80% of its rated endurance | 1h | warning |
+| `nvme-spare-low` | NVMe spare less than 10 points above its threshold | 1h | warning |
+| `smart-not-read` | no SMART data for 30 minutes | 0s | warning |
+
+The "rose within 24h" rules stay active for a day after each increase and
+then clear by themselves. A disk that keeps getting worse keeps them firing.
 
 ### Notifications
 

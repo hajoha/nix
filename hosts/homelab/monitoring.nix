@@ -78,7 +78,8 @@ let
   #                                               mounted inside it)
   #   homelab_zfs_dataset_{used,snapshots,available}_bytes{machine,volume,dataset}
   #                                               <pool>/containers/<machine>/<volume>
-  #   homelab_zpool_{size,allocated,free}_bytes{zpool}
+  #   homelab_zpool_{size,allocated,free}_bytes{zpool}    raw, with parity
+  #   homelab_zfs_pool_{used,available}_bytes{zpool}      usable (root dataset)
   diskUsage = pkgs.writeShellApplication {
     name = "homelab-disk-usage";
     runtimeInputs = [
@@ -94,13 +95,14 @@ let
       # pool missing or locked: no dataset metrics, the rest still works
       datasets=$(zfs list -Hp -t filesystem -o name,used,usedbysnapshots,available -r ${params.pool}/containers 2>/dev/null || true)
       pools=$(zpool list -Hp -o name,size,allocated,free 2>/dev/null || true)
+      roots=$(zfs list -Hp -d 0 -o name,used,available 2>/dev/null || true)
 
       ds() { # <metric> <column>
         awk -F'\t' -v m="$1" -v c="$2" '{ n = split($1, p, "/"); if (n == 4)
           printf "%s{machine=\"%s\",volume=\"%s\",dataset=\"%s\"} %s\n", m, p[3], p[4], $1, $c }' <<<"$datasets"
       }
-      zp() {
-        awk -F'\t' -v m="$1" -v c="$2" 'NF { printf "%s{zpool=\"%s\"} %s\n", m, $1, $c }' <<<"$pools"
+      zp() { # <metric> <column> [<input>]
+        awk -F'\t' -v m="$1" -v c="$2" 'NF { printf "%s{zpool=\"%s\"} %s\n", m, $1, $c }' <<<"''${3-$pools}"
       }
 
       {
@@ -123,6 +125,10 @@ let
         zp homelab_zpool_allocated_bytes 3
         echo "# TYPE homelab_zpool_free_bytes gauge"
         zp homelab_zpool_free_bytes 4
+        echo "# TYPE homelab_zfs_pool_used_bytes gauge"
+        zp homelab_zfs_pool_used_bytes 2 "$roots"
+        echo "# TYPE homelab_zfs_pool_available_bytes gauge"
+        zp homelab_zfs_pool_available_bytes 3 "$roots"
       } > "$tmp"
       chmod 644 "$tmp"
       mv "$tmp" "$out"

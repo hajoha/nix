@@ -5,6 +5,8 @@
 #                    Services   what runs, what does not and why, space per
 #                               service, history, logs of one service
 #                    Storage    NVMe / pool usage, per service over time
+#                    Disks      SMART of every disk: health, damage
+#                               counters, NVMe wear, every attribute
 #                    Host       CPU, memory, temperatures, disks, network
 #                    Containers CPU / memory / IO per container
 #                    Probes     every probe, from inside and outside, certs
@@ -33,6 +35,8 @@ let
   running = attrNames (filterAttrs (_: n: n.autoStart) serviceNodes);
   # PromQL regex of the container units that should be running
   runningUnits = "container@(${concatStringsSep "|" running})\\\\.service";
+  # the container units of the services picked in $service
+  svcUnit = "container@($service)\\\\.service";
 
   fsFilter = ''fstype!~"tmpfs|ramfs|squashfs|overlay"'';
 
@@ -189,11 +193,11 @@ let
 
   serviceState = ''
     min by (service) (
-        label_replace(node_systemd_unit_state{instance="homelab", state="active", name=~"${runningUnits}"}, "service", "$1", "name", "container@(.+)\\.service")
+        label_replace(node_systemd_unit_state{instance="homelab", state="active", name=~"${runningUnits}", name=~"${svcUnit}"}, "service", "$1", "name", "container@(.+)\\.service")
       or
-        label_replace(probe_success{prober="homelab", module="tcp_connect"}, "service", "$1", "probe", "(.+)")
+        label_replace(probe_success{prober="homelab", module="tcp_connect", probe=~"$service"}, "service", "$1", "probe", "(.+)")
       or
-        label_replace(0.5 * (count by (machine) (homelab_container_unit_failed) > bool 0), "service", "$1", "machine", "(.+)")
+        label_replace(0.5 * (count by (machine) (homelab_container_unit_failed{machine=~"$service"}) > bool 0), "service", "$1", "machine", "(.+)")
     )'';
 
   stateMappings = [
@@ -231,39 +235,39 @@ let
     (copy "detail" "name" (
       rl "reason" "container is $1" "state" "(.+)" (
         rl "service" "$1" "name" "container@(.+)\\\\.service"
-          ''node_systemd_unit_state{instance="homelab", name=~"${runningUnits}", state!="active"} == 1''
+          ''node_systemd_unit_state{instance="homelab", name=~"${runningUnits}", name=~"${svcUnit}", state!="active"} == 1''
       )
     ))
     (copy "detail" "unit" (
-      set "reason" "unit failed inside the container" (copy "service" "machine" "homelab_container_unit_failed")
+      set "reason" "unit failed inside the container" (copy "service" "machine" ''homelab_container_unit_failed{machine=~"$service"}'')
     ))
     (set "detail" "systemctl -M <service> list-units did not answer" (
       set "reason" "units inside could not be listed" (
-        copy "service" "machine" "homelab_container_scrape_ok == 0"
+        copy "service" "machine" ''homelab_container_scrape_ok{machine=~"$service"} == 0''
       )
     ))
     (copy "detail" "instance" (
       set "reason" "port not answering" (
-        copy "service" "probe" ''probe_success{module="tcp_connect"} == 0''
+        copy "service" "probe" ''probe_success{module="tcp_connect", probe=~"$service"} == 0''
       )
     ))
     (copy "detail" "instance" (
       rl "reason" "website down, seen from $1" "prober" "(.+)" (
-        copy "service" "probe" ''probe_success{module="http_up"} == 0''
+        copy "service" "probe" ''probe_success{module="http_up", probe=~"$service"} == 0''
       )
     ))
     (copy "detail" "name" (
       set "reason" "unit failed" (
-        copy "service" "instance" ''node_systemd_unit_state{state="failed", name!~"container@.+"} == 1''
+        copy "service" "instance" ''node_systemd_unit_state{state="failed", name!~"container@.+", instance=~"$service"} == 1''
       )
     ))
   ];
 
   # --- space ----------------------------------------------------------------
 
-  rootBytes = ''sum by (service) (label_replace(homelab_container_root_bytes, "service", "$1", "machine", "(.+)"))'';
-  poolBytes = ''sum by (service) (label_replace(homelab_zfs_dataset_used_bytes, "service", "$1", "machine", "(.+)"))'';
-  snapBytes = ''sum by (service) (label_replace(homelab_zfs_dataset_snapshots_bytes, "service", "$1", "machine", "(.+)"))'';
+  rootBytes = ''sum by (service) (label_replace(homelab_container_root_bytes{machine=~"$service"}, "service", "$1", "machine", "(.+)"))'';
+  poolBytes = ''sum by (service) (label_replace(homelab_zfs_dataset_used_bytes{machine=~"$service"}, "service", "$1", "machine", "(.+)"))'';
+  snapBytes = ''sum by (service) (label_replace(homelab_zfs_dataset_snapshots_bytes{machine=~"$service"}, "service", "$1", "machine", "(.+)"))'';
 
   # --- tabs -----------------------------------------------------------------
 
@@ -560,22 +564,38 @@ let
         };
       }))
       (at 12 0 12 5 (panel {
-        title = "ZFS pools";
+        title = "ZFS pools (usable space)";
+        description = "Used and free as the datasets see it, i.e. after parity (zpool list counts raw disk space including parity).";
         viz = "bargauge";
-        unit = "bytes";
+        unit = "percent";
         queries = [
-          (q "homelab_zpool_allocated_bytes" {
-            legend = "{{zpool}} used";
-            instant = true;
-          })
-          (q "homelab_zpool_free_bytes" {
-            legend = "{{zpool}} free";
+          (q "100 * homelab_zfs_pool_used_bytes / (homelab_zfs_pool_used_bytes + homelab_zfs_pool_available_bytes)" {
+            legend = "{{zpool}}";
             instant = true;
           })
         ];
+        defaults = {
+          min = 0;
+          max = 100;
+          thresholds = thresholds [
+            [
+              "green"
+              null
+            ]
+            [
+              "orange"
+              80
+            ]
+            [
+              "red"
+              90
+            ]
+          ];
+        };
         options = {
-          displayMode = "basic";
+          displayMode = "lcd";
           orientation = "horizontal";
+          showUnfilled = true;
         };
       }))
       (at 0 5 12 10 (panel {
@@ -594,15 +614,15 @@ let
         title = "Pool datasets";
         viz = "table";
         queries = [
-          (q "homelab_zfs_dataset_used_bytes" {
+          (q ''homelab_zfs_dataset_used_bytes{machine=~"$service"}'' {
             instant = true;
             table = true;
           })
-          (q "homelab_zfs_dataset_snapshots_bytes" {
+          (q ''homelab_zfs_dataset_snapshots_bytes{machine=~"$service"}'' {
             instant = true;
             table = true;
           })
-          (q "homelab_zfs_dataset_available_bytes" {
+          (q ''homelab_zfs_dataset_available_bytes{machine=~"$service"}'' {
             instant = true;
             table = true;
           })
@@ -634,6 +654,467 @@ let
           }
         ];
         unit = "bytes";
+      }))
+    ];
+  };
+
+  # --- SMART ------------------------------------------------------------------
+  #
+  # ATA attributes whose raw value counts damage; any increase is bad
+  #   5 reallocated sectors, 187 reported uncorrectable, 188 command timeout,
+  #   196 reallocation events, 197 pending sectors, 198 offline
+  #   uncorrectable, 199 UDMA CRC errors (cable / connector)
+  badCounters = "5|187|188|196|197|198|199";
+  attr = type: ''smartctl_device_attribute{attribute_value_type="${type}"}'';
+  badRaw = ''smartctl_device_attribute{attribute_value_type="raw", attribute_id=~"${badCounters}"}'';
+  byAttr = expr: "max by (device, attribute_id, attribute_name) (${expr})";
+
+  healthMappings = [
+    {
+      type = "value";
+      options = {
+        "1" = {
+          text = "PASSED";
+          color = "green";
+          index = 0;
+        };
+        "0" = {
+          text = "FAILED";
+          color = "red";
+          index = 1;
+        };
+      };
+    }
+  ];
+
+  byName = n: properties: {
+    matcher = {
+      id = "byName";
+      options = n;
+    };
+    inherit properties;
+  };
+  colorBackground = {
+    id = "custom.cellOptions";
+    value.type = "color-background";
+  };
+
+  smartTab = {
+    title = "Disks (SMART)";
+    items = [
+      (at 0 0 24 7 (panel {
+        title = "Disks";
+        viz = "table";
+        description = "One row per disk. Damage = sum of the raw counters that should stay 0 (reallocated / pending / uncorrectable sectors, CRC errors) and NVMe media errors.";
+        queries = [
+          (q "smartctl_device" {
+            instant = true;
+            table = true;
+          })
+          (q "max by (device) (smartctl_device_smart_status)" {
+            instant = true;
+            table = true;
+          })
+          (q ''max by (device) (smartctl_device_temperature{temperature_type="current"})'' {
+            instant = true;
+            table = true;
+          })
+          (q "max by (device) (smartctl_device_power_on_seconds)" {
+            instant = true;
+            table = true;
+          })
+          (q ''sum by (device) (${badRaw}) or sum by (device) (smartctl_device_media_errors)'' {
+            instant = true;
+            table = true;
+          })
+          (q "max by (device) (smartctl_device_percentage_used)" {
+            instant = true;
+            table = true;
+          })
+        ];
+        transformations = [
+          {
+            id = "merge";
+            options = { };
+          }
+          {
+            id = "filterFieldsByName";
+            options.include.names = [
+              "device"
+              "model_name"
+              "serial_number"
+              "firmware_version"
+              "Value #B"
+              "Value #C"
+              "Value #D"
+              "Value #E"
+              "Value #F"
+            ];
+          }
+          {
+            id = "organize";
+            options.renameByName = {
+              device = "Device";
+              model_name = "Model";
+              serial_number = "Serial";
+              firmware_version = "Firmware";
+              "Value #B" = "Health";
+              "Value #C" = "Temperature";
+              "Value #D" = "Powered on";
+              "Value #E" = "Damage counters";
+              "Value #F" = "Wear (NVMe)";
+            };
+          }
+        ];
+        overrides = [
+          (byName "Health" [
+            {
+              id = "mappings";
+              value = healthMappings;
+            }
+            colorBackground
+          ])
+          (byName "Temperature" [
+            {
+              id = "unit";
+              value = "celsius";
+            }
+            {
+              id = "thresholds";
+              value = thresholds [
+                [
+                  "green"
+                  null
+                ]
+                [
+                  "orange"
+                  45
+                ]
+                [
+                  "red"
+                  55
+                ]
+              ];
+            }
+            colorBackground
+          ])
+          (byName "Powered on" [
+            {
+              id = "unit";
+              value = "s";
+            }
+          ])
+          (byName "Damage counters" [
+            {
+              id = "thresholds";
+              value = thresholds [
+                [
+                  "green"
+                  null
+                ]
+                [
+                  "red"
+                  1
+                ]
+              ];
+            }
+            colorBackground
+          ])
+          (byName "Wear (NVMe)" [
+            {
+              id = "unit";
+              value = "percent";
+            }
+            {
+              id = "thresholds";
+              value = thresholds [
+                [
+                  "green"
+                  null
+                ]
+                [
+                  "orange"
+                  70
+                ]
+                [
+                  "red"
+                  90
+                ]
+              ];
+            }
+            colorBackground
+          ])
+        ];
+        options.showHeader = true;
+      }))
+
+      (at 0 7 24 7 (panel {
+        title = "Damage counters per disk (raw, should stay 0)";
+        viz = "table";
+        queries = [
+          (q ''${badRaw}'' {
+            instant = true;
+            table = true;
+          })
+        ];
+        transformations = [
+          {
+            id = "groupingToMatrix";
+            options = {
+              columnField = "attribute_name";
+              rowField = "device";
+              valueField = "Value";
+            };
+          }
+        ];
+        defaults = {
+          thresholds = thresholds [
+            [
+              "green"
+              null
+            ]
+            [
+              "red"
+              1
+            ]
+          ];
+          custom.cellOptions.type = "color-background";
+        };
+        overrides = [
+          (byName "device\\attribute_name" [
+            {
+              id = "custom.cellOptions";
+              value.type = "auto";
+            }
+          ])
+        ];
+      }))
+
+      (at 0 14 12 9 (panel {
+        title = "Damage counters over time";
+        queries = [
+          (q ''${badRaw}'' {
+            legend = "{{device}} {{attribute_name}}";
+          })
+          (q "smartctl_device_media_errors" { legend = "{{device}} media errors"; })
+        ];
+      }))
+      (at 12 14 12 9 (panel {
+        title = "Disk temperatures";
+        unit = "celsius";
+        queries = [
+          (q ''smartctl_device_temperature{temperature_type="current"}'' { legend = "{{device}}"; })
+        ];
+      }))
+
+      (at 0 23 24 8 (panel {
+        title = "NVMe health";
+        viz = "table";
+        queries = [
+          (q "max by (device) (smartctl_device_percentage_used)" {
+            instant = true;
+            table = true;
+          })
+          (q "max by (device) (smartctl_device_available_spare)" {
+            instant = true;
+            table = true;
+          })
+          (q "max by (device) (smartctl_device_available_spare_threshold)" {
+            instant = true;
+            table = true;
+          })
+          (q "max by (device) (smartctl_device_media_errors)" {
+            instant = true;
+            table = true;
+          })
+          (q "max by (device) (smartctl_device_critical_warning)" {
+            instant = true;
+            table = true;
+          })
+          (q "max by (device) (smartctl_device_bytes_written)" {
+            instant = true;
+            table = true;
+          })
+        ];
+        transformations = [
+          {
+            id = "merge";
+            options = { };
+          }
+          {
+            id = "organize";
+            options = {
+              excludeByName.Time = true;
+              renameByName = {
+                device = "Device";
+                "Value #A" = "Wear";
+                "Value #B" = "Spare";
+                "Value #C" = "Spare threshold";
+                "Value #D" = "Media errors";
+                "Value #E" = "Critical warning";
+                "Value #F" = "Written";
+              };
+            };
+          }
+        ];
+        overrides = [
+          (byName "Wear" [
+            {
+              id = "unit";
+              value = "percent";
+            }
+          ])
+          (byName "Spare" [
+            {
+              id = "unit";
+              value = "percent";
+            }
+          ])
+          (byName "Spare threshold" [
+            {
+              id = "unit";
+              value = "percent";
+            }
+          ])
+          (byName "Written" [
+            {
+              id = "unit";
+              value = "bytes";
+            }
+          ])
+        ];
+      }))
+
+      (at 0 31 24 14 (panel {
+        title = "All SMART attributes";
+        viz = "table";
+        description = "Every ATA attribute of every disk. Normalized values count down towards the threshold; margin = value - threshold (only for attributes with a threshold), at 0 the disk counts as failing.";
+        queries = [
+          (q (byAttr (attr "value")) {
+            instant = true;
+            table = true;
+          })
+          (q (byAttr (attr "worst")) {
+            instant = true;
+            table = true;
+          })
+          (q (byAttr (attr "thresh")) {
+            instant = true;
+            table = true;
+          })
+          (q (byAttr (attr "raw")) {
+            instant = true;
+            table = true;
+          })
+          (q "${byAttr (attr "value")} - ${byAttr "${attr "thresh"} > 0"}" {
+            instant = true;
+            table = true;
+          })
+        ];
+        transformations = [
+          {
+            id = "merge";
+            options = { };
+          }
+          {
+            id = "organize";
+            options = {
+              excludeByName.Time = true;
+              indexByName = {
+                device = 0;
+                attribute_id = 1;
+                attribute_name = 2;
+              };
+              renameByName = {
+                device = "Device";
+                attribute_id = "ID";
+                attribute_name = "Attribute";
+                "Value #A" = "Value";
+                "Value #B" = "Worst";
+                "Value #C" = "Threshold";
+                "Value #D" = "Raw";
+                "Value #E" = "Margin";
+              };
+            };
+          }
+          {
+            id = "sortBy";
+            options.sort = [ { field = "Device"; } ];
+          }
+        ];
+        overrides = [
+          (byName "Margin" [
+            {
+              id = "thresholds";
+              value = thresholds [
+                [
+                  "red"
+                  null
+                ]
+                [
+                  "orange"
+                  1
+                ]
+                [
+                  "green"
+                  10
+                ]
+              ];
+            }
+            colorBackground
+          ])
+        ];
+        options = {
+          showHeader = true;
+          cellHeight = "sm";
+        };
+      }))
+
+      (at 0 45 24 6 (panel {
+        title = "Error and self-test logs";
+        viz = "table";
+        queries = [
+          (q "smartctl_device_error_log_count" {
+            instant = true;
+            table = true;
+          })
+          (q "smartctl_device_self_test_log_error_count" {
+            instant = true;
+            table = true;
+          })
+          (q "smartctl_device_num_err_log_entries" {
+            instant = true;
+            table = true;
+          })
+        ];
+        transformations = [
+          {
+            id = "merge";
+            options = { };
+          }
+          {
+            id = "filterFieldsByName";
+            options.include.names = [
+              "device"
+              "error_log_type"
+              "self_test_log_type"
+              "Value #A"
+              "Value #B"
+              "Value #C"
+            ];
+          }
+          {
+            id = "organize";
+            options.renameByName = {
+              device = "Device";
+              error_log_type = "Error log";
+              self_test_log_type = "Self-test log";
+              "Value #A" = "Errors logged";
+              "Value #B" = "Failed self-tests";
+              "Value #C" = "NVMe error log entries";
+            };
+          }
+        ];
       }))
     ];
   };
@@ -759,7 +1240,7 @@ let
         title = "CPU per container";
         unit = "percentunit";
         queries = [
-          (q ''sum by (machine) (rate(container_cpu_usage_seconds_total{machine!=""}[$__rate_interval]))'' {
+          (q ''sum by (machine) (rate(container_cpu_usage_seconds_total{machine=~"$service"}[$__rate_interval]))'' {
             legend = "{{machine}}";
           })
         ];
@@ -769,7 +1250,7 @@ let
         title = "Memory per container";
         unit = "bytes";
         queries = [
-          (q ''sum by (machine) (container_memory_working_set_bytes{machine!=""})'' {
+          (q ''sum by (machine) (container_memory_working_set_bytes{machine=~"$service"})'' {
             legend = "{{machine}}";
           })
         ];
@@ -779,10 +1260,10 @@ let
         title = "Disk IO per container";
         unit = "Bps";
         queries = [
-          (q ''sum by (machine) (rate(container_fs_reads_bytes_total{machine!=""}[$__rate_interval]))'' {
+          (q ''sum by (machine) (rate(container_fs_reads_bytes_total{machine=~"$service"}[$__rate_interval]))'' {
             legend = "{{machine}} read";
           })
-          (q ''-sum by (machine) (rate(container_fs_writes_bytes_total{machine!=""}[$__rate_interval]))'' {
+          (q ''-sum by (machine) (rate(container_fs_writes_bytes_total{machine=~"$service"}[$__rate_interval]))'' {
             legend = "{{machine}} write";
           })
         ];
@@ -797,7 +1278,7 @@ let
         title = "Probes";
         viz = "state-timeline";
         description = "tcp: each container's port, from the host. https: each vhost, from the host (inside) and from the VPS (outside).";
-        queries = [ (q "probe_success" { legend = "{{probe}} ({{prober}})"; }) ];
+        queries = [ (q ''probe_success{probe=~"$service"}'' { legend = "{{probe}} ({{prober}})"; }) ];
         defaults = {
           mappings = [
             {
@@ -827,7 +1308,7 @@ let
       (at 0 14 12 9 (panel {
         title = "Response time";
         unit = "s";
-        queries = [ (q "probe_duration_seconds" { legend = "{{probe}} ({{prober}})"; }) ];
+        queries = [ (q ''probe_duration_seconds{probe=~"$service"}'' { legend = "{{probe}} ({{prober}})"; }) ];
       }))
       (at 12 14 12 9 (panel {
         title = "Certificates: days left";
@@ -901,6 +1382,7 @@ let
   tabs = [
     servicesTab
     storageTab
+    smartTab
     hostTab
     containersTab
     probesTab
@@ -956,7 +1438,10 @@ let
           kind = "CustomVariable";
           spec = {
             name = "service";
-            label = "Service (logs)";
+            label = "Service";
+            # "All" = every series, also those whose service is not in the
+            # list (https probes are named after the host name)
+            allValue = ".*";
             query = concatStringsSep "," (
               attrNames serviceNodes
               ++ [

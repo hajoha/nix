@@ -70,6 +70,11 @@ let
     };
 
   fsFilter = ''fstype!~"tmpfs|ramfs|squashfs|overlay"'';
+
+  # SMART raw counters that count damage (see dashboards.nix)
+  sectorCounters = "5|196|197|198"; # reallocated / pending / uncorrectable sectors
+  linkCounters = "187|188|199"; # reported uncorrectable, timeouts, CRC (cable)
+  rawAttr = ids: ''smartctl_device_attribute{attribute_value_type="raw", attribute_id=~"${ids}"}'';
 in
 {
   apiVersion = 1;
@@ -181,6 +186,99 @@ in
           summary = "pool {{ $labels.zpool }} is not ONLINE";
           for = "0s";
           severity = "critical";
+        })
+      ];
+    }
+    {
+      orgId = 1;
+      name = "disks";
+      folder = "Homelab";
+      interval = "5m";
+      # "worsens": counters that rose within the last day, normalized
+      # values close to their threshold, NVMe wear and spare. A counter
+      # that rose keeps the alert for 24h, then it clears by itself.
+      rules = [
+        (rule {
+          uid = "smart-sectors-rising";
+          title = "Disk is losing sectors";
+          expr = "increase(${rawAttr sectorCounters}[1d]) > 0";
+          summary = "{{ $labels.device }}: {{ $labels.attribute_name }} rose by {{ $values.A.Value | printf \"%.0f\" }} in 24h";
+          for = "0s";
+          severity = "critical";
+        })
+        (rule {
+          uid = "smart-errors-rising";
+          title = "Disk reports new errors";
+          expr = "increase(${rawAttr linkCounters}[1d]) > 0";
+          summary = "{{ $labels.device }}: {{ $labels.attribute_name }} rose by {{ $values.A.Value | printf \"%.0f\" }} in 24h (199 CRC: cable or connector)";
+          for = "0s";
+        })
+        (rule {
+          uid = "smart-near-threshold";
+          title = "SMART value close to its failure threshold";
+          expr = ''max by (device, attribute_name) (smartctl_device_attribute{attribute_value_type="value"}) - max by (device, attribute_name) (smartctl_device_attribute{attribute_value_type="thresh"} > 0)'';
+          threshold = {
+            type = "lt";
+            params = [ 10 ];
+          };
+          summary = "{{ $labels.device }}: {{ $labels.attribute_name }} is {{ $values.A.Value }} above its threshold";
+          for = "1h";
+        })
+        (rule {
+          uid = "smart-selftest-failed";
+          title = "SMART self-test failed";
+          expr = "increase(smartctl_device_self_test_log_error_count[1d]) > 0";
+          summary = "{{ $labels.device }}: a self-test failed in the last 24h";
+          for = "0s";
+          severity = "critical";
+        })
+        (rule {
+          uid = "smart-errorlog-rising";
+          title = "New entries in the disk error log";
+          expr = "increase(smartctl_device_error_log_count[1d]) > 0";
+          summary = "{{ $labels.device }}: {{ $values.A.Value | printf \"%.0f\" }} new error log entries in 24h";
+          for = "0s";
+        })
+        (rule {
+          uid = "nvme-media-errors";
+          title = "NVMe media errors";
+          expr = "increase(smartctl_device_media_errors[1d]) > 0";
+          summary = "{{ $labels.device }}: {{ $values.A.Value | printf \"%.0f\" }} new media errors in 24h";
+          for = "0s";
+          severity = "critical";
+        })
+        (rule {
+          uid = "nvme-critical-warning";
+          title = "NVMe critical warning";
+          expr = "smartctl_device_critical_warning";
+          summary = "{{ $labels.device }} raises critical warning {{ $values.A.Value }}";
+          for = "0s";
+          severity = "critical";
+        })
+        (rule {
+          uid = "nvme-wear";
+          title = "NVMe almost worn out";
+          expr = "smartctl_device_percentage_used > 80";
+          summary = "{{ $labels.device }} has used {{ $values.A.Value }}% of its rated endurance";
+          for = "1h";
+        })
+        (rule {
+          uid = "nvme-spare-low";
+          title = "NVMe spare blocks running out";
+          expr = "smartctl_device_available_spare - on (device) smartctl_device_available_spare_threshold";
+          threshold = {
+            type = "lt";
+            params = [ 10 ];
+          };
+          summary = "{{ $labels.device }}: spare only {{ $values.A.Value }} points above its threshold";
+          for = "1h";
+        })
+        (rule {
+          uid = "smart-not-read";
+          title = "SMART values missing";
+          expr = "absent_over_time(smartctl_device_smart_status[30m])";
+          summary = "No SMART data for 30 minutes (smartctl exporter on the host down?)";
+          for = "0s";
         })
       ];
     }
