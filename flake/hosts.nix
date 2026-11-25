@@ -52,7 +52,7 @@ in
 
     hetzner-vps-01 = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
-      specialArgs = { inherit inventory publicVhosts; };
+      specialArgs = { inherit inventory publicVhosts baseDomain; };
       modules = [
         ../hosts/hetzner-vps-01/configuration.nix
         inputs.disko.nixosModules.disko

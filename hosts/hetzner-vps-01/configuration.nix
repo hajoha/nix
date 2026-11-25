@@ -14,6 +14,7 @@ in
     ./hardware-configuration.nix
     ./disko-config.nix
     ./monitoring.nix
+    ./notify.nix
     ../../user/root.nix
   ];
 

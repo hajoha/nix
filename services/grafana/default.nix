@@ -21,6 +21,10 @@ in
     "GRAFANA_KEYCLOAK_SECRET" = {
       owner = "grafana";
     };
+    # token of the ntfy user "alerts" (hosts/hetzner-vps-01/notify.nix)
+    "NTFY_TOKEN" = {
+      owner = "grafana";
+    };
     "dsp25-ssh" = {
       path = "/etc/ssh/dsp25_ssh_config";
     };
@@ -91,6 +95,48 @@ in
       alerting.rules.settings = import ./alerts.nix {
         inherit lib;
         inventory = import ../../inventory { inherit lib; };
+      };
+
+      # Every alert goes to ntfy on the VPS, topic "homelab"
+      # (hosts/hetzner-vps-01/notify.nix). ntfy turns Grafana's JSON into
+      # title + message with its inline template (tpl=yes, t=, m=).
+      alerting.contactPoints.settings = {
+        apiVersion = 1;
+        contactPoints = [
+          {
+            orgId = 1;
+            name = "ntfy";
+            receivers = [
+              {
+                uid = "ntfy";
+                type = "webhook";
+                disableResolveMessage = false;
+                settings = {
+                  url = "https://notify.monitor.${config.homelab.domain}/homelab?tpl=yes&t=%7B%7B.title%7D%7D&m=%7B%7B.message%7D%7D";
+                  httpMethod = "POST";
+                  authorization_scheme = "Bearer";
+                  authorization_credentials = "$__file{${config.sops.secrets."NTFY_TOKEN".path}}";
+                };
+              }
+            ];
+          }
+        ];
+      };
+      alerting.policies.settings = {
+        apiVersion = 1;
+        policies = [
+          {
+            orgId = 1;
+            receiver = "ntfy";
+            group_by = [
+              "grafana_folder"
+              "alertname"
+            ];
+            group_wait = "30s";
+            group_interval = "5m";
+            repeat_interval = "4h";
+          }
+        ];
       };
     };
 

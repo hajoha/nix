@@ -91,7 +91,14 @@ in
       // lib.genAttrs vhosts (h: {
         address = "https://${h}";
         module = "http_up";
-      });
+      })
+      # ntfy on the VPS, where the alerts go (hosts/hetzner-vps-01/notify.nix)
+      // {
+        notify = {
+          address = "https://notify.monitor.${config.homelab.domain}/v1/health";
+          module = "http_up";
+        };
+      };
   };
 
   environment.etc."alloy/homelab.alloy".text = ''

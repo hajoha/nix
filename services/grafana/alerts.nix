@@ -4,9 +4,8 @@
 # above the threshold (default: > 0) is one alert instance. The queries
 # return nothing or 0 when all is well, so "no data" counts as OK.
 #
-# Notifications: the default policy sends to Grafana's default contact
-# point; set up a real one (ntfy, email, …) under Alerting → Contact points
-# or provision it next to these rules.
+# Notifications: the default policy sends everything to ntfy on the VPS
+# (contact point "ntfy" in ./default.nix).
 { lib, inventory }:
 let
   running = lib.filterAttrs (_: n: n.service != null && n.autoStart) inventory.nodes;

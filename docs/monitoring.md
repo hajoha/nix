@@ -39,6 +39,7 @@ containers and the Hetzner VPS.
 - [Probes](#probes)
 - [Grafana: dashboards](#grafana-dashboards)
 - [Grafana: alerts](#grafana-alerts)
+- [Notifications and outside checks (VPS)](#notifications-and-outside-checks-vps)
 - [Network paths](#network-paths)
 - [Operating it](#operating-it)
 - [Extending it](#extending-it)
@@ -59,7 +60,8 @@ containers and the Hetzner VPS.
   Grafana and the community dashboards work as they are.
 - **Loki for logs**, kept for 30 days.
 - **Grafana alerting**: alert rules are provisioned from Nix, and there is no
-  Alertmanager.
+  Alertmanager. Notifications go to ntfy on the VPS, and Gatus there checks
+  the homelab from outside.
 - **Everything is in Nix.** Datasources, dashboards and alert rules are
   provisioned and read-only in the UI. To change one, change the Nix file.
 
@@ -77,6 +79,8 @@ containers and the Hetzner VPS.
 | Grafana: datasources, dashboard provider, SSO | `services/grafana/default.nix` |
 | Dashboards | `services/grafana/dashboards.nix` |
 | Alert rules | `services/grafana/alerts.nix` |
+| Contact point and policy (ntfy) | `services/grafana/default.nix` |
+| ntfy, Traefik, Gatus (outside checks) on the VPS | `hosts/hetzner-vps-01/notify.nix` |
 | Containers, IPs, firewall ports | `inventory/nodes.nix` (`nix-loki`, `nix-thanos`, `nix-grafana`) |
 
 Alloy loads every `/etc/alloy/*.alloy` file as one configuration.
@@ -268,35 +272,106 @@ OK.
 
 ### Notifications
 
-No contact point is provisioned yet. Alerts are visible in Grafana but
-reach nobody until there is one. Either click one together under Alerting →
-Contact points and make it the default policy's receiver, or provision it
-next to the rules in `services/grafana/default.nix`, for example with ntfy:
+Alerts go to **ntfy** on the VPS (`https://notify.monitor.<domain>`, topic
+`homelab`). It runs there so notifications still arrive when the homelab is
+down. Details are in [Notifications and outside checks](#notifications-and-outside-checks-vps).
 
-```nix
-services.grafana.provision.alerting = {
-  contactPoints.settings = {
-    apiVersion = 1;
-    contactPoints = [{
-      orgId = 1;
-      name = "ntfy";
-      receivers = [{
-        uid = "ntfy";
-        type = "webhook";
-        settings.url = "https://ntfy.sh/<secret-topic>";  # better: from sops
-      }];
-    }];
-  };
-  policies.settings = {
-    apiVersion = 1;
-    policies = [{
-      orgId = 1;
-      receiver = "ntfy";
-      group_by = [ "alertname" "instance" ];
-    }];
-  };
-};
+- Contact point `ntfy` (a webhook, provisioned in
+  `services/grafana/default.nix`) is the default policy's only receiver.
+  Alerts are grouped by folder and alert name and repeated every 4h while
+  they fire. A message is sent when they resolve.
+- ntfy's inline template (`?tpl=yes&t={{.title}}&m={{.message}}`) turns
+  Grafana's JSON into a title and a message.
+- Grafana authenticates with the token of the ntfy user `alerts`. That user
+  may only publish to `homelab`. The token is `NTFY_TOKEN` in
+  `services/grafana/secrets.enc.yaml`.
+
+## Notifications and outside checks (VPS)
+
+`hosts/hetzner-vps-01/notify.nix`:
+
 ```
+ internet ──443──▶ Traefik (Let's Encrypt) ──▶ ntfy 127.0.0.1:2586 ──▶ phone app
+                   notify.monitor.<domain>                ▲          ▲
+ Grafana (homelab) ── webhook, topic homelab ─────┘          │
+ Gatus (VPS) ── checks every 30s/1m, alerts locally ─────────┘
+```
+
+- **One subdomain for the VPS.** `monitor.<domain>` and `*.monitor.<domain>`
+  point to the VPS, so a new name there needs no DNS change:
+
+  | Name | Goes to |
+  |---|---|
+  | `notify.monitor.<domain>` | ntfy |
+  | `status.monitor.<domain>` | Gatus status page (basic auth, same login as the ntfy admin) |
+  | `monitor.<domain>` | redirect to `status.` |
+
+- **Traefik** terminates TLS with one Let's Encrypt certificate per name
+  (HTTP-01 on port 80, stored in `/var/lib/traefik/acme.json`). It redirects
+  http to https and proxies to ntfy and Gatus. Its access log goes to the
+  journal and from there to Loki (`instance="hetzner-vps-01"`,
+  `unit="traefik.service"`). At home, AdGuard keeps the public answer for
+  `monitor.<domain>` and `*.monitor.<domain>` instead of the `*.<domain>` →
+  nix-nginx rewrite (`services/adguardhome/default.nix`).
+- **ntfy** allows nothing without an account (`auth-default-access =
+  deny-all`, no sign-up). Users, the access rule and the token are
+  provisioned from sops:
+
+  | ntfy user | Role | Used by |
+  |---|---|---|
+  | `hajoha` (`adminUser`) | admin | phone app and web app: subscribe to `homelab`. Also the status page login |
+  | `alerts` | user, write-only on `homelab` | Grafana and Gatus, with the token `tk_…` |
+
+  Messages are cached for 72h for clients that were offline.
+- **Gatus** is the outside ping check. It runs on the VPS, alerts through the
+  local ntfy (not through Traefik, so a broken certificate still gets
+  reported), and needs nothing at home to work:
+
+  | Group | Check | Interval |
+  |---|---|---|
+  | notify | `https://notify.monitor.<domain>/v1/health` answers `healthy`, certificate valid > 7 days | 1m |
+  | home | ping to home-openwrt over WireGuard | 30s |
+  | home | tcp to nix-loki :3100 and nix-thanos :19291 over WireGuard | 30s |
+  | public | every public vhost (`publicVhosts`): status < 500, certificate valid > 7 days | 1m |
+
+  An alert goes out after 3 failed checks and a resolved message after 2
+  good ones. If the `home` checks fail, Grafana's own alerts may not
+  arrive (and Thanos misses the VPS metrics), so this is the alert that
+  says "the homelab itself is gone".
+
+  The status page with history is `https://status.monitor.<domain>`.
+
+The homelab Alloy also probes `https://notify.monitor.<domain>/v1/health` (probe
+`notify`), so `probe-down` fires in Grafana when the VPS or ntfy is down.
+That alert cannot arrive through ntfy, but it is visible in Grafana.
+
+### Setup (once)
+
+1. DNS: `monitor.<domain>` **and** `*.monitor.<domain>` to the VPS (A/AAAA,
+   or CNAME to its hostname). A record for `monitor.` alone does not cover
+   the names below it. Ports 80 and 443 must be reachable.
+2. Secrets on the VPS, `sops hosts/hetzner-vps-01/secrets.enc.yaml`:
+
+   ```yaml
+   ntfy:
+     admin-hash: $2a$10$…     # nix shell nixpkgs#ntfy-sh -c ntfy user hash  (your password)
+     alerts-hash: $2a$10$…    # same, with a random password nobody needs
+     alerts-token: tk_…       # echo "tk_$(tr -dc a-z0-9 </dev/urandom | head -c 29)"
+   ```
+
+3. The same token for Grafana, `sops services/grafana/secrets.enc.yaml`:
+   `NTFY_TOKEN: tk_…`.
+4. Deploy the VPS first, then the homelab. sops-nix fails the activation
+   while a secret it expects is missing, so add the keys before deploying.
+5. Phone: ntfy app → add server `https://notify.monitor.<domain>`, log in as the
+   admin user, subscribe to `homelab`. Test it:
+
+   ```bash
+   curl -H "Authorization: Bearer tk_…" -d "test" https://notify.monitor.<domain>/homelab
+   ```
+
+To get a notification from a script anywhere, use the same `curl` (or a
+separate ntfy user with its own token and topic).
 
 ## Network paths
 
@@ -311,6 +386,8 @@ or from Grafana:
 | homelab host | the vhosts (https probes) | 443 | via nix-nginx, as resolved by DNS |
 | hetzner-vps-01 (WireGuard `10.60.71.x`) | nix-loki, nix-thanos | 3100, 19291 | WireGuard to home-openwrt, which forwards to the service VLAN (`routes` in `wireguard-peers.json`) |
 | nix-grafana | nix-loki :3100, nix-thanos :10902 | | service VLAN |
+| nix-grafana | `notify.monitor.<domain>` (VPS) | 443 | internet |
+| Gatus (VPS) | home-openwrt (ping), nix-loki :3100, nix-thanos :19291 | | WireGuard |
 
 nix-loki has no default gateway (`gateway = false`). Static routes for
 `10.60.0.0/24` (management) and `10.60.71.0/24` (WireGuard) via `10.60.1.1`
@@ -498,8 +575,6 @@ promtail/alloy had already sent.
 
 ## Known gaps and to-dos
 
-- **No contact point.** Alerts notify nobody yet (see
-  [Notifications](#notifications)).
 - **Home Assistant** history stays in its recorder in nix-postgres and is
   not in Thanos. HA keeps 5-minute statistics (deleted together with the raw
   states after `purge_keep_days`) and hourly long-term statistics (kept

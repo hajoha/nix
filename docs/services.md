@@ -54,7 +54,7 @@ Other machines in this repo:
 | Host | What | Config |
 |---|---|---|
 | `homelab` | the server, NixOS on bare metal, runs all of the above | `hosts/homelab/`, [homelab-host.md](homelab-host.md) |
-| `hetzner-vps-01` | WireGuard hub (tunnel to home-openwrt), ssh with fail2ban, probes the public vhosts from outside | `hosts/hetzner-vps-01/` |
+| `hetzner-vps-01` | WireGuard hub (tunnel to home-openwrt), ssh with fail2ban, `monitor.<domain>`: ntfy (`notify.`), Gatus status page (`status.`) behind Traefik; probes from outside | `hosts/hetzner-vps-01/` |
 | `nixmaschine` | desktop (NixOS + home-manager) | `hosts/nixmaschine/` |
 | `haa` | work laptop, standalone home-manager | `hosts/nixarbeitsmaschine/` |
 | `pi3-sendspin` | Raspberry Pi 3, Sendspin player ("Wohnzimmer") | `hosts/pi3-sendspin/` |
