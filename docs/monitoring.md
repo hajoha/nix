@@ -586,10 +586,9 @@ windows.** This is expected, because only 5m/1h data exists there. Use
 
 **Panels and alert rules fail with "plugin not registered".** Since
 Grafana 13, the Prometheus and Loki datasources are separate plugins. They
-are pinned in `services/grafana/default.nix` (`declarativePlugins`). After a
-Grafana upgrade, check that they are still compatible
-(`https://grafana.com/api/plugins/prometheus/versions` shows
-`grafanaDependency`) and bump version and hash.
+come from nixpkgs (`pkgs.grafanaPlugins.prometheus` / `.loki`, set in
+`services/grafana/default.nix` as `declarativePlugins`) and are updated
+together with Grafana by `nix flake update`.
 
 **Thanos compact stopped.** `thanos_compact_halted 1` on `:10912/metrics`
 and an error in `journalctl -M nix-thanos -u thanos-compact`. Without
