@@ -8,6 +8,7 @@
 let
   inherit (config.homelab) nodes sso;
   secretFile = name: "$__file{${config.sops.secrets.${name}.path}}";
+  inherit (import ../../inventory { inherit lib; }) signalAlerts mailAlerts;
   mailPort = 587; # STARTTLS; same in hosts/hetzner-vps-01/notify.nix
 in
 {
@@ -33,19 +34,22 @@ in
   }
   # Alert channels besides ntfy (same values as on the VPS, which sends
   # Gatus' alerts; hosts/hetzner-vps-01/{notify,signal}.nix):
-  #   SIGNAL_TOKEN   bearer token of the Signal bridge (signal/token there)
-  #   mail/{host,user,password,from,to}
-  // lib.genAttrs [
-    "SIGNAL_TOKEN"
-    "mail/host"
-    "mail/user"
-    "mail/password"
-    "mail/from"
-    "mail/to"
-  ] (_: { owner = "grafana"; });
+  #   SIGNAL_TOKEN   bearer token of the Signal bridge (signal/token there),
+  #                  only with signalAlerts (inventory/default.nix)
+  #   mail/{host,user,password,from,to}, only with mailAlerts
+  // lib.genAttrs (
+    lib.optional signalAlerts "SIGNAL_TOKEN"
+    ++ lib.optionals mailAlerts [
+      "mail/host"
+      "mail/user"
+      "mail/password"
+      "mail/from"
+      "mail/to"
+    ]
+  ) (_: { owner = "grafana"; });
 
   # Grafana wants the SMTP server as host:port in one value
-  sops.templates."grafana-smtp-host" = {
+  sops.templates."grafana-smtp-host" = lib.mkIf mailAlerts {
     owner = "grafana";
     content = "${config.sops.placeholder."mail/host"}:${toString mailPort}";
   };
@@ -129,7 +133,8 @@ in
         inventory = import ../../inventory { inherit lib; };
       };
 
-      # Every alert goes out three ways: ntfy (phone push), Signal and mail.
+      # Every alert goes out three ways: ntfy (phone push), Signal (with
+      # signalAlerts, inventory/default.nix) and mail (with mailAlerts).
       # ntfy and the Signal bridge run on the VPS
       # (hosts/hetzner-vps-01/{notify,signal}.nix); ntfy turns Grafana's
       # JSON into title + message with its inline template (tpl=yes, t=, m=).
@@ -151,17 +156,19 @@ in
                   authorization_credentials = secretFile "NTFY_TOKEN";
                 };
               }
-              {
-                uid = "signal";
-                type = "webhook";
-                disableResolveMessage = false;
-                settings = {
-                  url = "https://signal.monitor.${config.homelab.domain}/v2/send";
-                  httpMethod = "POST";
-                  authorization_scheme = "Bearer";
-                  authorization_credentials = secretFile "SIGNAL_TOKEN";
-                };
-              }
+            ]
+            ++ lib.optional signalAlerts {
+              uid = "signal";
+              type = "webhook";
+              disableResolveMessage = false;
+              settings = {
+                url = "https://signal.monitor.${config.homelab.domain}/v2/send";
+                httpMethod = "POST";
+                authorization_scheme = "Bearer";
+                authorization_credentials = secretFile "SIGNAL_TOKEN";
+              };
+            }
+            ++ lib.optionals mailAlerts [
               {
                 uid = "email";
                 type = "email";
@@ -245,7 +252,7 @@ in
       };
 
       # for the "email" receiver above
-      smtp = {
+      smtp = lib.mkIf mailAlerts {
         enabled = true;
         host = "$__file{${config.sops.templates."grafana-smtp-host".path}}";
         user = secretFile "mail/user";

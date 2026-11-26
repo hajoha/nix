@@ -44,7 +44,7 @@
   ...
 }:
 let
-  inherit (inventory) nodes;
+  inherit (inventory) nodes signalAlerts mailAlerts;
 
   zone = "monitor.${baseDomain}";
   fqdn = "notify.${zone}";
@@ -64,9 +64,9 @@ let
   # Gatus: every endpoint alerts through ntfy after 3 failed checks
   alerts = [
     { type = "ntfy"; }
-    { type = "custom"; } # Signal
-    { type = "email"; }
-  ];
+  ]
+  ++ lib.optional mailAlerts { type = "email"; }
+  ++ lib.optional signalAlerts { type = "custom"; }; # Signal
   https = group: name: url: extra: {
     inherit name group url alerts;
     interval = "1m";
@@ -90,13 +90,13 @@ in
     "ntfy/alerts-hash" = { };
     "ntfy/alerts-token" = { };
   }
-  // lib.genAttrs [
+  // lib.genAttrs (lib.optionals mailAlerts [
     "mail/host"
     "mail/user"
     "mail/password"
     "mail/from"
     "mail/to"
-  ] (_: { });
+  ]) (_: { });
 
   # systemd EnvironmentFile: no $-expansion, single quotes are stripped
   sops.templates."ntfy.env".content = ''
@@ -106,7 +106,11 @@ in
   '';
   sops.templates."gatus.env".content = ''
     NTFY_TOKEN=${secret "alerts-token"}
+  ''
+  + lib.optionalString signalAlerts ''
     SIGNAL_TOKEN=${config.sops.placeholder."signal/token"}
+  ''
+  + lib.optionalString mailAlerts ''
     MAIL_HOST=${config.sops.placeholder."mail/host"}
     MAIL_USER=${config.sops.placeholder."mail/user"}
     MAIL_PASSWORD=${config.sops.placeholder."mail/password"}
@@ -187,7 +191,11 @@ in
       {
         routers = {
           ntfy = router fqdn { service = "ntfy"; };
+        }
+        // lib.optionalAttrs signalAlerts {
           signal = router signalFqdn { service = "signal"; };
+        }
+        // {
           status = router statusFqdn {
             service = "gatus";
             middlewares = [ "status-auth" ];
@@ -199,8 +207,10 @@ in
         };
         services = {
           ntfy.loadBalancer.servers = [ { url = "http://${ntfyListen}"; } ];
-          signal.loadBalancer.servers = [ { url = config.homelab.signalBridge; } ];
           gatus.loadBalancer.servers = [ { url = "http://127.0.0.1:${toString gatusPort}"; } ];
+        }
+        // lib.optionalAttrs signalAlerts {
+          signal.loadBalancer.servers = [ { url = config.homelab.signalBridge; } ];
         };
         middlewares = {
           status-auth.basicAuth.usersFile = config.sops.templates."traefik-status-users".path;
@@ -277,7 +287,7 @@ in
       # Signal through the local bridge (./signal.nix). Gatus fills the
       # placeholders by plain text replacement, without JSON escaping: only
       # ones that never contain quotes (no [RESULT_ERRORS]).
-      alerting.custom = {
+      alerting.custom = lib.mkIf signalAlerts {
         url = "${config.homelab.signalBridge}/v2/send";
         method = "POST";
         headers = {
@@ -298,7 +308,7 @@ in
         };
       };
 
-      alerting.email = {
+      alerting.email = lib.mkIf mailAlerts {
         from = "\${MAIL_FROM}";
         username = "\${MAIL_USER}";
         password = "\${MAIL_PASSWORD}";

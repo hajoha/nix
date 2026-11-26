@@ -573,20 +573,32 @@ Gatus inserts the values into its YAML as they are. A password that
 starts with a YAML special character (`@ * & ! % | > ' "`) or contains
 `": "` / `" #"` breaks its config, so pick one without those.
 
-Test from Grafana: Alerting → Contact points → `homelab` → Test (sends to
-all three).
+Test from Grafana: Alerting → Contact points → `homelab` → Test (sends to every channel
+that is switched on).
 
 ### Setting the secrets
 
-One line, from the repo root. It asks for every value and generates the
-Signal token itself:
+Signal and mail are each switched on in `inventory/default.nix`
+(`signalAlerts`, `mailAlerts`). While a switch is `false`, nothing of that
+channel is built (no contact point, no Gatus alert, no Traefik route, no
+bridge) and none of its secrets is needed. ntfy always runs.
+
+Order for each channel: **secrets first, then the switch to `true`, then
+deploy**. sops-nix fails the build of the VPS and of nix-grafana while a
+secret they expect is missing (`the key '…' cannot be found`).
+
+Mail, from the repo root (asks for every value):
 
 ```bash
-nix shell nixpkgs#sops nixpkgs#jq -c bash -c 'read -rp "Signal sender (+49…): " sn; read -rp "Signal recipients (+49…,+49…): " sr; read -rp "SMTP host: " mh; read -rp "SMTP user: " mu; read -rsp "SMTP password: " mp; echo; read -rp "Mail from: " mf; read -rp "Mail to (a@x,b@y): " mt; tok=$(LC_ALL=C tr -dc A-Za-z0-9 </dev/urandom | head -c 40); m=$(jq -cn --arg h "$mh" --arg u "$mu" --arg p "$mp" --arg f "$mf" --arg t "$mt" "{host:\$h,user:\$u,password:\$p,from:\$f,to:\$t}"); v=hosts/hetzner-vps-01/secrets.enc.yaml; g=services/grafana/secrets.enc.yaml; sops set $v "[\"signal\"]" "$(jq -cn --arg n "$sn" --arg r "$sr" --arg t "$tok" "{number:\$n,recipients:\$r,token:\$t}")" && sops set $v "[\"mail\"]" "$m" && sops set $g "[\"mail\"]" "$m" && sops set $g "[\"SIGNAL_TOKEN\"]" "\"$tok\"" && echo done'
+nix shell nixpkgs#sops nixpkgs#jq -c bash -c 'read -rp "SMTP host: " mh; read -rp "SMTP user: " mu; read -rsp "SMTP password: " mp; echo; read -rp "Mail from: " mf; read -rp "Mail to (a@x,b@y): " mt; m=$(jq -cn --arg h "$mh" --arg u "$mu" --arg p "$mp" --arg f "$mf" --arg t "$mt" "{host:\$h,user:\$u,password:\$p,from:\$f,to:\$t}"); sops set hosts/hetzner-vps-01/secrets.enc.yaml "[\"mail\"]" "$m" && sops set services/grafana/secrets.enc.yaml "[\"mail\"]" "$m" && echo done'
 ```
 
-Set the secrets **before** deploying. sops-nix fails the activation of the
-VPS and of nix-grafana while a secret they expect is missing.
+Signal (asks for the numbers, generates the token itself), then register
+the number after the deploy (see [Signal](#signal)):
+
+```bash
+nix shell nixpkgs#sops nixpkgs#jq -c bash -c 'read -rp "Signal sender (+49…): " sn; read -rp "Signal recipients (+49…,+49…): " sr; tok=$(LC_ALL=C tr -dc A-Za-z0-9 </dev/urandom | head -c 40); sops set hosts/hetzner-vps-01/secrets.enc.yaml "[\"signal\"]" "$(jq -cn --arg n "$sn" --arg r "$sr" --arg t "$tok" "{number:\$n,recipients:\$r,token:\$t}")" && sops set services/grafana/secrets.enc.yaml "[\"SIGNAL_TOKEN\"]" "\"$tok\"" && echo done'
+```
 
 ## Network paths
 

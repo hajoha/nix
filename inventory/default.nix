@@ -8,6 +8,16 @@ let
   baseDomain = "hackler.io";
   keycloakRealm = "main";
 
+  # Alerts also via Signal (Grafana + Gatus -> signal-cli bridge on the
+  # VPS). Needs signal/{number,recipients,token} in the VPS secrets and
+  # SIGNAL_TOKEN in services/grafana/secrets.enc.yaml, then registering the
+  # number (docs/monitoring.md, "Signal"). Off: no Signal secrets needed.
+  signalAlerts = false;
+  # Alerts also via mail (Grafana's SMTP + Gatus). Needs mail/{host,user,
+  # password,from,to} in the VPS secrets and in
+  # services/grafana/secrets.enc.yaml. Off: no mail secrets needed.
+  mailAlerts = false;
+
   # The "service" VLAN every container sits on.
   serviceNet = {
     interface = "service";
@@ -85,6 +95,8 @@ in
   inherit
     baseDomain
     keycloakRealm
+    signalAlerts
+    mailAlerts
     nodes
     databases
     ;

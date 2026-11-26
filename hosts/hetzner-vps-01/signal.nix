@@ -1,5 +1,6 @@
 # Signal alerts from the VPS: signal-cli with its own number, behind a tiny
 # HTTP bridge that Grafana (homelab, via Traefik) and Gatus (local) post to.
+# Only with `signalAlerts = true` in inventory/default.nix.
 #
 #   Grafana ──https──▶ Traefik signal.monitor.<domain> ──┐
 #   Gatus   ──────────────────────────────────────────────┴▶ bridge 127.0.0.1:9922
@@ -27,6 +28,7 @@
   config,
   lib,
   pkgs,
+  inventory,
   ...
 }:
 let
@@ -108,7 +110,7 @@ in
     description = "Address of the Signal bridge on this machine.";
   };
 
-  config = {
+  config = lib.mkIf inventory.signalAlerts {
     users.users.signal = {
       isSystemUser = true;
       group = "signal";
