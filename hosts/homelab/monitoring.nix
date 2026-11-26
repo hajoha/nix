@@ -12,6 +12,8 @@
 #            -> nix-thanos
 #   probes   every container's primary port (tcp) and every nginx vhost
 #            (https), label probe=<name>
+#   nginx    traffic metrics (VTS on nix-nginx:9913) -> nix-thanos, its
+#            JSON access log with GeoIP -> nix-loki (job="nginx")
 #
 # The host reaches nix-loki / nix-thanos through the router (management ->
 # service VLAN), not over the macvlans.
@@ -34,6 +36,10 @@ let
   journalOf = name: "/var/lib/nixos-containers/${name}/var/log/journal";
 
   textfileDir = "/var/lib/homelab-metrics";
+
+  # nix-nginx's JSON access log, seen from the host (logrotate in the
+  # container rotates it weekly; Alloy follows the new file)
+  nginxAccessLog = "/var/lib/nixos-containers/nix-nginx/var/log/nginx/access.json.log";
 
   vhosts = lib.filter (h: lib.hasSuffix ".${config.homelab.domain}" h && !lib.hasPrefix "*" h) (
     lib.attrNames config.containers.nix-nginx.config.services.nginx.virtualHosts
@@ -219,6 +225,72 @@ in
       rule {
         target_label = "instance"
         replacement  = "${config.networking.hostName}"
+      }
+    }
+
+    // --- nginx: traffic metrics (VTS) ----------------------------------
+    // connections, bytes in/out and requests per vhost and backend
+
+    prometheus.scrape "nginx" {
+      targets = [{
+        "__address__" = "${nodes.nix-nginx.ip}:9913",
+        "job"         = "nginx",
+        "instance"    = "nix-nginx",
+      }]
+      metrics_path    = "/metrics"
+      scrape_interval = "15s"
+      forward_to      = [prometheus.remote_write.default.receiver]
+    }
+
+    // --- nginx: access log with GeoIP -> Loki ---------------------------
+    // JSON lines (services/nginx/default.nix), label vhost = server_name;
+    // where the client is from as structured metadata (no labels, so the
+    // number of streams stays small): country_code, country, city, lat,
+    // lon, asn, as_org. DB-IP Lite databases (CC BY 4.0) from nixpkgs.
+
+    loki.source.file "nginx_access" {
+      targets = [{
+        "__path__" = "${nginxAccessLog}",
+        "job"      = "nginx",
+        "instance" = "nix-nginx",
+      }]
+      tail_from_end = true
+      forward_to    = [loki.process.nginx_access.receiver]
+    }
+
+    loki.process "nginx_access" {
+      forward_to = [loki.write.default.receiver]
+
+      stage.json {
+        expressions = { ts = "time", client_ip = "", vhost = "server" }
+      }
+      stage.timestamp {
+        source = "ts"
+        format = "RFC3339"
+      }
+      stage.labels {
+        values = { vhost = "" }
+      }
+      stage.geoip {
+        source  = "client_ip"
+        db      = "${pkgs.dbip-city-lite.mmdb}"
+        db_type = "city"
+      }
+      stage.geoip {
+        source  = "client_ip"
+        db      = "${pkgs.dbip-asn-lite.mmdb}"
+        db_type = "asn"
+      }
+      stage.structured_metadata {
+        values = {
+          country_code = "geoip_country_code",
+          country      = "geoip_country_name",
+          city         = "geoip_city_name",
+          lat          = "geoip_location_latitude",
+          lon          = "geoip_location_longitude",
+          asn          = "geoip_autonomous_system_number",
+          as_org       = "geoip_autonomous_system_organization",
+        }
       }
     }
 

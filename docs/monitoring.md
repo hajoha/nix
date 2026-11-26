@@ -38,6 +38,7 @@ containers and the Hetzner VPS.
 - [Timestamps, outages and backlog](#timestamps-outages-and-backlog)
 - [Probes](#probes)
 - [Grafana: dashboards](#grafana-dashboards)
+- [nginx: traffic and clients](#nginx-traffic-and-clients)
 - [Grafana: alerts](#grafana-alerts)
 - [Notifications and outside checks (VPS)](#notifications-and-outside-checks-vps)
 - [Network paths](#network-paths)
@@ -80,6 +81,8 @@ containers and the Hetzner VPS.
 | Dashboards | `services/grafana/dashboards.nix` |
 | Alert rules | `services/grafana/alerts.nix` |
 | Contact point and policy (ntfy, Signal, mail) | `services/grafana/default.nix` |
+| nginx: VTS module, `/metrics` on :9913, JSON access log | `services/nginx/default.nix` |
+| nginx: scrape, access log → GeoIP → Loki | `hosts/homelab/monitoring.nix` |
 | ntfy, Traefik, Gatus (outside checks) on the VPS | `hosts/hetzner-vps-01/notify.nix` |
 | Signal sender (signal-cli + bridge) on the VPS | `hosts/hetzner-vps-01/signal.nix` |
 | Containers, IPs, firewall ports | `inventory/nodes.nix` (`nix-loki`, `nix-thanos`, `nix-grafana`) |
@@ -101,6 +104,8 @@ such as the host's `homelab.alloy`, can use these components.
 | `homelab-container-units` (systemd timer) | host | `homelab_container_unit_failed{machine,unit}` and `homelab_container_scrape_ok{machine}`, from `systemctl -M <name> list-units --state=failed`, written to `/var/lib/homelab-metrics/containers.prom` | 1m |
 | smartctl exporter (`127.0.0.1:9633`) | host | SMART health, disk temperatures, counters (`job="smartctl"`) | 60s scrape, smartctl at most every 5m |
 | Blackbox probes | host, VPS | `probe_success`, durations, TLS expiry (`job="blackbox"`) | 30s |
+| nginx VTS module (`nix-nginx:9913/metrics`) | host scrapes it | connections, bytes in/out, requests by status class and response times per vhost and per backend (`job="nginx"`) | 15s |
+| nginx JSON access log (`/var/log/nginx/access.json.log` in nix-nginx, read from the container root) | host | every request except the probes, with GeoIP (`job="nginx"`, see [nginx](#nginx-traffic-and-clients)) | live |
 
 Home Assistant data is not in Thanos. HA keeps using its recorder in
 nix-postgres (see [Known gaps](#known-gaps-and-to-dos)).
@@ -111,7 +116,8 @@ Logs (Loki):
 
 | Label | Value |
 |---|---|
-| `job` | `systemd-journal` |
+| `job` | `systemd-journal`, or `nginx` for nix-nginx's access log |
+| `vhost` | only `job="nginx"`: the vhost (`server_name`) |
 | `instance` | `homelab`, `hetzner-vps-01`, or the container name (`nix-paperless`, …) |
 | `unit` | systemd unit, e.g. `paperless-web.service` |
 | `level` | journald priority: `emerg`, `alert`, `crit`, `error`, `warning`, `notice`, `info`, `debug` |
@@ -121,7 +127,7 @@ Metrics (Thanos):
 | Label | Where | Value |
 |---|---|---|
 | `instance` | all | machine: `homelab` / `hetzner-vps-01`. For probes, the probed target (`10.60.1.23:3005`, `https://grafana.hackler.io`) |
-| `job` | all | `node`, `cadvisor`, `smartctl`, `blackbox` |
+| `job` | all | `node`, `cadvisor`, `smartctl`, `blackbox`, `nginx` |
 | `machine` | cAdvisor, container units | container name, e.g. `nix-immich` |
 | `probe` | probes | probe name: the node name for tcp probes, the hostname for https probes |
 | `prober` | probes | which machine ran the probe: `homelab` (inside) or `hetzner-vps-01` (outside) |
@@ -273,6 +279,7 @@ Everything provisioned is in the folder **Homelab**:
   - **Containers**: CPU, memory and disk IO per container.
   - **Probes**: every probe over time, response times, days left on each
     certificate.
+  - **nginx**: see [nginx: traffic and clients](#nginx-traffic-and-clients).
   - **Logs**: log volume per machine, errors everywhere.
 
   The dashboard uses Grafana's schema v2 (`dashboard.grafana.app/v2beta1`),
@@ -289,6 +296,71 @@ the `linkFarm` at the bottom of that file, as is done for `node-full.json`.
 
 Ad-hoc digging goes through **Explore** with the Thanos datasource (PromQL)
 or the Loki datasource (LogQL).
+
+## nginx: traffic and clients
+
+Two sources, both from nix-nginx:
+
+- **Metrics (VTS)**: nginx is built with
+  [nginx-module-vts](https://github.com/vozlt/nginx-module-vts)
+  (`nginxModules.vts`). It counts per server zone (= vhost, label `host`;
+  `host="*"` is the sum) and per backend (`nginx_vts_upstream_*`, label
+  `backend`). A vhost of its own serves them in Prometheus format on
+  `10.60.1.17:9913/metrics`, only for `10.60.0.0/24` (the host). Main
+  series: `nginx_vts_main_connections{status=active|reading|writing|waiting|accepted|handled|requests}`,
+  `nginx_vts_server_bytes_total{host,direction=in|out}`,
+  `nginx_vts_server_requests_total{host,code=1xx..5xx|total}`,
+  `nginx_vts_server_request_duration_seconds_bucket{host,le}`. The counters
+  survive a reload and restart from zero when nginx restarts. Bytes are
+  counted when a request ends, so a long download or a websocket shows up
+  at its end.
+- **Access log with GeoIP**: nginx writes a JSON line per request to
+  `/var/log/nginx/access.json.log` (fields: `time`, `client_ip`, `server`,
+  `host`, `method`, `path` (without the query string, so tokens in URLs
+  stay out of Loki), `status`, `bytes_sent`, `request_length`,
+  `request_time`, `upstream`, `upstream_time`, `referer`, `user_agent`,
+  `tls`, `connection`, `connection_requests`). Requests from the probes
+  (user agent Blackbox / Gatus) are left out. Alloy on the host tails the
+  file from the container root and looks up `client_ip` in the
+  [DB-IP Lite](https://db-ip.com/db/lite.php) City and ASN databases
+  (`dbip-city-lite`, `dbip-asn-lite` from nixpkgs, CC BY 4.0, no account or
+  key). They are updated with nixpkgs (monthly) and are accurate to the
+  city at best.
+  - Stream labels: `job="nginx"`, `instance="nix-nginx"`, `vhost`
+    (`server_name`, a fixed set; `$host` would let any client make up
+    labels).
+  - Structured metadata (not labels, so there are no extra streams):
+    `country_code`, `country`, `city`, `lat`, `lon`, `asn`, `as_org`.
+    Addresses that are not in the database (LAN, VPN) have none of them, so
+    `| country_code != ""` means "from the internet".
+  - The plain `access.log` (combined) is still written for fail2ban.
+    logrotate in the container rotates both weekly (26 weeks, compressed).
+
+The **nginx** tab of the Homelab dashboard shows: connections now,
+requests/s, data sent/received and the 5xx share in the time range,
+distinct internet IPs; a map of where the requests come from; countries,
+top IPs (by requests and by data sent), providers (AS), the vhosts asked
+from outside; connections, new connections and requests, traffic per vhost
+in both directions, responses by status class, p95 response time per
+vhost, a table per vhost; outside requests per country over time and the
+outside requests themselves (log panel, open a line for the GeoIP fields).
+
+Loki's `max_query_series` is set to 20000 because `sum by (client_ip)`
+gives one series per client, and a day of internet scanners is more than
+the default 500.
+
+Useful queries (Explore, Loki):
+
+```logql
+# who is hitting a vhost from outside, with country and provider
+{job="nginx", vhost="cloud.<domain>"} | country_code != ""
+
+# 4xx/5xx from outside per country
+sum by (country) (count_over_time({job="nginx"} | country_code != "" | json | status >= 400 [1h]))
+
+# requests of one address
+{job="nginx"} | json | client_ip="203.0.113.7"
+```
 
 ## Grafana: alerts
 
@@ -527,6 +599,7 @@ or from Grafana:
 | homelab host | nix-thanos `10.60.1.28` | 19291 | same |
 | homelab host | every container `<ip>:<port>` (tcp probes) | various | same |
 | homelab host | the vhosts (https probes) | 443 | via nix-nginx, as resolved by DNS |
+| homelab host | nix-nginx `10.60.1.17` (VTS metrics) | 9913 | through the router; nix-nginx answers via its route for `10.60.0.0/24` |
 | hetzner-vps-01 (WireGuard `10.60.71.x`) | nix-loki, nix-thanos | 3100, 19291 | WireGuard to home-openwrt, which forwards to the service VLAN (`routes` in `wireguard-peers.json`) |
 | nix-grafana | nix-loki :3100, nix-thanos :10902 | | service VLAN |
 | nix-grafana | `notify.monitor.<domain>` (VPS) | 443 | internet |

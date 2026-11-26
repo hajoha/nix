@@ -39,6 +39,7 @@
     tcp = [
       80
       443
+      9913 # nginx traffic metrics (VTS) for Alloy on the homelab host
     ];
     gateway = false; # default route goes out via the DMZ instead
     dns = [

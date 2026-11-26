@@ -9,6 +9,8 @@
 let
   inherit (config.homelab) nodes;
   baseDomain = config.homelab.domain;
+  # nginx and its modules from the same nixpkgs
+  nginxPkgs = inputs.nixpkgs-freecad.legacyPackages.${pkgs.stdenv.hostPlatform.system};
 
   commonProxy = {
     proxyWebsockets = true;
@@ -149,14 +151,51 @@ in
     recommendedGzipSettings = true;
     recommendedOptimisation = true;
     recommendedTlsSettings = true;
-    package = inputs.nixpkgs-freecad.legacyPackages.${pkgs.stdenv.hostPlatform.system}.nginxMainline;
+    package = nginxPkgs.nginxMainline;
     # package = pkgs.nginxMainline;
+    # Traffic counters per vhost / backend (VTS), served on :9913 below.
+    additionalModules = [ nginxPkgs.nginxModules.vts ];
     appendHttpConfig = ''
       map ''$http_upgrade ''$connection_upgrade {
           default upgrade;
           # Escaped empty string for Nginx
           '''       close;
       }
+
+      # --- access logs (docs/monitoring.md, "nginx") ---------------------
+      # combined: for fail2ban (nginx-unauthorized below)
+      access_log /var/log/nginx/access.log combined;
+      # JSON: Alloy on the host tails it from the container root, adds
+      # GeoIP and sends it to Loki. Without the monitoring probes. The path
+      # without the query string: tokens in URLs stay out of Loki.
+      map ''$http_user_agent ''$homelab_loggable {
+          ~*^(blackbox|gatus) 0;
+          default 1;
+      }
+      log_format json escape=json
+        '{"time":"$time_iso8601",'
+        '"client_ip":"$remote_addr",'
+        '"server":"$server_name",'
+        '"host":"$host",'
+        '"method":"$request_method",'
+        '"path":"$uri",'
+        '"protocol":"$server_protocol",'
+        '"status":$status,'
+        '"bytes_sent":$bytes_sent,'
+        '"request_length":$request_length,'
+        '"request_time":$request_time,'
+        '"upstream":"$upstream_addr",'
+        '"upstream_time":"$upstream_response_time",'
+        '"referer":"$http_referer",'
+        '"user_agent":"$http_user_agent",'
+        '"tls":"$ssl_protocol",'
+        '"connection":$connection,'
+        '"connection_requests":$connection_requests}';
+      access_log /var/log/nginx/access.json.log json if=''$homelab_loggable;
+
+      # --- traffic metrics (VTS) -------------------------------------------
+      vhost_traffic_status_zone shared:vhost_traffic_status:16m;
+      vhost_traffic_status_histogram_buckets 0.005 0.01 0.025 0.05 0.1 0.25 0.5 1 2.5 5 10;
     '';
 
     virtualHosts =
@@ -182,6 +221,29 @@ in
           locations."/".extraConfig = ''
             return 444; # "Connection Closed Without Response"
           '';
+        };
+
+        # --- Traffic metrics (VTS, Prometheus format) for Alloy ---
+        # Only on the service VLAN, only for the homelab host (management
+        # net, routed); not a ".${baseDomain}" vhost, so no probe / cert.
+        "vts-metrics" = {
+          listen = [
+            {
+              addr = nodes.nix-nginx.ip;
+              port = 9913;
+            }
+          ];
+          extraConfig = ''
+            vhost_traffic_status off; # do not count the scrapes
+            access_log off;
+          '';
+          locations."= /metrics".extraConfig = ''
+            allow 10.60.0.0/24;
+            deny all;
+            vhost_traffic_status_display;
+            vhost_traffic_status_display_format prometheus;
+          '';
+          locations."/".return = "404";
         };
 
         # --- Nixarr: public ---

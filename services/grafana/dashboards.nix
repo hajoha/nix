@@ -10,6 +10,9 @@
 #                    Host       CPU, memory, temperatures, disks, network
 #                    Containers CPU / memory / IO per container
 #                    Probes     every probe, from inside and outside, certs
+#                    nginx      connections, traffic per vhost, status
+#                               codes; where the clients come from (map,
+#                               countries, IPs, providers)
 #                    Logs       errors of everything
 #   node-full.json   "Node Exporter Full" (grafana.com 1860), per machine
 #
@@ -89,7 +92,7 @@ let
           range = false;
         }
         // optionalAttrs x.table { format = "table"; }
-        // optionalAttrs (x.source == "loki") { queryType = "range"; };
+        // optionalAttrs (x.source == "loki") { queryType = if x.instant then "instant" else "range"; };
       };
     };
   };
@@ -1349,6 +1352,526 @@ let
     ];
   };
 
+  # --- nginx ----------------------------------------------------------------
+  #
+  # Metrics: the VTS module of nix-nginx (job="nginx"), server zone
+  # host="*" is the sum of all vhosts. Bytes are counted when a request
+  # ends, so a long download / websocket shows up at its end.
+  # Logs: nix-nginx's JSON access log (job="nginx", label vhost), with
+  # GeoIP as structured metadata (country_code, country, city, lat, lon,
+  # asn, as_org). Only addresses found in the GeoIP database have a
+  # country_code: that is "from outside"; LAN / VPN clients have none.
+
+  vts = m: sel: ''nginx_vts_${m}{job="nginx", ${sel}}'';
+  outside = ''{job="nginx"} | country_code != ""'';
+
+  # A Loki instant query as a table: one row per series, its labels as
+  # columns, the value as `valueName`, sorted by it (largest first).
+  lokiTable =
+    {
+      title,
+      expr,
+      valueName,
+      columns,
+      description ? "",
+      unit ? null,
+    }:
+    panel {
+      inherit title description unit;
+      viz = "table";
+      queries = [
+        (q expr {
+          instant = true;
+          source = "loki";
+        })
+      ];
+      transformations = [
+        {
+          id = "reduce";
+          options = {
+            mode = "seriesToRows";
+            reducers = [ "lastNotNull" ];
+            labelsToFields = true;
+            includeTimeField = false;
+          };
+        }
+        {
+          id = "organize";
+          options = {
+            excludeByName.Field = true;
+            indexByName = builtins.listToAttrs (
+              imap0 (i: c: {
+                name = c.name;
+                value = i;
+              }) columns
+              ++ [
+                {
+                  name = "Last *";
+                  value = builtins.length columns;
+                }
+              ]
+            );
+            renameByName = builtins.listToAttrs (
+              map (c: {
+                inherit (c) name;
+                value = c.title;
+              }) columns
+            )
+            // {
+              "Last *" = valueName;
+            };
+          };
+        }
+        {
+          id = "sortBy";
+          options.sort = [
+            {
+              field = valueName;
+              desc = true;
+            }
+          ];
+        }
+      ];
+      options = {
+        showHeader = true;
+        cellHeight = "sm";
+      };
+    };
+
+  col = name: title: { inherit name title; };
+
+  nginxTab = {
+    title = "nginx";
+    items = [
+      (at 0 0 4 4 (stat {
+        title = "Connections now";
+        description = "Open client connections (active = reading + writing + waiting/keep-alive)";
+        queries = [ (q "sum(${vts "main_connections" ''status="active"''})" { instant = true; }) ];
+        defaults.thresholds = thresholds [
+          [
+            "blue"
+            null
+          ]
+        ];
+      }))
+      (at 4 0 4 4 (stat {
+        title = "Requests / s";
+        unit = "reqps";
+        queries = [
+          (q "sum(rate(${vts "server_requests_total" ''host="*", code="total"''}[5m]))" { instant = true; })
+        ];
+        defaults.thresholds = thresholds [
+          [
+            "blue"
+            null
+          ]
+        ];
+      }))
+      (at 8 0 4 4 (stat {
+        title = "Sent (time range)";
+        description = "Bytes nginx sent to clients";
+        unit = "bytes";
+        queries = [
+          (q "sum(increase(${vts "server_bytes_total" ''host="*", direction="out"''}[$__range]))" {
+            instant = true;
+          })
+        ];
+        defaults.thresholds = thresholds [
+          [
+            "blue"
+            null
+          ]
+        ];
+      }))
+      (at 12 0 4 4 (stat {
+        title = "Received (time range)";
+        description = "Bytes clients sent to nginx (uploads, requests)";
+        unit = "bytes";
+        queries = [
+          (q "sum(increase(${vts "server_bytes_total" ''host="*", direction="in"''}[$__range]))" {
+            instant = true;
+          })
+        ];
+        defaults.thresholds = thresholds [
+          [
+            "blue"
+            null
+          ]
+        ];
+      }))
+      (at 16 0 4 4 (stat {
+        title = "5xx (time range)";
+        description = "Share of requests answered with a server error (backend down: 502/504)";
+        unit = "percentunit";
+        queries = [
+          (q
+            "sum(increase(${vts "server_requests_total" ''host="*", code="5xx"''}[$__range])) / sum(increase(${vts "server_requests_total" ''host="*", code="total"''}[$__range]))"
+            { instant = true; }
+          )
+        ];
+        defaults.thresholds = thresholds [
+          [
+            "green"
+            null
+          ]
+          [
+            "orange"
+            0.01
+          ]
+          [
+            "red"
+            0.05
+          ]
+        ];
+      }))
+      (at 20 0 4 4 (stat {
+        title = "Outside IPs (time range)";
+        description = "Distinct client addresses from the internet (with a GeoIP match)";
+        queries = [
+          (q ''count(sum by (client_ip) (count_over_time(${outside} | json client_ip="client_ip" [$__range])))'' {
+            instant = true;
+            source = "loki";
+          })
+        ];
+        defaults.thresholds = thresholds [
+          [
+            "blue"
+            null
+          ]
+        ];
+      }))
+
+      (at 0 4 15 13 (panel {
+        title = "Where the requests come from";
+        viz = "geomap";
+        description = "Requests from the internet in the time range, per place (DB-IP Lite: city-level, not exact). Bigger = more requests.";
+        queries = [
+          (q ''sum by (lat, lon, city, country) (count_over_time(${outside} [$__range]))'' {
+            instant = true;
+            source = "loki";
+          })
+        ];
+        transformations = [
+          {
+            id = "reduce";
+            options = {
+              mode = "seriesToRows";
+              reducers = [ "lastNotNull" ];
+              labelsToFields = true;
+              includeTimeField = false;
+            };
+          }
+          {
+            id = "organize";
+            options = {
+              excludeByName.Field = true;
+              renameByName."Last *" = "Requests";
+            };
+          }
+          {
+            id = "convertFieldType";
+            options = {
+              fields = { };
+              conversions = [
+                {
+                  targetField = "lat";
+                  destinationType = "number";
+                }
+                {
+                  targetField = "lon";
+                  destinationType = "number";
+                }
+              ];
+            };
+          }
+        ];
+        options = {
+          view = {
+            id = "coords";
+            lat = 35;
+            lon = 10;
+            zoom = 1.6;
+            allLayers = true;
+          };
+          controls = {
+            showZoom = true;
+            mouseWheelZoom = true;
+            showAttribution = true;
+          };
+          tooltip.mode = "details";
+          basemap = {
+            type = "default";
+            name = "Basemap";
+            config = { };
+          };
+          layers = [
+            {
+              type = "markers";
+              name = "Requests";
+              tooltip = true;
+              location = {
+                mode = "coords";
+                latitude = "lat";
+                longitude = "lon";
+              };
+              config = {
+                showLegend = false;
+                style = {
+                  size = {
+                    field = "Requests";
+                    fixed = 5;
+                    min = 4;
+                    max = 30;
+                  };
+                  color.fixed = "orange";
+                  opacity = 0.5;
+                  symbol = {
+                    mode = "fixed";
+                    fixed = "img/icons/marker/circle.svg";
+                  };
+                };
+              };
+            }
+          ];
+        };
+      }))
+      (at 15 4 9 13 (lokiTable {
+        title = "Countries";
+        expr = ''topk(30, sum by (country) (count_over_time(${outside} [$__range])))'';
+        valueName = "Requests";
+        columns = [ (col "country" "Country") ];
+      }))
+
+      (at 0 17 12 10 (lokiTable {
+        title = "Top client IPs (requests)";
+        description = "From the internet, in the time range";
+        expr = ''topk(30, sum by (client_ip, country, city, as_org) (count_over_time(${outside} | json client_ip="client_ip" [$__range])))'';
+        valueName = "Requests";
+        columns = [
+          (col "client_ip" "IP")
+          (col "country" "Country")
+          (col "city" "City")
+          (col "as_org" "Provider")
+        ];
+      }))
+      (at 12 17 12 10 (lokiTable {
+        title = "Top client IPs (data sent to them)";
+        description = "From the internet, in the time range";
+        unit = "bytes";
+        expr = ''topk(30, sum by (client_ip, country, as_org) (sum_over_time(${outside} | json client_ip="client_ip", bytes_sent="bytes_sent" | unwrap bytes_sent [$__range])))'';
+        valueName = "Sent";
+        columns = [
+          (col "client_ip" "IP")
+          (col "country" "Country")
+          (col "as_org" "Provider")
+        ];
+      }))
+      (at 0 27 12 9 (lokiTable {
+        title = "Providers (AS)";
+        description = "Networks the outside requests come from: ISPs, mobile carriers, cloud hosters (often bots)";
+        expr = ''topk(30, sum by (asn, as_org) (count_over_time(${outside} [$__range])))'';
+        valueName = "Requests";
+        columns = [
+          (col "as_org" "Provider")
+          (col "asn" "AS")
+        ];
+      }))
+      (at 12 27 12 9 (lokiTable {
+        title = "Vhosts asked from outside";
+        expr = ''topk(30, sum by (vhost) (count_over_time(${outside} [$__range])))'';
+        valueName = "Requests";
+        columns = [ (col "vhost" "Vhost") ];
+      }))
+
+      (at 0 36 12 9 (panel {
+        title = "Connections";
+        description = "reading: reading the request header; writing: sending the response (also open websockets / streams); waiting: idle keep-alive";
+        queries = [
+          (q ''sum by (status) (${vts "main_connections" ''status=~"reading|writing|waiting"''})'' {
+            legend = "{{status}}";
+          })
+        ];
+        defaults = stacked;
+      }))
+      (at 12 36 12 9 (panel {
+        title = "New connections and requests";
+        unit = "reqps";
+        queries = [
+          (q ''sum(rate(${vts "main_connections" ''status="accepted"''}[$__rate_interval]))'' {
+            legend = "connections / s";
+          })
+          (q ''sum(rate(${vts "main_connections" ''status="requests"''}[$__rate_interval]))'' {
+            legend = "requests / s";
+          })
+        ];
+      }))
+      (at 0 45 12 10 (panel {
+        title = "Sent per vhost";
+        unit = "Bps";
+        queries = [
+          (q ''sum by (host) (rate(${vts "server_bytes_total" ''host!="*", direction="out"''}[$__rate_interval]))'' {
+            legend = "{{host}}";
+          })
+        ];
+        defaults = stacked;
+      }))
+      (at 12 45 12 10 (panel {
+        title = "Received per vhost";
+        unit = "Bps";
+        queries = [
+          (q ''sum by (host) (rate(${vts "server_bytes_total" ''host!="*", direction="in"''}[$__rate_interval]))'' {
+            legend = "{{host}}";
+          })
+        ];
+        defaults = stacked;
+      }))
+      (at 0 55 12 9 (panel {
+        title = "Responses by status";
+        unit = "reqps";
+        queries = [
+          (q ''sum by (code) (rate(${vts "server_requests_total" ''host="*", code=~"[1-5]xx"''}[$__rate_interval]))'' {
+            legend = "{{code}}";
+          })
+        ];
+        defaults = stacked;
+        overrides = [
+          (byName "5xx" [
+            {
+              id = "color";
+              value = {
+                mode = "fixed";
+                fixedColor = "red";
+              };
+            }
+          ])
+          (byName "4xx" [
+            {
+              id = "color";
+              value = {
+                mode = "fixed";
+                fixedColor = "orange";
+              };
+            }
+          ])
+        ];
+      }))
+      (at 12 55 12 9 (panel {
+        title = "Response time per vhost (p95)";
+        description = "Until the last byte is sent: long downloads and streams are slow by nature";
+        unit = "s";
+        queries = [
+          (q ''histogram_quantile(0.95, sum by (host, le) (rate(${vts "server_request_duration_seconds_bucket" ''host!="*"''}[$__rate_interval])))'' {
+            legend = "{{host}}";
+          })
+        ];
+      }))
+      (at 0 64 24 9 (panel {
+        title = "Per vhost (time range)";
+        viz = "table";
+        queries = [
+          (q ''sum by (host) (increase(${vts "server_bytes_total" ''host!="*", direction="out"''}[$__range]))'' {
+            instant = true;
+            table = true;
+          })
+          (q ''sum by (host) (increase(${vts "server_bytes_total" ''host!="*", direction="in"''}[$__range]))'' {
+            instant = true;
+            table = true;
+          })
+          (q ''sum by (host) (increase(${vts "server_requests_total" ''host!="*", code="total"''}[$__range]))'' {
+            instant = true;
+            table = true;
+          })
+          (q ''sum by (host) (increase(${vts "server_requests_total" ''host!="*", code="5xx"''}[$__range]))'' {
+            instant = true;
+            table = true;
+          })
+        ];
+        transformations = [
+          {
+            id = "merge";
+            options = { };
+          }
+          {
+            id = "organize";
+            options = {
+              excludeByName.Time = true;
+              renameByName = {
+                host = "Vhost";
+                "Value #A" = "Sent";
+                "Value #B" = "Received";
+                "Value #C" = "Requests";
+                "Value #D" = "5xx";
+              };
+            };
+          }
+          {
+            id = "sortBy";
+            options.sort = [
+              {
+                field = "Sent";
+                desc = true;
+              }
+            ];
+          }
+        ];
+        overrides = [
+          (byName "Sent" [
+            {
+              id = "unit";
+              value = "bytes";
+            }
+          ])
+          (byName "Received" [
+            {
+              id = "unit";
+              value = "bytes";
+            }
+          ])
+          (byName "Requests" [
+            {
+              id = "decimals";
+              value = 0;
+            }
+          ])
+          (byName "5xx" [
+            {
+              id = "decimals";
+              value = 0;
+            }
+          ])
+        ];
+        options.showHeader = true;
+      }))
+      (at 0 73 24 8 (panel {
+        title = "Outside requests per country";
+        queries = [
+          (q ''topk(10, sum by (country) (count_over_time(${outside} [$__auto])))'' {
+            legend = "{{country}}";
+            source = "loki";
+          })
+        ];
+        defaults = stacked // {
+          custom = stacked.custom // {
+            drawStyle = "bars";
+            fillOpacity = 80;
+          };
+        };
+      }))
+      (at 0 81 24 14 (panel {
+        title = "Requests from outside";
+        viz = "logs";
+        description = "Newest first. Open a line for country, city and provider (structured metadata).";
+        queries = [ (q outside { source = "loki"; }) ];
+        options = {
+          showTime = true;
+          wrapLogMessage = false;
+          sortOrder = "Descending";
+          enableLogDetails = true;
+        };
+      }))
+    ];
+  };
+
   logsTab = {
     title = "Logs";
     items = [
@@ -1393,6 +1916,7 @@ let
     hostTab
     containersTab
     probesTab
+    nginxTab
     logsTab
   ];
 

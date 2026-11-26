@@ -73,6 +73,9 @@ in
         reject_old_samples = true;
         reject_old_samples_max_age = "168h"; # accept a week of backlog
         allow_structured_metadata = true;
+        # "sum by (client_ip)" over the nginx access log (Grafana, tab
+        # nginx): one series per client address, scanners bring thousands
+        max_query_series = 20000;
         # Limits to prevent a single spammy LXC from crashing Loki
         ingestion_rate_mb = 10;
         ingestion_burst_size_mb = 20;
